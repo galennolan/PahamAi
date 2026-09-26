@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Badge, Table, Button } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
-import { formatJakarta } from '../lib/time';
+import { formatJakartaDateTime } from '../lib/time';
 import { useToast } from '../hooks/useToast';
 
 type PendaftarWithSource = {
@@ -230,7 +230,7 @@ export default function MarketingDashboardPage() {
                     {p.utm_medium ? `${p.utm_source}/${p.utm_medium}/${p.utm_campaign}` : '-'}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{p.referrer_code ?? '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">{formatJakarta(p.created_at)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">{formatJakartaDateTime(p.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -333,7 +333,7 @@ export default function MarketingDashboardPage() {
                       'border-gray-500/30 text-gray-400'
                     }>{c.status}</Badge>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{formatJakarta(c.updated_at)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{formatJakartaDateTime(c.updated_at)}</td>
                 </tr>
               ))}
             </tbody>

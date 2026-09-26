@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { BookOpen, BarChart3, Award, User, ArrowRight, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, EmptyState, Badge, ProgressBar, Stat, Skeleton } from '../components/ui';
-import { formatJakarta, todayJakartaISO } from '../lib/time';
+import { formatJakarta, formatJakartaDateTime, todayJakartaISO } from '../lib/time';
 import { syncPendingOps } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { Peserta, JadwalSesi, Pembayaran } from '../types';
@@ -142,7 +142,7 @@ export default function BerandaPage() {
           Halo, {peserta.nama_panggil ?? peserta.nama_lengkap}!
         </h1>
         <p className="mt-0.5 text-sm text-[#94A3B8]">
-          Jalur <Badge className="mx-1">{peserta.jalur ?? '-'}</Badge> · Sejak {formatJakarta(peserta.created_at)}
+          Jalur <Badge className="mx-1">{peserta.jalur ?? '-'}</Badge> · Sejak {formatJakartaDateTime(peserta.created_at)}
         </p>
       </div>
 

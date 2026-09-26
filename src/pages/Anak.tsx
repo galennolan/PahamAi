@@ -3,7 +3,7 @@ import { Award } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
-import { formatJakarta } from '../lib/time';
+import { formatJakarta, formatJakartaDateTime } from '../lib/time';
 import type { Peserta } from '../types';
 
 type JoinedRow = {
@@ -171,7 +171,7 @@ export default function AnakPage() {
                     {js?.modul?.kode ?? '-'} — {js?.modul?.judul ?? '-'}
                   </p>
                   <p className="text-body text-[#F1F5F9] leading-relaxed whitespace-pre-wrap">{r.catatan_text}</p>
-                  <p className="mt-2 text-xs text-[#64748B]">Diupdate: {formatJakarta(r.updated_at ?? r.created_at)}</p>
+                   <p className="mt-2 text-xs text-[#64748B]">Diupdate: {formatJakartaDateTime(r.updated_at ?? r.created_at)}</p>
                 </div>
               );
             })}

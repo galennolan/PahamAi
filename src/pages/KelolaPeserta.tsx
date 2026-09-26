@@ -24,6 +24,7 @@ export default function KelolaPesertaPage() {
     nama_panggil: '',
     email: '',
     no_wa: '',
+    no_wa_ortu: '',
     usia: '',
     jalur: 'A',
     kelas_penempatan: 'baru-kenal-hp',
@@ -84,6 +85,7 @@ export default function KelolaPesertaPage() {
       nama_panggil: form.nama_panggil || null,
       email: form.email || null,
       no_wa: form.no_wa || null,
+      no_wa_ortu: form.no_wa_ortu || null,
       usia: form.usia ? parseInt(form.usia) : null,
       jalur: form.jalur,
       kelas_penempatan: form.kelas_penempatan,
@@ -98,7 +100,7 @@ export default function KelolaPesertaPage() {
     }
     toast('Peserta ditambahkan', 'success');
     setShowForm(false);
-    setForm({ nama_lengkap: '', nama_panggil: '', email: '', no_wa: '', usia: '', jalur: 'A', kelas_penempatan: 'baru-kenal-hp', batch_id: '', user_id: '' });
+    setForm({ nama_lengkap: '', nama_panggil: '', email: '', no_wa: '', no_wa_ortu: '', usia: '', jalur: 'A', kelas_penempatan: 'baru-kenal-hp', batch_id: '', user_id: '' });
     await load();
   };
 
@@ -168,14 +170,17 @@ export default function KelolaPesertaPage() {
                 <TextInput value={form.nama_panggil} onChange={(e) => setForm({ ...form, nama_panggil: e.target.value })} />
               </Field>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Email" hint="Untuk invite akun setelah peserta dibuat.">
-                <TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </Field>
-              <Field label="No. WhatsApp">
-                <TextInput placeholder="0812xxxxxxx" value={form.no_wa} onChange={(e) => setForm({ ...form, no_wa: e.target.value })} />
-              </Field>
-            </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Field label="Email" hint="Untuk invite akun.">
+                  <TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </Field>
+                <Field label="No. WhatsApp">
+                  <TextInput placeholder="0812xxxxxxx" value={form.no_wa} onChange={(e) => setForm({ ...form, no_wa: e.target.value })} />
+                </Field>
+                <Field label="No. WA Orang Tua" hint="Khusus anak / peserta usia sekolah.">
+                  <TextInput placeholder="0812xxxxxxx" value={form.no_wa_ortu} onChange={(e) => setForm({ ...form, no_wa_ortu: e.target.value })} />
+                </Field>
+              </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label="Usia">
                 <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} />
@@ -299,10 +304,15 @@ export default function KelolaPesertaPage() {
               <tbody>
                 {pesertas.map((p) => (
                   <tr key={p.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
-                    <td className="px-3 py-2 text-[#F1F5F9]">
-                      {p.nama_lengkap}
-                      {p.nama_panggil && <span className="ml-2 text-xs text-[#64748B]">"{p.nama_panggil}"</span>}
-                    </td>
+                      <td className="px-3 py-2 text-[#F1F5F9]">
+                        <div className="flex flex-col">
+                          <span>{p.nama_lengkap}</span>
+                          <span className="text-[10px] text-[#64748B]">
+                            {p.nama_panggil && `"${p.nama_panggil}" · `}
+                            Ortu: {p.no_wa_ortu ?? '—'}
+                          </span>
+                        </div>
+                      </td>
                     <td className="px-3 py-2 font-mono text-xs text-[#FBBF24]">{p.jalur ?? '-'}</td>
                     <td className="px-3 py-2 text-xs text-[#94A3B8]">{p.no_wa ?? '-'}</td>
                     <td className="px-3 py-2">

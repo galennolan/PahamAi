@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput } from '../components/ui';
+import { Card, Combobox, Loading, EmptyState, Button, Field, TextInput, SelectInput } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta } from '../lib/time';
 import type { Pembayaran, Peserta } from '../types';
@@ -27,6 +27,7 @@ const rupiah = (n: number) =>
 export default function PembayaranPage() {
   const { push: toast } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
+  const [allPeserta, setAllPeserta] = useState<Peserta[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -45,12 +46,28 @@ export default function PembayaranPage() {
     setRows(list.map((p) => ({ pembayaran: p, peserta: p.peserta ?? null })));
   };
 
+  const loadPeserta = async () => {
+    const { data } = await supabase.from('peserta').select('*').order('nama_lengkap', { ascending: true });
+    setAllPeserta((data as Peserta[]) ?? []);
+  };
+
   useEffect(() => {
     (async () => {
-      await load();
+      await Promise.all([load(), loadPeserta()]);
       setLoading(false);
     })();
   }, []);
+
+  const pesertaOptions = useMemo(
+    () =>
+      allPeserta.map((p) => ({
+        value: p.id,
+        label: p.nama_lengkap,
+        sublabel: [p.email, p.no_wa].filter(Boolean).join(' · ') || 'Tanpa kontak',
+        badge: p.jalur ?? undefined,
+      })),
+    [allPeserta]
+  );
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,8 +125,16 @@ export default function PembayaranPage() {
           <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Tagihan Baru</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="ID Peserta" hint="UUID dari tabel peserta.">
-                <TextInput value={form.peserta_id} onChange={(e) => setForm({ ...form, peserta_id: e.target.value })} required />
+              <Field label="Peserta" hint="Pilih dari daftar, bukan ketik UUID.">
+                <Combobox
+                  value={form.peserta_id}
+                  onChange={(v) => setForm({ ...form, peserta_id: v })}
+                  placeholder="Ketik nama atau email peserta..."
+                  searchPlaceholder="Cari peserta..."
+                  emptyLabel="Tidak ada peserta"
+                  options={pesertaOptions}
+                  allowEmpty={false}
+                />
               </Field>
               <Field label="Status Bayar">
                 <SelectInput value={form.status_bayar} onChange={(e) => setForm({ ...form, status_bayar: e.target.value })}>

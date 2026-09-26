@@ -373,17 +373,17 @@ export default function KelolaBatchPage() {
                   />
                 </Field>
                 <Field label="Kode Kelas" hint="Unik, cth: PAHAI/A/2601">
-                  <div className="flex gap-2">
-                    <TextInput
-                      placeholder="PAHAI/A/2601"
-                      value={form.kode_batch}
-                      onChange={(e) => setForm({ ...form, kode_batch: e.target.value })}
-                      required
-                    />
-                    <Button type="button" variant="secondary" onClick={() => setForm({ ...form, kode_batch: suggestKode(form.jalur) })}>
-                      Auto
-                    </Button>
-                  </div>
+                                  <div className="flex gap-2">
+                  <TextInput
+                    placeholder="PAHAI/A/2601"
+                    value={form.kode_batch}
+                    disabled
+                    className="bg-[#334155]/50"
+                  />
+                  <Button type="button" variant="secondary" onClick={() => setForm({ ...form, kode_batch: suggestKode(form.jalur) })}>
+                    Refresh
+                  </Button>
+                </div>
                 </Field>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
