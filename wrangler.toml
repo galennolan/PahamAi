@@ -1,5 +1,6 @@
 name = "pahamai"
 compatibility_date = "2025-01-01"
 
-[build.upload]
-no_modules = true
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
