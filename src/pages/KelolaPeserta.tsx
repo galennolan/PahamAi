@@ -209,9 +209,6 @@ export default function KelolaPesertaPage() {
                   ))}
                 </SelectInput>
               </Field>
-              <Field label="User ID (auth)" hint="UUID akun Supabase, opsional.">
-                <TextInput value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} />
-              </Field>
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Menyimpan...' : 'Simpan'}</Button>
