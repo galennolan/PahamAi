@@ -6,7 +6,17 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Loading } from './components/ui';
 import { LoginPage, RegisterPage } from './pages/Auth';
+import { supabaseEnvMissing } from './lib/supabaseClient';
 import LegacyRedirect from './components/LegacyRedirect';
+
+function EnvMissingBanner() {
+  if (!supabaseEnvMissing) return null;
+  return (
+    <div className="bg-[#F87171] px-4 py-2 text-center text-sm font-medium text-[#0F172A]">
+      VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY belum diset. Salin .env.example menjadi .env lalu isi nilainya.
+    </div>
+  );
+}
 
 const LandingPage = lazy(() => import('./pages/Landing'));
 const PendaftaranPage = lazy(() => import('./pages/Pendaftaran'));
@@ -39,6 +49,7 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <EnvMissingBanner />
         <BrowserRouter>
           <Suspense fallback={<Loading text="Memuat halaman..." />}>
             <Routes>
