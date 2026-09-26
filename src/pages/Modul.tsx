@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, Check, ArrowRight } from 'lucide-react';
 import { listModulByJalur } from '../services/modul';
 import { Card, Loading, EmptyState } from '../components/ui';
 import { supabase } from '../lib/supabaseClient';
@@ -170,7 +170,7 @@ export default function ModulPage() {
                   }`}
                   aria-hidden
                 />
-                {isLocked ? (
+                {isLocked && !isStaff ? (
                   <Card className="opacity-50 cursor-not-allowed">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex min-w-0 items-center gap-3">
@@ -186,7 +186,9 @@ export default function ModulPage() {
                           </p>
                         </div>
                       </div>
-                      <span className="shrink-0 font-mono text-sm text-fg-subtle">🔒</span>
+                      <span className="shrink-0 font-mono text-sm text-fg-subtle">
+                        <Lock className="h-4 w-4" />
+                      </span>
                     </div>
                   </Card>
                 ) : (
@@ -199,8 +201,8 @@ export default function ModulPage() {
                             <p className="truncate font-semibold text-fg">{m.judul}</p>
                             <p className="mt-0.5 font-mono text-xs text-fg-muted">
                               {m.kode} · {m.durasi_menit} mnt
-                              {isDone && <span className="ml-2 text-primary-text">✓ selesai</span>}
-                              {isNext && !isDone && <span className="ml-2 text-accent">→ lanjutkan</span>}
+                              {isDone && <span className="ml-2 inline-flex items-center gap-1 text-primary-text"><Check className="h-3 w-3" /> selesai</span>}
+                              {isNext && !isDone && <span className="ml-2 inline-flex items-center gap-1 text-accent"><ArrowRight className="h-3 w-3" /> lanjutkan</span>}
                             </p>
                           </div>
                         </div>

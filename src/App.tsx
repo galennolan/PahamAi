@@ -31,6 +31,7 @@ const KelolaBatchPage = lazy(() => import('./pages/KelolaBatch'));
 const KelolaPesertaPage = lazy(() => import('./pages/KelolaPeserta'));
 const PembayaranPage = lazy(() => import('./pages/Pembayaran'));
 const BelajarPage = lazy(() => import('./pages/Belajar'));
+const ModulPage = lazy(() => import('./pages/Modul'));
 const CatatanPage = lazy(() => import('./pages/Catatan'));
 const ProgresPage = lazy(() => import('./pages/Progres'));
 const KaryaPage = lazy(() => import('./pages/Karya'));
@@ -64,6 +65,7 @@ function App() {
               <Route path="/karya" element={<Protected allow={['peserta']}><KaryaPage /></Protected>} />
               <Route path="/profil" element={<Protected allow={['peserta']}><ProfilPage /></Protected>} />
               <Route path="/modul/:kode" element={<Protected><SesiPage /></Protected>} />
+              <Route path="/modul" element={<Protected allow={['admin', 'instruktur']}><ModulPage /></Protected>} />
               <Route path="/catatan" element={<Protected allow={['peserta']}><CatatanPage /></Protected>} />
 
               <Route path="/anak" element={<Protected allow={['parent']}><OrangTuaPage /></Protected>} />

@@ -11,13 +11,12 @@ const MODUL_DIR = join(ROOT, '01-kurikulum-dan-konten/modul-ajar');
 const url = process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-if (!url || (!serviceKey && !anonKey)) { console.error('Set env first.'); process.exit(1); }
+if (!url || (!serviceKey && !anonKey)) { console.error('Set env vars first (copy .env.example to .env).'); process.exit(1); }
 const supabase = createClient(url, serviceKey || anonKey);
 
 const JALUR_MAP = { 'jalur-a-anak': 'A', 'jalur-b1-pemula': 'B1', 'jalur-b2-menengah': 'B2', 'jalur-b3-expert': 'B3' };
 const DURASI = { A: 60, B1: 90, B2: 120, B3: 150 };
 
-// Judul manual dari silabus.md (lebih akurat daripada slug file)
 const JUDUL = {
   A01: 'Apa Itu AI?', A02: 'AI vs Manusia', A03: 'Ngobrol & Belajar Prompt',
   A04: 'AI untuk Cerita', A05: 'AI untuk Gambar', A06: 'Deteksi AI vs Asli',
@@ -38,7 +37,6 @@ const JUDUL = {
 
 function parseModulFile(filePath, jalur) {
   const fname = basename(filePath);
-  // Tolak file arsip (B204X, B307X)
   if (/[A-Z]\d{3}X-/.test(fname)) return null;
   const match = fname.match(/^([A-Z]\d{2,3})-(.*)\.md$/);
   if (!match) return null;
@@ -50,6 +48,38 @@ function parseModulFile(filePath, jalur) {
   return { kode, judul, jalur, urutan, content };
 }
 
+// Ekstrak "## 4. Materi Inti" .. "## 5." untuk peserta (tanpa lesson-plan instruktur).
+function extractMateriPeserta(md) {
+  const lines = md.split('\n');
+  let start = -1;
+  let end = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('## 4. Materi Inti')) start = i;
+    else if (start !== -1 && /^## 5\./.test(lines[i])) { end = i; break; }
+  }
+  return start === -1 ? null : lines.slice(start + 1, end).join('\n').trim();
+}
+
+const KODE_TO_KATEGORI = {
+  A01:'FND',A02:'FND',A03:'TOOL',A04:'TOOL',A05:'TOOL',A06:'ETHC',A07:'ETHC',A08:'PROJ',A09:'PRES',
+  B101:'FND',B102:'TOOL',B103:'PRMP',B104:'PROD',B105:'ETHC',B106:'PROJ',B107:'PRES',
+  B201:'PRMP',B202:'PRMP',B203:'PROD',B204:'ETHC',B205:'CODE',B206:'AUTO',B207:'CODE',B208:'CODE',B209:'PROJ',
+  B210:'PRES',B211:'PROJ',
+  B301:'ARCH',B302:'ARCH',B303:'AUTO',B304:'AUTO',B305:'ARCH',B306:'ARCH',B307:'ETHC',B308:'PROJ',B309:'PRES',
+  B310:'PROJ',B311:'PROJ',
+};
+
+const hasCols = new Set();
+async function colExists(name) {
+  if (hasCols.has(name)) return true;
+  if (hasCols.has('__known__' + name)) return false;
+  const chk = await supabase.from('modul').select(name).limit(0);
+  const ok = !chk.error;
+  hasCols.add('__known__' + name);
+  if (ok) hasCols.add(name);
+  return ok;
+}
+
 async function main() {
   const files = [];
   for (const [dir, jalur] of Object.entries(JALUR_MAP)) {
@@ -58,19 +88,29 @@ async function main() {
     for (const fname of readdirSync(dirPath)) {
       if (!fname.endsWith('.md')) continue;
       const m = parseModulFile(join(dirPath, fname), jalur);
-      if (m) files.push(m); else console.log(`  arsip/skip: ${fname}`);
+      if (m) files.push(m);
+      else console.log(`  arsip/skip: ${fname}`);
     }
   }
-  console.log(`Parsed ${files.length} modul valid (2 arsip di-skip).`);
+  console.log(`Parsed ${files.length} modul valid.`);
 
-  // Bersihkan arsip yang sempat masuk
   await supabase.from('modul').delete().in('kode', ['B204X', 'B307X']);
 
+  const supKategori = await colExists('kategori');
+  const supMateri = await colExists('materi_peserta_md');
+  console.log(`Columns present -> kategori: ${supKategori}, materi_peserta_md: ${supMateri}`);
+  if (!supMateri) console.warn('  ! Kolom materi_peserta_md belum ada — jalankan migration 0009 di SQL Editor dulu agar peserta lihat materi bersih.');
+
   for (const m of files) {
-    const { error } = await supabase.from('modul').upsert({
+    const row = {
       kode: m.kode, judul: m.judul, jalur: m.jalur,
-      urutan_sesi: m.urutan, durasi_menit: DURASI[m.jalur], content_md: m.content,
-    }, { onConflict: 'kode' });
+      urutan_sesi: m.urutan, durasi_menit: DURASI[m.jalur],
+      content_md: m.content,
+    };
+    if (supKategori && KODE_TO_KATEGORI[m.kode]) row.kategori = KODE_TO_KATEGORI[m.kode];
+    if (supMateri) row.materi_peserta_md = extractMateriPeserta(m.content);
+
+    const { error } = await supabase.from('modul').upsert(row, { onConflict: 'kode' });
     if (error) console.error(`  ERROR ${m.kode}:`, error.message);
     else console.log(`  OK ${m.kode} — ${m.judul}`);
   }

@@ -150,7 +150,11 @@ export default function SesiPage() {
     setPortForm({ item_url: '', item_type: 'image', deskripsi: '' });
   };
 
-  const isPeserta = role === 'peserta';
+    const isPeserta = role === 'peserta';
+    const isStaff = role === 'admin' || role === 'instruktur';
+    const materiPeserta = modul?.materi_peserta_md?.trim() || modul?.content_md;
+    const materiStaff = modul?.content_md?.trim();
+
 
   if (loading) return <div className="space-y-4 pt-4"><Skeleton className="h-8 w-1/3" /><Skeleton className="h-40 w-full" /><Skeleton className="h-60 w-full" /></div>;
   if (error) return <EmptyState title="Gagal memuat" desc={error} />;
@@ -209,10 +213,10 @@ export default function SesiPage() {
               </Card>
             )}
 
-            {modul.content_md && (
+            {materiPeserta && (
               <Card>
                 <SectionHeader title="Materi" />
-                <div className="prose-md mt-4" dangerouslySetInnerHTML={{ __html: renderMarkdown(modul.content_md) }} />
+                <div className="prose-md mt-4" dangerouslySetInnerHTML={{ __html: renderMarkdown(materiPeserta) }} />
               </Card>
             )}
           </div>
@@ -301,6 +305,13 @@ export default function SesiPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {isStaff && materiStaff && (
+        <Card className="border-primary/20">
+          <SectionHeader title="Materi Lengkap (Staff)" desc="Versi instruktur/admin" />
+          <div className="prose-md mt-4" dangerouslySetInnerHTML={{ __html: renderMarkdown(materiStaff) }} />
+        </Card>
       )}
 
       {showConfirm && pendingStatus && (

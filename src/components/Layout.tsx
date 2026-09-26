@@ -54,6 +54,7 @@ const adminLinks: NavItem[] = [
   { to: '/kelola-modul', label: 'Modul', icon: <Book className="h-4 w-4" /> },
   { to: '/pendaftar', label: 'Pendaftar', icon: <FileText className="h-4 w-4" /> },
   { to: '/pembayaran', label: 'Bayar', icon: <DollarSign className="h-4 w-4" /> },
+  { to: '/modul', label: 'Baca Modul', icon: <BookOpen className="h-4 w-4" /> },
 ];
 
 const instrukturLinks: NavItem[] = [
@@ -62,6 +63,7 @@ const instrukturLinks: NavItem[] = [
   { to: '/kelola-peserta', label: 'Peserta', icon: <Users className="h-4 w-4" /> },
   { to: '/absensi', label: 'Absensi', icon: <CheckCircle2 className="h-4 w-4" /> },
   { to: '/kelola-batch', label: 'Batch', icon: <Calendar className="h-4 w-4" /> },
+  { to: '/modul', label: 'Baca Modul', icon: <BookOpen className="h-4 w-4" /> },
 ];
 
 const marketingLinks: NavItem[] = [

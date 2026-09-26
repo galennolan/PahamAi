@@ -47,6 +47,7 @@ export interface Modul {
   content_md: string | null;
   slide_url: string | null;
   kategori?: string | null;
+  materi_peserta_md?: string | null;
   promo_ready: boolean;
   promo_angle: string | null;
   target_audience: string | null;
