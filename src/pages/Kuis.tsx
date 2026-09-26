@@ -92,7 +92,7 @@ export default function KuisPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-bold text-[#F1F5F9]">Kuis & Ujian</h1>
+      <h1 className="text-headline font-bold text-fg">Kuis & Ujian</h1>
 
       <Card>
         <Field label="Pilih Paket Soal">
@@ -112,28 +112,28 @@ export default function KuisPage() {
       {selected && soal.length > 0 && !hasil && (
         <>
           <Card>
-            <p className="font-mono text-sm text-[#94A3B8]">{soal.length} soal · Jawab semua, lalu submit</p>
+            <p className="font-mono text-sm text-fg-muted">{soal.length} soal · Jawab semua, lalu submit</p>
           </Card>
           {soal.map(s => (
             <Card key={s.id}>
-              <p className="mb-3 font-medium text-[#F1F5F9]">
-                <span className="font-mono text-[#FBBF24]">{s.no_soal}.</span> {s.pertanyaan}
+              <p className="mb-3 font-medium text-fg">
+                <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
               </p>
               <div className="space-y-2">
                 {(['A', 'B', 'C', 'D'] as const).map(pil => {
                   const val = s[`pilihan_${pil.toLowerCase()}` as 'pilihan_a'];
                   if (!val) return null;
                   return (
-                    <label key={pil} className="flex items-start gap-3 cursor-pointer p-2 rounded-[4px] hover:bg-[#1E293B] transition">
+                    <label key={pil} className="flex items-start gap-3 cursor-pointer p-2 rounded-[4px] hover:bg-surface transition">
                       <input
                         type="radio"
                         name={`soal-${s.no_soal}`}
                         value={pil}
                         checked={jawaban[s.no_soal] === pil}
                         onChange={() => setJawaban({ ...jawaban, [s.no_soal]: pil })}
-                        className="mt-1 accent-[#FBBF24]"
+                        className="mt-1 accent-[primary]"
                       />
-                      <span className="text-body text-[#F1F5F9]"><span className="font-mono text-[#94A3B8] mr-2">{pil}.</span>{val}</span>
+                      <span className="text-body text-fg"><span className="font-mono text-fg-muted mr-2">{pil}.</span>{val}</span>
                     </label>
                   );
                 })}
@@ -150,22 +150,22 @@ export default function KuisPage() {
 
       {hasil && (
         <Card>
-          <h2 className="text-subhead font-semibold text-[#F1F5F9] mb-4">Hasil Kuis</h2>
+          <h2 className="text-subhead font-semibold text-fg mb-4">Hasil Kuis</h2>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-3xl font-bold text-[#FBBF24] font-display">{hasil.skor}</p>
-              <p className="text-caption text-[#94A3B8]">Skor</p>
+              <p className="text-3xl font-bold text-primary-text font-display">{hasil.skor}</p>
+              <p className="text-caption text-fg-muted">Skor</p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-[#4ADE80] font-display">{hasil.benar}</p>
-              <p className="text-caption text-[#94A3B8]">Benar</p>
+              <p className="text-3xl font-bold text-success font-display">{hasil.benar}</p>
+              <p className="text-caption text-fg-muted">Benar</p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-[#F1F5F9] font-display">{hasil.total}</p>
-              <p className="text-caption text-[#94A3B8]">Total</p>
+              <p className="text-3xl font-bold text-fg font-display">{hasil.total}</p>
+              <p className="text-caption text-fg-muted">Total</p>
             </div>
           </div>
-          <p className="mt-4 text-center text-body text-[#94A3B8]">
+          <p className="mt-4 text-center text-body text-fg-muted">
             {hasil.skor >= 70 ? 'Selamat, Anda lulus (KKM 70)!' : 'Belum mencapai KKM 70. Coba lagi atau pelajari ulang modul.'}
           </p>
           <div className="mt-4 flex gap-2">

@@ -47,27 +47,27 @@ export default function PembayaranSayaPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Pembayaran Saya</h1>
-        <p className="mt-1 text-sm text-[#94A3B8]">Status tagihan & cicilan Anda. Pembayaran via transfer / tunai ke admin.</p>
+        <h1 className="text-headline font-bold text-fg">Pembayaran Saya</h1>
+        <p className="mt-1 text-sm text-fg-muted">Status tagihan & cicilan Anda. Pembayaran via transfer / tunai ke admin.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <Card className="text-center">
-          <p className="text-xl font-bold text-[#FBBF24] font-display">{rupiah(totalTagihan)}</p>
-          <p className="text-caption text-[#64748B]">Total Tagihan</p>
+          <p className="text-xl font-bold text-primary-text font-display">{rupiah(totalTagihan)}</p>
+          <p className="text-caption text-fg-subtle">Total Tagihan</p>
         </Card>
         <Card className="text-center">
-          <p className="text-xl font-bold text-[#4ADE80] font-display">{rupiah(totalBayar)}</p>
-          <p className="text-caption text-[#64748B]">Sudah Dibayar</p>
+          <p className="text-xl font-bold text-success font-display">{rupiah(totalBayar)}</p>
+          <p className="text-caption text-fg-subtle">Sudah Dibayar</p>
         </Card>
         <Card className="text-center">
-          <p className="text-xl font-bold text-[#F87171] font-display">{rupiah(sisa)}</p>
-          <p className="text-caption text-[#64748B]">Sisa</p>
+          <p className="text-xl font-bold text-destructive font-display">{rupiah(sisa)}</p>
+          <p className="text-caption text-fg-subtle">Sisa</p>
         </Card>
       </div>
 
       {terkunci && (
-        <div className="rounded-[4px] border border-[#F87171]/25 bg-[#F87171]/10 px-4 py-3 text-sm text-[#F87171]">
+        <div className="rounded-[4px] border border-[destructive]/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <strong>Akses terkunci.</strong> Selesaikan pembayaran sebelum H-1 Sesi 3 agar modul tetap terbuka. Hubungi admin.
         </div>
       )}
@@ -80,18 +80,18 @@ export default function PembayaranSayaPage() {
             <Card key={p.id}>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="font-mono text-lg font-bold text-[#F1F5F9]">{rupiah(p.biaya_total)}</p>
-                  <p className="mt-1 text-xs text-[#94A3B8]">
+                  <p className="font-mono text-lg font-bold text-fg">{rupiah(p.biaya_total)}</p>
+                  <p className="mt-1 text-xs text-fg-muted">
                     Dibayar {rupiah(p.dibayar)}
-                    {p.biaya_total - p.dibayar > 0 && <span className="text-[#F87171]"> · sisa {rupiah(p.biaya_total - p.dibayar)}</span>}
+                    {p.biaya_total - p.dibayar > 0 && <span className="text-destructive"> · sisa {rupiah(p.biaya_total - p.dibayar)}</span>}
                   </p>
-                  {p.due_date && <p className="mt-1 text-xs text-[#64748B]">Jatuh tempo {formatJakarta(p.due_date)}</p>}
-                  {p.metode && <p className="text-xs text-[#64748B]">Metode: {p.metode}</p>}
-                  {p.bukti_transfer_url && <a href={p.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#22D3EE] hover:underline">Lihat Bukti</a>}
+                  {p.due_date && <p className="mt-1 text-xs text-fg-subtle">Jatuh tempo {formatJakarta(p.due_date)}</p>}
+                  {p.metode && <p className="text-xs text-fg-subtle">Metode: {p.metode}</p>}
+                  {p.bukti_transfer_url && <a href={p.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">Lihat Bukti</a>}
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <Badge className={STATUS_STYLE[p.status_bayar] ?? ''}>{STATUS_LABELS[p.status_bayar] ?? p.status_bayar}</Badge>
-                  <span className={`font-mono text-xs ${p.lock_status === 'terkunci' ? 'text-[#F87171]' : 'text-[#4ADE80]'}`}>
+                  <span className={`font-mono text-xs ${p.lock_status === 'terkunci' ? 'text-destructive' : 'text-success'}`}>
                     {p.lock_status === 'terkunci' ? 'Terkunci' : 'Terbuka'}
                   </span>
                 </div>

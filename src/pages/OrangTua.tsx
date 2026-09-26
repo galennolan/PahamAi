@@ -109,7 +109,7 @@ export default function OrangTuaPage() {
   if (anaks.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Dashboard Orang Tua</h1>
+        <h1 className="text-headline font-bold text-fg">Dashboard Orang Tua</h1>
         <EmptyState title="Belum ada anak terhubung" desc="Hubungi Admin untuk menautkan akun anak Anda." />
       </div>
     );
@@ -126,8 +126,8 @@ export default function OrangTuaPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-bold text-[#F1F5F9]">Dashboard Orang Tua</h1>
-      <p className="text-body text-[#94A3B8]">Pantau progres &amp; kehadiran anak Anda.</p>
+      <h1 className="text-headline font-bold text-fg">Dashboard Orang Tua</h1>
+      <p className="text-body text-fg-muted">Pantau progres &amp; kehadiran anak Anda.</p>
 
       <div className="grid gap-6">
         {anaks.map((anak) => {
@@ -137,16 +137,16 @@ export default function OrangTuaPage() {
             <Card key={anak.childId}>
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-subhead font-bold text-[#F1F5F9]">
+                  <h2 className="text-subhead font-bold text-fg">
                     {anak.nama_panggil ?? anak.nama_lengkap}
                   </h2>
-                  <p className="text-sm text-[#94A3B8]">Jalur: {jalurLabel}</p>
+                  <p className="text-sm text-fg-muted">Jalur: {jalurLabel}</p>
                 </div>
-                <Badge className="font-mono text-[#FBBF24]">{anak.jalur ?? '-'}</Badge>
+                <Badge className="font-mono text-primary-text">{anak.jalur ?? '-'}</Badge>
               </div>
 
               {isLocked(anak) && (
-                <div className="mb-4 rounded-[4px] border border-[#F87171]/25 bg-[#F87171]/10 px-4 py-2.5 text-sm text-[#F87171]">
+                <div className="mb-4 rounded-[4px] border border-[destructive]/25 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
                   <strong>Akses terkunci.</strong>{' '}
                   {anak.pembayaran?.due_date
                     ? `Lunaskan pembayaran sebelum ${formatJakarta(anak.pembayaran.due_date)}.`
@@ -156,31 +156,31 @@ export default function OrangTuaPage() {
 
               <div className="mb-4 grid grid-cols-3 gap-3">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-[#FBBF24] font-display">{stats.persentase}%</p>
-                  <p className="text-xs text-[#64748B]">Kehadiran</p>
+                  <p className="text-2xl font-bold text-primary-text font-display">{stats.persentase}%</p>
+                  <p className="text-xs text-fg-subtle">Kehadiran</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-[#22D3EE] font-display">{stats.hadir}/{stats.total}</p>
-                  <p className="text-xs text-[#64748B]">Sesi Selesai</p>
+                  <p className="text-2xl font-bold text-accent font-display">{stats.hadir}/{stats.total}</p>
+                  <p className="text-xs text-fg-subtle">Sesi Selesai</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-[#4ADE80] font-display">{anak.catatan.filter((c) => c).length}</p>
-                  <p className="text-xs text-[#64748B]">Catatan</p>
+                  <p className="text-2xl font-bold text-success font-display">{anak.catatan.filter((c) => c).length}</p>
+                  <p className="text-xs text-fg-subtle">Catatan</p>
                 </div>
               </div>
 
               <Card>
-                <h3 className="mb-2 text-caption font-semibold text-[#94A3B8] uppercase">Sesi Mendatang</h3>
+                <h3 className="mb-2 text-caption font-semibold text-fg-muted uppercase">Sesi Mendatang</h3>
                 {anak.jadwal.filter((s) => new Date(s.tanggal_kelas ?? '') >= new Date()).slice(0, 5).length === 0 ? (
-                  <p className="text-sm text-[#64748B]">Tidak ada sesi mendatang.</p>
+                  <p className="text-sm text-fg-subtle">Tidak ada sesi mendatang.</p>
                 ) : (
                   <ul className="space-y-1">
                     {anak.jadwal.filter((s) => new Date(s.tanggal_kelas ?? '') >= new Date()).slice(0, 5).map((s) => (
                       <li key={s.id} className="flex justify-between text-sm">
-                        <span className="font-mono text-[#F1F5F9]">
+                        <span className="font-mono text-fg">
                           {s.kode_sesi_friendly} — {s.judul_sesi}
                         </span>
-                        <span className="text-[#64748B]">
+                        <span className="text-fg-subtle">
                           {s.tanggal_kelas ? formatJakarta(s.tanggal_kelas) : '-'}
                         </span>
                       </li>

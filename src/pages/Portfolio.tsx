@@ -69,15 +69,15 @@ export default function PortfolioPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Portfolio Saya</h1>
-          <p className="mt-1 text-sm text-[#94A3B8]">Kumpulkan karya: gambar, file, link GitHub / Colab / tldraw.</p>
+          <h1 className="text-headline font-bold text-fg">Portfolio Saya</h1>
+          <p className="mt-1 text-sm text-fg-muted">Kumpulkan karya: gambar, file, link GitHub / Colab / tldraw.</p>
         </div>
         {!showForm && <Button onClick={() => setShowForm(true)}>+ Tambah Karya</Button>}
       </div>
 
       {showForm && (
         <Card>
-          <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Karya Baru</h2>
+          <h2 className="mb-4 text-subhead font-semibold text-fg">Karya Baru</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Kode Sesi" hint="Contoh: A05, B211">
@@ -86,7 +86,7 @@ export default function PortfolioPage() {
               <Field label="Tipe Karya">
                 <SelectInput value={form.item_type} onChange={(e) => setForm({ ...form, item_type: e.target.value })}>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k} className="bg-[#1E293B]">{v}</option>
+                    <option key={k} value={k} className="bg-surface">{v}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -117,13 +117,13 @@ export default function PortfolioPage() {
           {rows.map((p) => (
             <Card key={p.id}>
               <div className="mb-2 flex items-center justify-between">
-                <span className="font-mono text-sm font-bold text-[#FBBF24]">{p.kode_sesi}</span>
-                <span className="text-xs text-[#94A3B8]">{TYPE_LABELS[p.item_type ?? ''] ?? p.item_type}</span>
+                <span className="font-mono text-sm font-bold text-primary-text">{p.kode_sesi}</span>
+                <span className="text-xs text-fg-muted">{TYPE_LABELS[p.item_type ?? ''] ?? p.item_type}</span>
               </div>
-              {p.deskripsi && <p className="text-sm text-[#F1F5F9]">{p.deskripsi}</p>}
-              <p className="mt-1 text-xs text-[#64748B]">{p.tanggal ? formatJakarta(p.tanggal) : ''}</p>
+              {p.deskripsi && <p className="text-sm text-fg">{p.deskripsi}</p>}
+              <p className="mt-1 text-xs text-fg-subtle">{p.tanggal ? formatJakarta(p.tanggal) : ''}</p>
               {p.item_url && (
-                <a href={p.item_url} target="_blank" rel="noopener noreferrer" className="mt-3 block rounded-[4px] border border-[#334155] px-3 py-2 text-center text-sm text-[#22D3EE] hover:border-[#22D3EE]">
+                <a href={p.item_url} target="_blank" rel="noopener noreferrer" className="mt-3 block rounded-[4px] border border-border-2 px-3 py-2 text-center text-sm text-accent hover:border-[accent]">
                   Lihat Karya
                 </a>
               )}

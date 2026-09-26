@@ -21,7 +21,7 @@ export async function cacheSet(key: string, value: unknown): Promise<void> {
 export async function enqueuePending(op: {
   id: string;
   table: string;
-  action: 'insert' | 'update';
+  action: 'insert' | 'update' | 'upsert';
   payload: Record<string, unknown>;
   at: string;
 }): Promise<void> {
@@ -31,10 +31,10 @@ export async function enqueuePending(op: {
 }
 
 export async function dequeuePending(): Promise<
-  Array<{ id: string; table: string; action: 'insert' | 'update'; payload: Record<string, unknown>; at: string }>
+  Array<{ id: string; table: string; action: 'insert' | 'update' | 'upsert'; payload: Record<string, unknown>; at: string }>
 > {
   const key = 'pending-ops';
-  const existing = (await cacheGet<Array<{ id: string; table: string; action: 'insert' | 'update'; payload: Record<string, unknown>; at: string }>>(key)) ?? [];
+  const existing = (await cacheGet<Array<{ id: string; table: string; action: 'insert' | 'update' | 'upsert'; payload: Record<string, unknown>; at: string }>>(key)) ?? [];
   await cacheSet(key, []);
   return existing;
 }

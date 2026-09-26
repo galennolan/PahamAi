@@ -159,7 +159,7 @@ export default function SesiPage() {
     return (
       <div className="space-y-5 pt-2 pb-10">
         <div className="flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 font-mono text-sm text-[#94A3B8] hover:text-[#FBBF24]">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 font-mono text-sm text-fg-muted hover:text-primary-text">
             ← Kembali
           </button>
         </div>
@@ -171,23 +171,23 @@ export default function SesiPage() {
   return (
     <div className="space-y-5 pt-2 pb-10">
       <div className="flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 font-mono text-sm text-[#94A3B8] hover:text-[#FBBF24]">
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 font-mono text-sm text-fg-muted hover:text-primary-text">
           ← Kembali
         </button>
         {jadwal && <Badge>{jadwal.status_sesi}</Badge>}
       </div>
 
-      <Card className="border-[#FBBF24]/20 !p-5">
+      <Card className="border-primary/20 !p-5">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <Badge className="border-[#FBBF24]/25 bg-[#FBBF24]/10 text-[#FBBF24] font-mono">{modul.kode}</Badge>
-            <h1 className="mt-1.5 text-xl font-bold text-[#F1F5F9]">{modul.judul}</h1>
-            <p className="mt-1 text-sm text-[#94A3B8]">
+            <Badge className="border-primary/25 bg-primary/10 text-primary-text font-mono">{modul.kode}</Badge>
+            <h1 className="mt-1.5 text-xl font-bold text-fg">{modul.judul}</h1>
+            <p className="mt-1 text-sm text-fg-muted">
               {jadwal?.tanggal_kelas ? formatJakarta(jadwal.tanggal_kelas) : 'Belum dijadwalkan'}
               {jadwal?.jam_mulai && ` · ${jadwal.jam_mulai}–${jadwal.jam_akhir ?? ''}`}
             </p>
           </div>
-          <div className="shrink-0 text-left md:text-right font-mono text-xs text-[#64748B]">
+          <div className="shrink-0 text-left md:text-right font-mono text-xs text-fg-subtle">
             <p>Durasi: {modul.durasi_menit} mnt</p>
             <p>Sesi ke-{modul.urutan_sesi}</p>
           </div>
@@ -195,7 +195,7 @@ export default function SesiPage() {
       </Card>
 
       {isPeserta && !sesiPeserta && (
-        <Card className="border-[#F87171]/30 bg-[#F87171]/5">
+        <Card className="border-[destructive]/30 bg-destructive/5">
           <SectionHeader title="Belum Terdaftar" desc="Kamu belum terdaftar di sesi ini. Hubungi instruktur untuk konfirmasi kehadiran." />
         </Card>
       )}
@@ -204,8 +204,8 @@ export default function SesiPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 space-y-5">
             {modul.slide_url && (
-              <Card className="!p-0 overflow-hidden border-[#334155]">
-                <iframe src={modul.slide_url} title="Slide" className="aspect-video w-full border-none bg-[#0F172A]" />
+              <Card className="!p-0 overflow-hidden border-border-2">
+                <iframe src={modul.slide_url} title="Slide" className="aspect-video w-full border-none bg-bg" />
               </Card>
             )}
 
@@ -225,7 +225,7 @@ export default function SesiPage() {
                   <Button onClick={() => { setPendingStatus('hadir'); setShowConfirm(true); }} disabled={saving} className="w-full">
                     Ya, Saya Hadir
                   </Button>
-                  <button type="button" onClick={() => setWantChange((v) => !v)} disabled={saving} className="w-full text-center text-xs text-[#64748B] hover:text-[#FBBF24] py-1">
+                  <button type="button" onClick={() => setWantChange((v) => !v)} disabled={saving} className="w-full text-center text-xs text-fg-subtle hover:text-primary-text py-1">
                     Pilih izin / telat →
                   </button>
                   {wantChange && (
@@ -240,11 +240,11 @@ export default function SesiPage() {
                 </div>
               ) : (
                 <div className="mt-4 space-y-2">
-                  <div className="rounded-[8px] border border-[#4ADE80]/40 bg-[#4ADE80]/10 p-3 text-center text-sm font-semibold text-[#4ADE80]">
+                  <div className="rounded-[8px] border border-[success]/40 bg-success/10 p-3 text-center text-sm font-semibold text-success">
                     ✓ {myStatus === 'hadir' ? 'Terima kasih sudah hadir. Selamat belajar!' : `Absensi: ${myStatus}`}
                   </div>
                   {!wantChange ? (
-                    <button type="button" onClick={() => setWantChange(true)} disabled={saving} className="w-full text-center text-xs text-[#64748B] hover:text-[#FBBF24] py-1">
+                    <button type="button" onClick={() => setWantChange(true)} disabled={saving} className="w-full text-center text-xs text-fg-subtle hover:text-primary-text py-1">
                       Ubah status →
                     </button>
                   ) : (
@@ -268,7 +268,7 @@ export default function SesiPage() {
                   <TextInput type="url" value={tldrawUrl} onChange={(e) => setTldrawUrl(e.target.value)} placeholder="https://tldraw.com/r/..." className="mt-2 text-sm" />
                 </Field>
                 {tldrawUrl && (
-                  <a href={tldrawUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-xs text-[#22D3EE] hover:underline">
+                  <a href={tldrawUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-xs text-accent hover:underline">
                     ↗ Buka Board Tldraw
                   </a>
                 )}
@@ -277,7 +277,7 @@ export default function SesiPage() {
                 </Button>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-[#334155]">
+              <div className="mt-6 pt-6 border-t border-border-2">
                 <SectionHeader title="Kirim Tugas" desc="Portfolio sesi ini" />
                 {!showPortForm ? (
                   <Button variant="secondary" size="sm" onClick={() => setShowPortForm(true)} className="mt-2 w-full">+ Tambah Karya</Button>

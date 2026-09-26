@@ -62,11 +62,11 @@ export default function PendaftaranPage() {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0F172A] px-4 py-12">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-bg px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Daftar Kursus Paham AI</h1>
-          <p className="mt-2 text-body text-[#94A3B8]">Isi formulir pre-registrasi. Admin akan verifikasi & kirim kredensial.</p>
+          <h1 className="text-headline font-bold text-fg">Daftar Kursus Paham AI</h1>
+          <p className="mt-2 text-body text-fg-muted">Isi formulir pre-registrasi. Admin akan verifikasi & kirim kredensial.</p>
         </div>
         <div className="surface-card p-6 glow-green">
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -91,14 +91,14 @@ export default function PendaftaranPage() {
               <Field label="Jalur">
                 <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
                   {(['A', 'B1', 'B2', 'B3']).map((j) => (
-                    <option key={j} value={j} className="bg-[#1E293B]">{JALUR_LABELS[j as 'A']}</option>
+                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j as 'A']}</option>
                   ))}
                 </SelectInput>
               </Field>
               <Field label="Penempatan">
                 <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
                   {Object.entries(POSISI_LABELS).map(([k, v]) => (
-                    <option key={k} value={k} className="bg-[#1E293B]">{v}</option>
+                    <option key={k} value={k} className="bg-surface">{v}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -109,20 +109,20 @@ export default function PendaftaranPage() {
                   type="checkbox"
                   checked={form.consent_privasi}
                   onChange={(e) => setForm({ ...form, consent_privasi: e.target.checked })}
-                  className="h-4 w-4 rounded-[3px] border-[1.5px] border-[#475569] bg-[#0F172A] accent-[#FBBF24]"
+                  className="h-4 w-4 rounded-[3px] border-[1.5px] border-border-3 bg-bg accent-[primary]"
                   required
                 />
-                <span className="text-sm text-[#F1F5F9]">Setuju Kebijakan Privasi</span>
+                <span className="text-sm text-fg">Setuju Kebijakan Privasi</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.consent_etika}
                   onChange={(e) => setForm({ ...form, consent_etika: e.target.checked })}
-                  className="h-4 w-4 rounded-[3px] border-[1.5px] border-[#475569] bg-[#0F172A] accent-[#FBBF24]"
+                  className="h-4 w-4 rounded-[3px] border-[1.5px] border-border-3 bg-bg accent-[primary]"
                   required
                 />
-                <span className="text-sm text-[#F1F5F9]">Setuju Etika AI</span>
+                <span className="text-sm text-fg">Setuju Etika AI</span>
               </label>
             </div>
             <Button type="submit" disabled={saving} className="w-full min-h-[52px] text-base font-bold">
@@ -130,8 +130,8 @@ export default function PendaftaranPage() {
             </Button>
           </form>
         </div>
-        <p className="mt-4 text-center text-xs text-[#64748B]">
-          Sudah punya akun? <Link to="/masuk" className="text-[#FBBF24] underline">Masuk di sini</Link>
+        <p className="mt-4 text-center text-xs text-fg-subtle">
+          Sudah punya akun? <Link to="/masuk" className="text-primary-text underline">Masuk di sini</Link>
         </p>
       </div>
     </main>

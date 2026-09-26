@@ -242,8 +242,8 @@ export default function KelolaSesiPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Monitoring & Kelola Sesi</h1>
-          <p className="text-sm text-[#94A3B8]">Pantau capaian belajar peserta per modul dan atur jadwal kelas.</p>
+          <h1 className="text-headline font-bold text-fg">Monitoring & Kelola Sesi</h1>
+          <p className="text-sm text-fg-muted">Pantau capaian belajar peserta per modul dan atur jadwal kelas.</p>
         </div>
 
         {/* Pilih Batch */}
@@ -256,7 +256,7 @@ export default function KelolaSesiPage() {
           >
             {batches.length === 0 && <option value="">Belum ada kelas</option>}
             {batches.map((b) => (
-              <option key={b.id} value={b.id} className="bg-[#1E293B]">
+              <option key={b.id} value={b.id} className="bg-surface">
                 {b.kode_batch} — {b.nama_batch ?? b.jalur}
               </option>
             ))}
@@ -269,20 +269,20 @@ export default function KelolaSesiPage() {
       ) : (
         <>
           {/* Tab Navigation & Sub Header */}
-          <div className="flex items-center justify-between border-b border-[#334155] pb-2">
+          <div className="flex items-center justify-between border-b border-border-2 pb-2">
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('progres')}
                 className={`flex items-center gap-2 rounded-[8px] px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'progres'
-                    ? 'bg-[#FBBF24] text-[#0F172A]'
-                    : 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#F1F5F9]'
+                    ? 'bg-primary text-[bg]'
+                    : 'text-fg-muted hover:bg-surface hover:text-fg'
                 }`}
               >
                 <GraduationCap className="h-4 w-4" /> Progres Belajar Peserta
                 {pesertas.length > 0 && (
-                  <span className="rounded-full bg-[#0F172A]/20 px-2 py-0.5 text-xs">
+                  <span className="rounded-full bg-bg/20 px-2 py-0.5 text-xs">
                     {pesertas.length}
                   </span>
                 )}
@@ -293,13 +293,13 @@ export default function KelolaSesiPage() {
                 onClick={() => setActiveTab('jadwal')}
                 className={`flex items-center gap-2 rounded-[8px] px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'jadwal'
-                    ? 'bg-[#FBBF24] text-[#0F172A]'
-                    : 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#F1F5F9]'
+                    ? 'bg-primary text-[bg]'
+                    : 'text-fg-muted hover:bg-surface hover:text-fg'
                 }`}
               >
                 <Calendar className="h-4 w-4" /> Jadwal Sesi
                 {jadwals.length > 0 && (
-                  <span className="rounded-full bg-[#0F172A]/20 px-2 py-0.5 text-xs">
+                  <span className="rounded-full bg-bg/20 px-2 py-0.5 text-xs">
                     {jadwals.length}
                   </span>
                 )}
@@ -321,8 +321,8 @@ export default function KelolaSesiPage() {
               {activeTab === 'progres' && (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-[#94A3B8]">
-                      Kelas <span className="font-semibold text-[#F1F5F9]">{currBatchObj?.nama_batch ?? currBatchObj?.kode_batch}</span> · Jalur {currBatchObj?.jalur}
+                    <p className="text-sm text-fg-muted">
+                      Kelas <span className="font-semibold text-fg">{currBatchObj?.nama_batch ?? currBatchObj?.kode_batch}</span> · Jalur {currBatchObj?.jalur}
                     </p>
                     <TextInput
                       placeholder="Cari peserta..."
@@ -347,32 +347,32 @@ export default function KelolaSesiPage() {
                       {filteredProgress.map((row) => {
                         const isExpanded = expandedPeserta === row.peserta.id;
                         return (
-                          <Card key={row.peserta.id} className="!p-4 transition hover:border-[#475569]">
+                          <Card key={row.peserta.id} className="!p-4 transition hover:border-border-3">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <h3 className="font-semibold text-[#F1F5F9]">{row.peserta.nama_lengkap}</h3>
+                                  <h3 className="font-semibold text-fg">{row.peserta.nama_lengkap}</h3>
                                   {row.peserta.nama_panggil && (
-                                    <span className="text-xs text-[#64748B]">({row.peserta.nama_panggil})</span>
+                                    <span className="text-xs text-fg-subtle">({row.peserta.nama_panggil})</span>
                                   )}
                                   <Badge className="text-[10px]">{row.peserta.jalur ?? '—'}</Badge>
                                 </div>
-                                <p className="mt-0.5 text-xs text-[#64748B]">
+                                <p className="mt-0.5 text-xs text-fg-subtle">
                                   {row.peserta.email ?? row.peserta.no_wa ?? 'Tanpa kontak'} · Capaian: {row.lastSesi ? `Terakhir sampai ${row.lastSesi}` : 'Belum mulai'}
                                 </p>
 
                                 {/* Mini Progress Bar */}
                                 <div className="mt-2.5 flex items-center gap-3">
-                                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#0F172A]">
+                                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg">
                                     <div
                                       className={`h-full rounded-full transition-all duration-500 ${
-                                        row.pct >= 100 ? 'bg-[#4ADE80]' : row.pct > 0 ? 'bg-[#FBBF24]' : 'bg-[#334155]'
+                                        row.pct >= 100 ? 'bg-success' : row.pct > 0 ? 'bg-primary' : 'bg-surface-2'
                                       }`}
                                       style={{ width: `${row.pct}%` }}
                                     />
                                   </div>
-                                  <span className="font-mono text-xs font-bold text-[#F1F5F9]">{row.pct}%</span>
-                                  <span className="text-xs text-[#64748B]">
+                                  <span className="font-mono text-xs font-bold text-fg">{row.pct}%</span>
+                                  <span className="text-xs text-fg-subtle">
                                     ({row.selesaiCount}/{row.totalSesi} sesi)
                                   </span>
                                 </div>
@@ -398,8 +398,8 @@ export default function KelolaSesiPage() {
 
                             {/* DETAIL BREAKDOWN MATRIKS SESI */}
                             {isExpanded && (
-                              <div className="mt-4 border-t border-[#334155] pt-4">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
+                              <div className="mt-4 border-t border-border-2 pt-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-fg-muted">
                                   Status Per Sesi Modul:
                                 </p>
                                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
@@ -410,29 +410,29 @@ export default function KelolaSesiPage() {
                                         key={j.id}
                                         className={`rounded-[6px] border p-2.5 text-xs ${
                                           st?.selesai
-                                            ? 'border-[#4ADE80]/30 bg-[#4ADE80]/5'
-                                            : 'border-[#334155] bg-[#0F172A]'
+                                            ? 'border-[success]/30 bg-success/5'
+                                            : 'border-border-2 bg-bg'
                                         }`}
                                       >
                                         <div className="flex items-center justify-between gap-1">
-                                          <span className="font-mono font-bold text-[#FBBF24]">
+                                          <span className="font-mono font-bold text-primary-text">
                                             {j.kode_sesi_friendly}
                                           </span>
                                           {st?.selesai ? (
-                                            <span className="flex items-center gap-1 font-semibold text-[#4ADE80]">
+                                            <span className="flex items-center gap-1 font-semibold text-success">
                                               <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
                                             </span>
                                           ) : (
-                                            <span className="text-[#64748B]">Belum</span>
+                                            <span className="text-fg-subtle">Belum</span>
                                           )}
                                         </div>
-                                        <p className="mt-1 truncate font-medium text-[#F1F5F9]">{j.judul_sesi}</p>
-                                        <div className="mt-2 flex items-center gap-2 text-[11px] text-[#94A3B8]">
-                                          <span className={st?.hadir ? 'text-[#4ADE80]' : 'text-[#64748B]'}>
+                                        <p className="mt-1 truncate font-medium text-fg">{j.judul_sesi}</p>
+                                        <div className="mt-2 flex items-center gap-2 text-[11px] text-fg-muted">
+                                          <span className={st?.hadir ? 'text-success' : 'text-fg-subtle'}>
                                             Absen: {st?.statusKehadiran ?? (st?.hadir ? 'Ya' : '—')}
                                           </span>
                                           <span>·</span>
-                                          <span className={st?.catatan ? 'text-[#22D3EE]' : 'text-[#64748B]'}>
+                                          <span className={st?.catatan ? 'text-accent' : 'text-fg-subtle'}>
                                             Catatan: {st?.catatan ? 'Ada' : '—'}
                                           </span>
                                         </div>
@@ -454,8 +454,8 @@ export default function KelolaSesiPage() {
               {activeTab === 'jadwal' && (
                 <div className="space-y-4">
                   {showForm && (
-                    <Card className="border-[#FBBF24]/30">
-                      <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Buat Sesi Tambahan</h2>
+                    <Card className="border-primary/30">
+                      <h2 className="mb-4 text-subhead font-semibold text-fg">Buat Sesi Tambahan</h2>
                       <form onSubmit={handleCreateSesi} className="space-y-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <Field label="Modul">
@@ -471,12 +471,12 @@ export default function KelolaSesiPage() {
                                   judul_sesi: m?.judul ?? '',
                                 });
                               }}
-                              className="w-full rounded-[4px] border border-[#334155] bg-[#0F172A] px-3 py-2 text-sm text-[#F1F5F9] outline-none focus:border-[#FBBF24]"
+                              className="w-full rounded-[4px] border border-border-2 bg-bg px-3 py-2 text-sm text-fg outline-none focus:border-primary"
                               required
                             >
                               <option value="">— Pilih modul —</option>
                               {moduls.map((m) => (
-                                <option key={m.id} value={m.id} className="bg-[#1E293B]">
+                                <option key={m.id} value={m.id} className="bg-surface">
                                   {m.kode} — {m.judul}
                                 </option>
                               ))}
@@ -564,13 +564,13 @@ export default function KelolaSesiPage() {
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm font-bold text-[#FBBF24]">
+                                <span className="font-mono text-sm font-bold text-primary-text">
                                   {j.kode_sesi_friendly}
                                 </span>
-                                <span className="font-semibold text-[#F1F5F9]">— {j.judul_sesi}</span>
+                                <span className="font-semibold text-fg">— {j.judul_sesi}</span>
                                 <Badge className="text-[10px]">{j.status_sesi}</Badge>
                               </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
+                              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-fg-subtle">
                                 <span className="flex items-center gap-1 font-mono">
                                   <Calendar className="h-3 w-3" />
                                   {j.tanggal_kelas ? formatJakarta(j.tanggal_kelas) : 'Belum dijadwalkan'}

@@ -135,8 +135,8 @@ export default function KelolaModulPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Kelola Modul</h1>
-          <p className="mt-0.5 text-sm text-[#94A3B8]">
+          <h1 className="text-headline font-bold text-fg">Kelola Modul</h1>
+          <p className="mt-0.5 text-sm text-fg-muted">
             {JALUR_LABELS[jalur]} · {moduls.length} modul · {KATEGORI_MODUL.length} kategori
           </p>
         </div>
@@ -171,8 +171,8 @@ export default function KelolaModulPage() {
           aria-pressed={filterKategori === 'SEMUA'}
           className={`inline-flex min-h-[40px] items-center gap-2 rounded-[8px] border px-3 py-1.5 text-sm transition ${
             filterKategori === 'SEMUA'
-              ? 'border-[#FBBF24] bg-[#FBBF24]/10 text-[#FBBF24]'
-              : 'border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:border-[#475569] hover:text-[#F1F5F9]'
+              ? 'border-primary bg-primary/10 text-primary-text'
+              : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
           }`}
         >
           Semua kategori
@@ -187,7 +187,7 @@ export default function KelolaModulPage() {
             className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-sm transition ${
               filterKategori === k.kode
                 ? `${k.warnaBadge} border-current`
-                : 'border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:border-[#475569] hover:text-[#F1F5F9]'
+                : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
             }`}
           >
             <span>{k.label}</span>
@@ -206,7 +206,7 @@ export default function KelolaModulPage() {
                 key={k.kode}
                 value={`${c}/${total}`}
                 label={k.label}
-                accent="text-[#F1F5F9]"
+                accent="text-fg"
               />
             );
           })}
@@ -215,7 +215,7 @@ export default function KelolaModulPage() {
 
       {showForm && (
         <Card>
-          <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">
+          <h2 className="mb-4 text-subhead font-semibold text-fg">
             {editing ? `Edit ${editing.kode}` : 'Buat Modul Baru'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -246,7 +246,7 @@ export default function KelolaModulPage() {
                   onChange={(e) => setForm({ ...form, jalur: e.target.value as Jalur })}
                 >
                   {(['A', 'B1', 'B2', 'B3'] as Jalur[]).map((j) => (
-                    <option key={j} value={j} className="bg-[#1E293B]">
+                    <option key={j} value={j} className="bg-surface">
                       {JALUR_LABELS[j]}
                     </option>
                   ))}
@@ -257,11 +257,11 @@ export default function KelolaModulPage() {
                   value={form.kategori}
                   onChange={(e) => setForm({ ...form, kategori: e.target.value })}
                 >
-                  <option value="" className="bg-[#1E293B]">
+                  <option value="" className="bg-surface">
                     — Otomatis dari kode —
                   </option>
                   {KATEGORI_MODUL.map((k) => (
-                    <option key={k.kode} value={k.kode} className="bg-[#1E293B]">
+                    <option key={k.kode} value={k.kode} className="bg-surface">
                       {k.label}
                     </option>
                   ))}
@@ -297,7 +297,7 @@ export default function KelolaModulPage() {
               <textarea
                 value={form.content_md}
                 onChange={(e) => setForm({ ...form, content_md: e.target.value })}
-                className="h-40 w-full rounded-[4px] border border-[#334155] bg-[#0F172A] px-3.5 py-2.5 font-mono text-sm text-[#F1F5F9] outline-none focus:border-[#F1F5F9] focus:shadow-[0_0_12px_rgba(251,191,36,0.15)]"
+                className="h-40 w-full rounded-[4px] border border-border-2 bg-bg px-3.5 py-2.5 font-mono text-sm text-fg outline-none focus:border-[fg] focus:shadow-[0_0_12px_rgba(251,191,36,0.15)]"
                 placeholder={'# Judul\n\nKonten modul...'}
               />
             </Field>
@@ -358,9 +358,9 @@ export default function KelolaModulPage() {
           {grouped.map((g) => (
             <section key={g.def.kode}>
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h2 className="text-subhead font-semibold text-[#F1F5F9]">{g.def.label}</h2>
+                <h2 className="text-subhead font-semibold text-fg">{g.def.label}</h2>
                 <Badge className={`font-mono ${g.def.warnaBadge}`}>{g.def.kode}</Badge>
-                <span className="font-mono text-xs text-[#64748B]">
+                <span className="font-mono text-xs text-fg-subtle">
                   {g.items.length} modul · {g.items.reduce((a, m) => a + m.durasi_menit, 0)} menit
                 </span>
               </div>
@@ -375,17 +375,17 @@ export default function KelolaModulPage() {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-sm font-bold text-[#FBBF24]">{m.kode}</span>
-                              <p className="min-w-0 truncate text-sm font-semibold text-[#F1F5F9]">{m.judul}</p>
+                              <span className="font-mono text-sm font-bold text-primary-text">{m.kode}</span>
+                              <p className="min-w-0 truncate text-sm font-semibold text-fg">{m.judul}</p>
                               {differs && (
-                                <Badge className="border-[#F59E0B]/30 bg-[#F59E0B]/10 text-[#F59E0B] text-[10px]">
+                                <Badge className="border-[primary-hover]/30 bg-primary-hover/10 text-[primary-hover] text-[10px]">
                                   manual
                                 </Badge>
                               )}
                             </div>
-                            <p className="mt-1 font-mono text-xs text-[#64748B]">
+                            <p className="mt-1 font-mono text-xs text-fg-subtle">
                               #{m.urutan_sesi} · {m.durasi_menit} menit
-                              {m.slide_url && <span className="text-[#475569]"> · ada slide</span>}
+                              {m.slide_url && <span className="text-[border-3]"> · ada slide</span>}
                               {m.content_md ? '' : ' · konten kosong'}
                             </p>
                           </div>
@@ -404,14 +404,14 @@ export default function KelolaModulPage() {
           ))}
 
           {kategoriTanpaIsi.length > 0 && filterKategori === 'SEMUA' && (
-            <p className="border-t border-[#1E293B] pt-3 font-mono text-xs text-[#64748B]">
+            <p className="border-t border-border pt-3 font-mono text-xs text-fg-subtle">
               Belum terisi: {kategoriTanpaIsi.map((k) => k.label).join(', ')}
             </p>
           )}
         </div>
       )}
 
-      <p className="flex items-center gap-1.5 text-xs text-[#64748B]">
+      <p className="flex items-center gap-1.5 text-xs text-fg-subtle">
         <ChevronDown className="h-3 w-3" aria-hidden />
         Urutan sesi tetap mengikuti urutan_sesi di dalam masing-masing kategori.
       </p>

@@ -54,8 +54,8 @@ export default function JadwalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Jadwal Sesi</h1>
-        <p className="mt-1 text-sm text-[#94A3B8]">
+        <h1 className="text-headline font-bold text-fg">Jadwal Sesi</h1>
+        <p className="mt-1 text-sm text-fg-muted">
           Jalur: <Badge className="mx-1">{JALUR_LABELS[peserta.jalur ?? 'A']}</Badge> · Total {jadwal.length} sesi
         </p>
       </div>
@@ -69,8 +69,8 @@ export default function JadwalPage() {
             onClick={() => setTab(key)}
             className={`rounded-[4px] border px-4 py-2 text-sm transition ${
               tab === key
-                ? 'border-[#FBBF24] bg-[#FBBF24]/10 text-[#FBBF24]'
-                : 'border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:border-[#475569]'
+                ? 'border-primary bg-primary/10 text-primary-text'
+                : 'border-border-2 bg-surface text-fg-muted hover:border-border-3'
             }`}
           >
             {label}
@@ -85,30 +85,30 @@ export default function JadwalPage() {
           {displayed.map((s) => {
             const isUpcoming = (s.tanggal_kelas ?? '') >= today;
             return (
-              <Card key={s.id} className={isUpcoming ? 'border-[#FBBF24]/30' : ''}>
+              <Card key={s.id} className={isUpcoming ? 'border-primary/30' : ''}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-bold text-[#FBBF24]">{s.kode_sesi_friendly}</span>
-                      <Badge className={s.status_sesi === 'selesai' ? 'text-[#4ADE80]' : s.status_sesi === 'berlangsung' ? 'text-[#22D3EE]' : ''}>
+                      <span className="font-mono text-sm font-bold text-primary-text">{s.kode_sesi_friendly}</span>
+                      <Badge className={s.status_sesi === 'selesai' ? 'text-success' : s.status_sesi === 'berlangsung' ? 'text-accent' : ''}>
                         {STATUS_LABELS[s.status_sesi] ?? s.status_sesi}
                       </Badge>
                     </div>
-                    <h2 className="mt-1 text-subhead font-semibold text-[#F1F5F9]">{s.judul_sesi}</h2>
-                    <p className="mt-1 font-mono text-sm text-[#94A3B8]">
+                    <h2 className="mt-1 text-subhead font-semibold text-fg">{s.judul_sesi}</h2>
+                    <p className="mt-1 font-mono text-sm text-fg-muted">
                       {s.tanggal_kelas ? formatJakarta(s.tanggal_kelas) : '-'}
                       {s.jam_mulai && ` · ${s.jam_mulai}–${s.jam_akhir ?? ''}`}
                     </p>
-                    {s.lokasi && <p className="mt-1 text-xs text-[#64748B]">Lokasi: {s.lokasi}</p>}
+                    {s.lokasi && <p className="mt-1 text-xs text-fg-subtle">Lokasi: {s.lokasi}</p>}
                     {s.link_rapat && (
-                      <a href={s.link_rapat} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-[#22D3EE] hover:underline">
+                      <a href={s.link_rapat} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-accent hover:underline">
                         Link Rapat
                       </a>
                     )}
                   </div>
                   <Link
                     to={`/modul/${s.modul?.kode ?? s.kode_sesi_friendly}`}
-                    className="shrink-0 rounded-[4px] border border-[#FBBF24] bg-[#FBBF24]/10 px-3 py-1.5 text-xs font-medium text-[#FBBF24] hover:bg-[#FBBF24]/20"
+                    className="shrink-0 rounded-[4px] border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary/20"
                   >
                     Buka Modul
                   </Link>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { ROLE_LABELS } from '../types';
 import { Button } from './ui';
 import {
@@ -22,10 +23,12 @@ import {
   Menu,
   X,
   MoreHorizontal,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 const navLinkCls = ({ isActive }: { isActive: boolean }) =>
-  `rounded-[8px] px-3 py-2 text-sm font-medium transition ${isActive ? 'bg-[#FBBF24] text-[#0F172A] shadow-[0_0_16px_rgba(251,191,36,0.2)]' : 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#F1F5F9]'}`;
+  `rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? 'bg-primary text-on-primary shadow-[0_0_16px_rgb(var(--primary)/0.2)]' : 'text-fg-muted hover:bg-surface hover:text-fg'}`;
 
 interface NavItem {
   to: string;
@@ -76,6 +79,7 @@ const parentLinks: NavItem[] = [
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { signOut, user, role } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -98,10 +102,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const showMoreTab = links.length > 5;
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-[#F1F5F9] pb-20 sm:pb-0">
-      <header className="sticky top-0 z-40 border-b border-[#1E293B] bg-[#0F172A]/95 backdrop-blur">
+    <div className="min-h-screen bg-bg text-fg pb-20 sm:pb-0">
+      <header className="sticky top-0 z-40 border-b border-border bg-bg/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
-          <Link to="/" className="shrink-0 text-headline font-bold tracking-tight text-[#FBBF24]">
+          <Link to="/" className="shrink-0 text-headline font-bold tracking-tight text-primary-text">
             Paham AI
           </Link>
           <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex" aria-label="Navigasi utama">
@@ -113,11 +117,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             {role && (
-              <span className="hidden rounded-full border border-[#FBBF24]/25 bg-[#1E293B] px-2 py-0.5 text-xs font-medium text-[#FBBF24] sm:block">
+              <span className="hidden rounded-full border border-primary/25 bg-surface px-2 py-0.5 text-xs font-medium text-primary-text sm:block">
                 {ROLE_LABELS[role]}
               </span>
             )}
-            <span className="hidden max-w-40 truncate text-xs text-[#64748B] lg:block">{user?.email}</span>
+            <span className="hidden max-w-40 truncate text-xs text-fg-subtle lg:block">{user?.email}</span>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-border-2 bg-surface text-fg-muted transition hover:border-border-3 hover:text-fg"
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden sm:inline-flex">
               Keluar
             </Button>
@@ -126,14 +138,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
               aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[8px] border border-[#334155] bg-[#1E293B] text-lg text-[#F1F5F9] md:hidden"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[8px] border border-border-2 bg-surface text-lg text-fg md:hidden"
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
         {menuOpen && (
-          <nav className="border-t border-[#1E293B] px-4 py-3 md:hidden" aria-label="Menu">
+          <nav className="border-t border-border px-4 py-3 md:hidden" aria-label="Menu">
             <ul className="grid grid-cols-2 gap-2">
               {links.map((l) => (
                 <li key={l.to}>
@@ -144,8 +156,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     className={({ isActive }) =>
                       `flex min-h-[48px] items-center gap-2 rounded-[8px] border px-3 py-2 text-sm font-medium transition ${
                         isActive
-                          ? 'border-[#FBBF24] bg-[#FBBF24]/10 text-[#FBBF24]'
-                          : 'border-[#334155] bg-[#1E293B] text-[#F1F5F9]'
+                          ? 'border-primary bg-primary/10 text-primary-text'
+                          : 'border-border-2 bg-surface text-fg'
                       }`
                     }
                   >
@@ -155,8 +167,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </li>
               ))}
             </ul>
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#1E293B] pt-3">
-              <span className="min-w-0 flex-1 truncate text-xs text-[#64748B]">{user?.email}</span>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+              <span className="min-w-0 flex-1 truncate text-xs text-fg-subtle">{user?.email}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Keluar
               </Button>
@@ -175,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             end={link.end}
             className={({ isActive }) =>
               `flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition ${
-                isActive ? 'text-[#FBBF24]' : 'text-[#94A3B8]'
+                isActive ? 'text-primary-text' : 'text-fg-muted'
               }`
             }
           >
@@ -189,7 +201,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
             aria-label="Menu lainnya"
-            className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition ${menuOpen ? 'text-[#FBBF24]' : 'text-[#94A3B8]'}`}
+            className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition ${menuOpen ? 'text-primary-text' : 'text-fg-muted'}`}
           >
             <span className="text-lg leading-none" aria-hidden><MoreHorizontal className="h-6 w-6" /></span>
             <span>Lainnya</span>

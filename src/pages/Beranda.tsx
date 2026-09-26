@@ -120,10 +120,10 @@ export default function BerandaPage() {
           desc="Akun Anda belum memiliki profil peserta. Hubungi Admin, atau daftarkan diri Anda lewat form pre-registrasi."
           action={
             <div className="flex gap-2 justify-center">
-              <Link to="/pendaftaran" className="inline-block min-h-[48px] rounded-[8px] bg-[#FBBF24] px-5 py-2.5 text-sm font-bold text-[#0F172A]">
+              <Link to="/pendaftaran" className="inline-block min-h-[48px] rounded-[8px] bg-primary px-5 py-2.5 text-sm font-bold text-[bg]">
                 Daftar Sekarang
               </Link>
-              <Link to="/masuk" className="inline-block min-h-[48px] rounded-[8px] border border-[#334155] bg-[#1E293B] px-5 py-2.5 text-sm font-medium text-[#F1F5F9]">
+              <Link to="/masuk" className="inline-block min-h-[48px] rounded-[8px] border border-border-2 bg-surface px-5 py-2.5 text-sm font-medium text-fg">
                 Login Lain
               </Link>
             </div>
@@ -138,21 +138,21 @@ export default function BerandaPage() {
   return (
     <div className="space-y-5 pt-2">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">
+        <h1 className="text-headline font-bold text-fg">
           Halo, {peserta.nama_panggil ?? peserta.nama_lengkap}!
         </h1>
-        <p className="mt-0.5 text-sm text-[#94A3B8]">
+        <p className="mt-0.5 text-sm text-fg-muted">
           Jalur <Badge className="mx-1">{peserta.jalur ?? '-'}</Badge> · Sejak {formatJakartaDateTime(peserta.created_at)}
         </p>
       </div>
 
       {perluBayar && (
         <Link to="/profil" className="block">
-          <div className={`rounded-[12px] border p-4 ${tagihan.lock_status === 'terkunci' ? 'border-[#F87171]/40 bg-[#F87171]/10' : 'border-[#FBBF24]/40 bg-[#FBBF24]/10'}`}>
-            <p className={`text-sm font-semibold ${tagihan.lock_status === 'terkunci' ? 'text-[#F87171]' : 'text-[#FBBF24]'}`}>
+          <div className={`rounded-[12px] border p-4 ${tagihan.lock_status === 'terkunci' ? 'border-[destructive]/40 bg-destructive/10' : 'border-primary/40 bg-primary/10'}`}>
+            <p className={`text-sm font-semibold ${tagihan.lock_status === 'terkunci' ? 'text-destructive' : 'text-primary-text'}`}>
               {tagihan.lock_status === 'terkunci' ? 'Akses terkunci — lunasi tagihan' : 'Ada tagihan pembayaran'}
             </p>
-            <p className="mt-0.5 text-xs text-[#94A3B8]">
+            <p className="mt-0.5 text-xs text-fg-muted">
               {tagihan.due_date ? `Jatuh tempo ${formatJakarta(tagihan.due_date)}` : 'Lihat detail di Profil'} · Ketuk untuk detail <ChevronRight className="inline h-3 w-3" />
             </p>
           </div>
@@ -160,19 +160,19 @@ export default function BerandaPage() {
       )}
 
       {nextSesi ? (
-        <Card className="border-[#FBBF24]/30 !p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#FBBF24]">Sesi berikutnya</p>
-          <h2 className="mt-1.5 text-lg font-bold leading-snug text-[#F1F5F9]">
+        <Card className="border-primary/30 !p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary-text">Sesi berikutnya</p>
+          <h2 className="mt-1.5 text-lg font-bold leading-snug text-fg">
             {nextSesi.kode_sesi_friendly} — {nextSesi.judul_sesi}
           </h2>
-          <p className="mt-1 font-mono text-sm text-[#94A3B8]">
+          <p className="mt-1 font-mono text-sm text-fg-muted">
             {nextSesi.tanggal_kelas ? formatJakarta(nextSesi.tanggal_kelas) : '-'}
             {nextSesi.jam_mulai && ` · ${nextSesi.jam_mulai}–${nextSesi.jam_akhir ?? ''}`}
           </p>
-          {nextSesi.lokasi && <p className="mt-0.5 text-xs text-[#64748B]">{nextSesi.lokasi}</p>}
+          {nextSesi.lokasi && <p className="mt-0.5 text-xs text-fg-subtle">{nextSesi.lokasi}</p>}
           <Link
             to={`/modul/${nextSesi.modul?.kode ?? nextSesi.kode_sesi_friendly}`}
-            className="mt-4 block min-h-[48px] rounded-[8px] bg-[#FBBF24] px-4 py-3 text-center text-sm font-bold text-[#0F172A] transition hover:bg-[#F59E0B] active:bg-[#D97706]"
+            className="mt-4 block min-h-[48px] rounded-[8px] bg-primary px-4 py-3 text-center text-sm font-bold text-[bg] transition hover:bg-primary-hover active:bg-primary-active"
           >
             Masuk Kelas <ArrowRight className="inline h-4 w-4" />
           </Link>
@@ -181,30 +181,30 @@ export default function BerandaPage() {
         <EmptyState
           title="Belum ada sesi terjadwal"
           desc="Jadwal akan muncul setelah admin membuat sesi untuk batch Anda."
-          action={<Link to="/belajar" className="inline-block rounded-[8px] border border-[#FBBF24] px-4 py-2 text-sm text-[#FBBF24]">Lihat Modul</Link>}
+          action={<Link to="/belajar" className="inline-block rounded-[8px] border border-primary px-4 py-2 text-sm text-primary-text">Lihat Modul</Link>}
         />
       )}
 
       <div className="grid grid-cols-3 gap-2.5">
-        <Stat value={`${stats.kehadiran}%`} label="Kehadiran" accent="text-[#FBBF24]" />
-        <Stat value={stats.kuisSelesai} label="Kuis Selesai" accent="text-[#22D3EE]" />
-        <Stat value={stats.tugasSelesai} label="Tugas & Karya" accent="text-[#4ADE80]" />
+        <Stat value={`${stats.kehadiran}%`} label="Kehadiran" accent="text-primary-text" />
+        <Stat value={stats.kuisSelesai} label="Kuis Selesai" accent="text-accent" />
+        <Stat value={stats.tugasSelesai} label="Tugas & Karya" accent="text-success" />
       </div>
 
       <div>
-        <h2 className="mb-2.5 text-sm font-semibold text-[#94A3B8]">Menu cepat</h2>
+        <h2 className="mb-2.5 text-sm font-semibold text-fg-muted">Menu cepat</h2>
         <div className="grid grid-cols-2 gap-2.5">
           {QUICK_MENU.map((m) => (
             <Link key={m.to} to={m.to} className="group block">
-              <Card className="transition hover:border-[#FBBF24]/40 active:scale-[0.99]">
-                <span className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#334155] bg-[#0F172A] text-[#FBBF24] transition group-hover:border-[#FBBF24]/40">
+              <Card className="transition hover:border-primary/40 active:scale-[0.99]">
+                <span className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-border-2 bg-bg text-primary-text transition group-hover:border-primary/40">
                   <m.icon className="h-5 w-5" />
                 </span>
-                <span className="mt-2.5 flex items-center justify-between gap-2 font-semibold text-[#F1F5F9]">
+                <span className="mt-2.5 flex items-center justify-between gap-2 font-semibold text-fg">
                   {m.label}
-                  <ArrowRight className="h-4 w-4 text-[#64748B] transition group-hover:translate-x-0.5 group-hover:text-[#FBBF24]" />
+                  <ArrowRight className="h-4 w-4 text-fg-subtle transition group-hover:translate-x-0.5 group-hover:text-primary-text" />
                 </span>
-                <span className="mt-0.5 block text-xs text-[#64748B]">{m.desc}</span>
+                <span className="mt-0.5 block text-xs text-fg-subtle">{m.desc}</span>
               </Card>
             </Link>
           ))}
@@ -213,12 +213,12 @@ export default function BerandaPage() {
 
       {stats.totalSesi > 0 && (
         <Card>
-          <div className="flex items-center justify-between text-xs text-[#94A3B8]">
+          <div className="flex items-center justify-between text-xs text-fg-muted">
             <span className="font-medium">Perjalanan kursus</span>
-            <Link to="/belajar" className="inline-flex items-center gap-1 text-[#FBBF24]">Lihat semua <ChevronRight className="h-3 w-3" /></Link>
+            <Link to="/belajar" className="inline-flex items-center gap-1 text-primary-text">Lihat semua <ChevronRight className="h-3 w-3" /></Link>
           </div>
           <ProgressBar value={stats.kehadiran} className="mt-2" />
-          <p className="mt-1.5 text-xs text-[#64748B]">{stats.totalSesi} sesi di batch Anda</p>
+          <p className="mt-1.5 text-xs text-fg-subtle">{stats.totalSesi} sesi di batch Anda</p>
         </Card>
       )}
     </div>

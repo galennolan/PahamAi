@@ -23,12 +23,12 @@ export default function ProfilPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-bold text-[#F1F5F9]">Profil Saya</h1>
+      <h1 className="text-headline font-bold text-fg">Profil Saya</h1>
       <Card>
-        <p className="text-subhead font-semibold text-[#F1F5F9]">{profil.nama_panggil ?? profil.nama_lengkap}</p>
-        <p className="text-sm text-[#94A3B8] mt-1">Jalur: <Badge>{profil.jalur ?? '-'}</Badge></p>
-        <p className="text-sm text-[#94A3B8] mt-1">Email: {user?.email}</p>
-        <p className="text-sm text-[#94A3B8] mt-1">WA: {profil.no_wa ?? '-'}</p>
+        <p className="text-subhead font-semibold text-fg">{profil.nama_panggil ?? profil.nama_lengkap}</p>
+        <p className="text-sm text-fg-muted mt-1">Jalur: <Badge>{profil.jalur ?? '-'}</Badge></p>
+        <p className="text-sm text-fg-muted mt-1">Email: {user?.email}</p>
+        <p className="text-sm text-fg-muted mt-1">WA: {profil.no_wa ?? '-'}</p>
       </Card>
     </div>
   );

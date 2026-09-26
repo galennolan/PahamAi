@@ -20,8 +20,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const SYNC_STYLE: Record<string, string> = {
-  synced: 'text-[#4ADE80]',
-  pending: 'text-[#FBBF24]',
+  synced: 'text-success',
+  pending: 'text-primary-text',
 };
 
 export default function AbsensiSayaPage() {
@@ -58,22 +58,22 @@ export default function AbsensiSayaPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Absensi Saya</h1>
-        <p className="mt-1 text-sm text-[#94A3B8]">Riwayat kehadiran Anda di semua sesi.</p>
+        <h1 className="text-headline font-bold text-fg">Absensi Saya</h1>
+        <p className="mt-1 text-sm text-fg-muted">Riwayat kehadiran Anda di semua sesi.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <Card className="text-center">
-          <p className="text-3xl font-bold text-[#FBBF24] font-display">{persen}%</p>
-          <p className="text-caption text-[#64748B]">Tingkat Kehadiran</p>
+          <p className="text-3xl font-bold text-primary-text font-display">{persen}%</p>
+          <p className="text-caption text-fg-subtle">Tingkat Kehadiran</p>
         </Card>
         <Card className="text-center">
-          <p className="text-3xl font-bold text-[#4ADE80] font-display">{hadir}</p>
-          <p className="text-caption text-[#64748B]">Hadir / Telat</p>
+          <p className="text-3xl font-bold text-success font-display">{hadir}</p>
+          <p className="text-caption text-fg-subtle">Hadir / Telat</p>
         </Card>
         <Card className="text-center">
-          <p className="text-3xl font-bold text-[#F87171] font-display">{alpha}</p>
-          <p className="text-caption text-[#64748B]">Alpha</p>
+          <p className="text-3xl font-bold text-destructive font-display">{alpha}</p>
+          <p className="text-caption text-fg-subtle">Alpha</p>
         </Card>
       </div>
 
@@ -83,29 +83,29 @@ export default function AbsensiSayaPage() {
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#334155]">
-                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Sesi</th>
-                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Tanggal</th>
-                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Status</th>
-                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Menit Telat</th>
-                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Sync</th>
+              <tr className="border-b border-border-2">
+                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Sesi</th>
+                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Tanggal</th>
+                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Status</th>
+                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Menit Telat</th>
+                <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Sync</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
-                  <td className="px-4 py-3 text-[#F1F5F9]">
-                    <span className="font-mono text-xs text-[#FBBF24]">{r.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</span>{' '}
+                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface">
+                  <td className="px-4 py-3 text-fg">
+                    <span className="font-mono text-xs text-primary-text">{r.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</span>{' '}
                     {r.sesi_peserta?.jadwal_sesi?.judul_sesi ?? '-'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">
+                  <td className="px-4 py-3 font-mono text-xs text-fg-muted">
                     {r.sesi_peserta?.jadwal_sesi?.tanggal_kelas ? formatJakarta(r.sesi_peserta.jadwal_sesi.tanggal_kelas) : '-'}
                   </td>
                   <td className="px-4 py-3">
                     <Badge className={STATUS_STYLE[r.status_kehadiran] ?? ''}>{r.status_kehadiran}</Badge>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">{r.menit_telat ?? 0}</td>
-                  <td className={`px-4 py-3 font-mono text-xs ${SYNC_STYLE[r.sync_status] ?? 'text-[#64748B]'}`}>
+                  <td className="px-4 py-3 font-mono text-xs text-fg-muted">{r.menit_telat ?? 0}</td>
+                  <td className={`px-4 py-3 font-mono text-xs ${SYNC_STYLE[r.sync_status] ?? 'text-fg-subtle'}`}>
                     {r.sync_status}
                   </td>
                 </tr>

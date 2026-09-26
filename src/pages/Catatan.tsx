@@ -128,8 +128,8 @@ export default function CatatanPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Catatan &amp; Kanvas Tldraw</h1>
-        <p className="mt-1 text-sm text-[#94A3B8]">Catatan manual per sesi kelas &amp; link board tldraw Anda (gaya OutputLab).</p>
+        <h1 className="text-headline font-bold text-fg">Catatan &amp; Kanvas Tldraw</h1>
+        <p className="mt-1 text-sm text-fg-muted">Catatan manual per sesi kelas &amp; link board tldraw Anda (gaya OutputLab).</p>
       </div>
 
       {items.length === 0 ? (
@@ -145,18 +145,18 @@ export default function CatatanPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Badge className="font-mono text-[#FBBF24]">
+                      <Badge className="font-mono text-primary-text">
                         {item.modul?.kode ?? item.jadwal.kode_sesi_friendly}
                       </Badge>
-                      <h2 className="text-subhead font-bold text-[#F1F5F9]">{item.jadwal.judul_sesi}</h2>
+                      <h2 className="text-subhead font-bold text-fg">{item.jadwal.judul_sesi}</h2>
                     </div>
-                    <p className="mt-1 font-mono text-xs text-[#94A3B8]">
+                    <p className="mt-1 font-mono text-xs text-fg-muted">
                       Sesi #{idx + 1} · {item.jadwal.tanggal_kelas ? formatJakarta(item.jadwal.tanggal_kelas) : 'Belum dijadwalkan'}
                       {item.jadwal.jam_mulai && ` · ${item.jadwal.jam_mulai}–${item.jadwal.jam_akhir ?? ''}`}
                     </p>
                   </div>
                   {item.catatan?.status_pengumpulan && (
-                    <span className="inline-flex items-center gap-1 font-mono text-xs text-[#4ADE80]">
+                    <span className="inline-flex items-center gap-1 font-mono text-xs text-success">
                       <Check className="h-3 w-3" /> Tersimpan
                     </span>
                   )}
@@ -187,7 +187,7 @@ export default function CatatanPage() {
                         href={f.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-[#22D3EE] hover:underline"
+                        className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
                       >
                         <ExternalLink className="h-3 w-3" />
                         Buka Board Tldraw di Tab Baru

@@ -114,15 +114,15 @@ export default function PembayaranPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Pembayaran &amp; Akses</h1>
-          <p className="text-sm text-[#94A3B8]">Status bayar + kunci akses sesi untuk peserta.</p>
+          <h1 className="text-headline font-bold text-fg">Pembayaran &amp; Akses</h1>
+          <p className="text-sm text-fg-muted">Status bayar + kunci akses sesi untuk peserta.</p>
         </div>
         {!showForm && <Button onClick={() => setShowForm(true)}>+ Tagihan</Button>}
       </div>
 
       {showForm && (
         <Card>
-          <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Tagihan Baru</h2>
+          <h2 className="mb-4 text-subhead font-semibold text-fg">Tagihan Baru</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Peserta" hint="Pilih dari daftar, bukan ketik UUID.">
@@ -139,7 +139,7 @@ export default function PembayaranPage() {
               <Field label="Status Bayar">
                 <SelectInput value={form.status_bayar} onChange={(e) => setForm({ ...form, status_bayar: e.target.value })}>
                   {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                    <option key={k} value={k} className="bg-[#1E293B]">{v}</option>
+                    <option key={k} value={k} className="bg-surface">{v}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -173,15 +173,15 @@ export default function PembayaranPage() {
             <Card key={p.id}>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="font-medium text-[#F1F5F9]">
+                  <p className="font-medium text-fg">
                     {row.peserta?.nama_lengkap ?? p.peserta_id.slice(0, 8)}
                   </p>
-                  <p className="mt-1 font-mono text-sm text-[#FBBF24]">{rupiah(p.biaya_total)}</p>
-                  <p className="text-xs text-[#94A3B8]">
+                  <p className="mt-1 font-mono text-sm text-primary-text">{rupiah(p.biaya_total)}</p>
+                  <p className="text-xs text-fg-muted">
                     Dibayar {rupiah(p.dibayar)}
-                    {belum > 0 && <span className="text-[#F87171]"> · sisa {rupiah(belum)}</span>}
+                    {belum > 0 && <span className="text-destructive"> · sisa {rupiah(belum)}</span>}
                   </p>
-                  {p.due_date && <p className="text-xs text-[#64748B]">Jatuh tempo {formatJakarta(p.due_date)}</p>}
+                  {p.due_date && <p className="text-xs text-fg-subtle">Jatuh tempo {formatJakarta(p.due_date)}</p>}
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-wrap gap-1">

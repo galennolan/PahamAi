@@ -53,7 +53,7 @@ export default function NilaiPage() {
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Nilai & Penilaian</h1>
+        <h1 className="text-headline font-bold text-fg">Nilai & Penilaian</h1>
         <EmptyState title="Belum ada nilai" desc="Nilai akan muncul setelah instruktur menilai tugas/proyek Anda." />
       </div>
     );
@@ -65,46 +65,46 @@ export default function NilaiPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Nilai & Penilaian</h1>
-        <p className="mt-1 text-sm text-[#94A3B8]">Skor rubrik (1–4) dari instruktur untuk tugas & proyek Anda.</p>
+        <h1 className="text-headline font-bold text-fg">Nilai & Penilaian</h1>
+        <p className="mt-1 text-sm text-fg-muted">Skor rubrik (1–4) dari instruktur untuk tugas & proyek Anda.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Card className="text-center">
-          <p className="text-3xl font-bold text-[#FBBF24] font-display">{rataSkor.toFixed(2)}</p>
-          <p className="text-caption text-[#64748B]">Rata-rata Skor (skala 1–4)</p>
+          <p className="text-3xl font-bold text-primary-text font-display">{rataSkor.toFixed(2)}</p>
+          <p className="text-caption text-fg-subtle">Rata-rata Skor (skala 1–4)</p>
         </Card>
         <Card className="text-center">
-          <p className="text-3xl font-bold text-[#4ADE80] font-display">{lulus}</p>
-          <p className="text-caption text-[#64748B]">Aspek Lulus</p>
+          <p className="text-3xl font-bold text-success font-display">{lulus}</p>
+          <p className="text-caption text-fg-subtle">Aspek Lulus</p>
         </Card>
       </div>
 
       <Card className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#334155]">
-              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Sesi</th>
-              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Aspek Dinilai</th>
-              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Skor</th>
-              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Level</th>
-              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Bobot</th>
-              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-[#94A3B8]">Status</th>
+            <tr className="border-b border-border-2">
+              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Sesi</th>
+              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Aspek Dinilai</th>
+              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Skor</th>
+              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Level</th>
+              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Bobot</th>
+              <th className="px-4 py-3 text-left font-mono text-overline uppercase text-fg-muted">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((n) => (
-              <tr key={n.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
+              <tr key={n.id} className="border-b border-border last:border-0 hover:bg-surface">
                 <td className="px-4 py-3">
-                  <span className="font-mono text-xs text-[#FBBF24]">{n.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</span>
+                  <span className="font-mono text-xs text-primary-text">{n.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</span>
                 </td>
-                <td className="px-4 py-3 text-[#F1F5F9]">
+                <td className="px-4 py-3 text-fg">
                   {n.rubrik_item}
-                  {n.catatan_instruktur && <p className="mt-0.5 text-xs text-[#64748B]">{n.catatan_instruktur}</p>}
+                  {n.catatan_instruktur && <p className="mt-0.5 text-xs text-fg-subtle">{n.catatan_instruktur}</p>}
                 </td>
-                <td className="px-4 py-3 font-mono font-semibold text-[#F1F5F9]">{n.skor}</td>
-                <td className="px-4 py-3 text-xs text-[#94A3B8]">{LEVEL_LABEL[n.skor] ?? '-'}</td>
-                <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">{n.bobot_persen}%</td>
+                <td className="px-4 py-3 font-mono font-semibold text-fg">{n.skor}</td>
+                <td className="px-4 py-3 text-xs text-fg-muted">{LEVEL_LABEL[n.skor] ?? '-'}</td>
+                <td className="px-4 py-3 font-mono text-xs text-fg-muted">{n.bobot_persen}%</td>
                 <td className="px-4 py-3">
                   <Badge className={STATUS_STYLE[n.status_kelulusan] ?? ''}>{n.status_kelulusan}</Badge>
                 </td>

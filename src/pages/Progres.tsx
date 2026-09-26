@@ -104,8 +104,8 @@ export default function ProgresPage() {
   return (
     <div className="space-y-5 pt-2">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Progres</h1>
-        <p className="mt-0.5 text-sm text-[#94A3B8]">Absensi, nilai, dan catatan dalam satu tempat.</p>
+        <h1 className="text-headline font-bold text-fg">Progres</h1>
+        <p className="mt-0.5 text-sm text-fg-muted">Absensi, nilai, dan catatan dalam satu tempat.</p>
       </div>
 
       <Tabs
@@ -123,22 +123,22 @@ export default function ProgresPage() {
       {tab === 'ringkas' && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-2.5">
-            <Stat value={`${persenHadir}%`} label="Kehadiran" accent="text-[#FBBF24]" />
-            <Stat value={rataNilai.toFixed(1)} label="Rata Nilai" accent="text-[#22D3EE]" />
-            <Stat value={kuisCount} label="Kuis Selesai" accent="text-[#4ADE80]" />
+            <Stat value={`${persenHadir}%`} label="Kehadiran" accent="text-primary-text" />
+            <Stat value={rataNilai.toFixed(1)} label="Rata Nilai" accent="text-accent" />
+            <Stat value={kuisCount} label="Kuis Selesai" accent="text-success" />
           </div>
           <Card>
-            <div className="flex items-center justify-between text-xs text-[#94A3B8]">
+            <div className="flex items-center justify-between text-xs text-fg-muted">
               <span className="font-medium">Kehadiran</span>
               <span className="font-mono">{hadir}/{absensi.length}</span>
             </div>
             <ProgressBar value={persenHadir} className="mt-2" />
-            <p className="mt-1.5 text-xs text-[#64748B]">Syarat kelulusan: 75–85% tergantung jalur</p>
+            <p className="mt-1.5 text-xs text-fg-subtle">Syarat kelulusan: 75–85% tergantung jalur</p>
           </Card>
           <Card>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-[#94A3B8]">Butuh kerjakan kuis?</p>
-              <Link to="/kuis" className="text-sm text-[#FBBF24] underline">Buka Kuis</Link>
+              <p className="text-sm text-fg-muted">Butuh kerjakan kuis?</p>
+              <Link to="/kuis" className="text-sm text-primary-text underline">Buka Kuis</Link>
             </div>
           </Card>
         </div>
@@ -149,7 +149,7 @@ export default function ProgresPage() {
           <EmptyState
             title="Belum ada absensi"
             desc="Absen lewat halaman sesi saat kelas berlangsung."
-            action={<Link to="/belajar" className="inline-block rounded-[8px] border border-[#FBBF24] px-4 py-2 text-sm text-[#FBBF24]">Ke Belajar</Link>}
+            action={<Link to="/belajar" className="inline-block rounded-[8px] border border-primary px-4 py-2 text-sm text-primary-text">Ke Belajar</Link>}
           />
         ) : (
           <ul className="space-y-2.5">
@@ -158,11 +158,11 @@ export default function ProgresPage() {
                 <Card>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-[#F1F5F9]">
-                        <span className="font-mono text-xs text-[#FBBF24]">{r.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</span>{' '}
+                      <p className="truncate font-semibold text-fg">
+                        <span className="font-mono text-xs text-primary-text">{r.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</span>{' '}
                         {r.sesi_peserta?.jadwal_sesi?.judul_sesi ?? '-'}
                       </p>
-                      <p className="mt-0.5 font-mono text-xs text-[#94A3B8]">
+                      <p className="mt-0.5 font-mono text-xs text-fg-muted">
                         {r.sesi_peserta?.jadwal_sesi?.tanggal_kelas ? formatJakarta(r.sesi_peserta.jadwal_sesi.tanggal_kelas) : '-'}
                       </p>
                     </div>
@@ -183,19 +183,19 @@ export default function ProgresPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-sm">
                 <thead>
-                  <tr className="border-b border-[#334155]">
-                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-[#94A3B8]">Sesi</th>
-                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-[#94A3B8]">Aspek</th>
-                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-[#94A3B8]">Skor</th>
-                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-[#94A3B8]">Status</th>
+                  <tr className="border-b border-border-2">
+                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-fg-muted">Sesi</th>
+                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-fg-muted">Aspek</th>
+                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-fg-muted">Skor</th>
+                    <th className="px-4 py-3 text-left font-mono text-[11px] uppercase text-fg-muted">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {nilai.map((n) => (
-                    <tr key={n.id} className="border-b border-[#1E293B] last:border-0">
-                      <td className="px-4 py-3 font-mono text-xs text-[#FBBF24]">{n.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</td>
-                      <td className="px-4 py-3 text-[#F1F5F9]">{n.rubrik_item}</td>
-                      <td className="px-4 py-3 font-mono font-semibold text-[#F1F5F9]">{n.skor}</td>
+                    <tr key={n.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-mono text-xs text-primary-text">{n.sesi_peserta?.jadwal_sesi?.modul?.kode ?? '-'}</td>
+                      <td className="px-4 py-3 text-fg">{n.rubrik_item}</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-fg">{n.skor}</td>
                       <td className="px-4 py-3"><Badge className={NILAI_STYLE[n.status_kelulusan] ?? ''}>{n.status_kelulusan}</Badge></td>
                     </tr>
                   ))}
@@ -211,7 +211,7 @@ export default function ProgresPage() {
           <EmptyState
             title="Belum ada catatan"
             desc="Tulis catatan di halaman sesi — tersimpan otomatis bahkan offline."
-            action={<Link to="/belajar" className="inline-block rounded-[8px] border border-[#FBBF24] px-4 py-2 text-sm text-[#FBBF24]">Ke Belajar</Link>}
+            action={<Link to="/belajar" className="inline-block rounded-[8px] border border-primary px-4 py-2 text-sm text-primary-text">Ke Belajar</Link>}
           />
         ) : (
           <ul className="space-y-3">
@@ -220,20 +220,20 @@ export default function ProgresPage() {
                 <Card>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <Badge className="shrink-0 font-mono text-[10px] text-[#FBBF24]">
+                      <Badge className="shrink-0 font-mono text-[10px] text-primary-text">
                         {item.jadwal.modul?.kode ?? item.jadwal.kode_sesi_friendly}
                       </Badge>
-                      <p className="truncate text-sm font-medium text-[#F1F5F9]">{item.jadwal.judul_sesi}</p>
+                      <p className="truncate text-sm font-medium text-fg">{item.jadwal.judul_sesi}</p>
                     </div>
-                    <p className="shrink-0 font-mono text-[11px] text-[#64748B]">
+                    <p className="shrink-0 font-mono text-[11px] text-fg-subtle">
                       {item.jadwal.tanggal_kelas ? formatJakarta(item.jadwal.tanggal_kelas) : '-'}
                     </p>
                   </div>
-                  <div className="mt-3 whitespace-pre-wrap rounded-[8px] border border-[#334155] bg-[#0F172A] p-3 font-mono text-sm leading-relaxed text-[#F1F5F9]">
+                  <div className="mt-3 whitespace-pre-wrap rounded-[8px] border border-border-2 bg-bg p-3 font-mono text-sm leading-relaxed text-fg">
                     {item.catatan.catatan_text || '(kosong)'}
                   </div>
                   {item.catatan.status_pengumpulan && (
-                    <p className="mt-1.5 font-mono text-xs text-[#4ADE80]">Dikumpulkan</p>
+                    <p className="mt-1.5 font-mono text-xs text-success">Dikumpulkan</p>
                   )}
                 </Card>
               </li>

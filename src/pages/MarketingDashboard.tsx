@@ -119,8 +119,8 @@ export default function MarketingDashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Dashboard Marketing</h1>
-          <p className="mt-1 text-body text-[#94A3B8]">Pantau performa akuisisi, konten promosi, & fitur teknis untuk marketing.</p>
+          <h1 className="text-headline font-bold text-fg">Dashboard Marketing</h1>
+          <p className="mt-1 text-body text-fg-muted">Pantau performa akuisisi, konten promosi, & fitur teknis untuk marketing.</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => toast('Fitur export CSV sedang dalam pengembangan.')}>
@@ -133,35 +133,35 @@ export default function MarketingDashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <p className="text-caption text-[#94A3B8]">Total Pendaftar</p>
-          <p className="text-3xl font-bold text-[#FBBF24] font-display mt-1">{totalPendaftar}</p>
+          <p className="text-caption text-fg-muted">Total Pendaftar</p>
+          <p className="text-3xl font-bold text-primary-text font-display mt-1">{totalPendaftar}</p>
         </Card>
         <Card>
-          <p className="text-caption text-[#94A3B8]">Sumber Unik</p>
-          <p className="text-3xl font-bold text-[#22D3EE] font-display mt-1">{Object.keys(bySource).length}</p>
+          <p className="text-caption text-fg-muted">Sumber Unik</p>
+          <p className="text-3xl font-bold text-accent font-display mt-1">{Object.keys(bySource).length}</p>
         </Card>
         <Card>
-          <p className="text-caption text-[#94A3B8]">Modul Siap Promo</p>
-          <p className="text-3xl font-bold text-[#4ADE80] font-display mt-1">{readyToPromo}/{modulPromo.length}</p>
+          <p className="text-caption text-fg-muted">Modul Siap Promo</p>
+          <p className="text-3xl font-bold text-success font-display mt-1">{readyToPromo}/{modulPromo.length}</p>
         </Card>
         <Card>
-          <p className="text-caption text-[#94A3B8]">Konten Siap Publikasi</p>
-          <p className="text-3xl font-bold text-[#F1F5F9] font-display mt-1">
+          <p className="text-caption text-fg-muted">Konten Siap Publikasi</p>
+          <p className="text-3xl font-bold text-fg font-display mt-1">
             {marketingContent.filter(c => c.status === 'approved' || c.status === 'published').length}
           </p>
         </Card>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-[#334155] pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-border-2 pb-2">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-[4px] text-sm font-medium transition ${
               activeTab === t.id
-                ? 'bg-[#FBBF24]/10 border border-[#FBBF24] text-[#FBBF24]'
-                : 'border border-transparent text-[#94A3B8] hover:border-[#334155] hover:text-[#F1F5F9]'
+                ? 'bg-primary/10 border border-primary text-primary-text'
+                : 'border border-transparent text-fg-muted hover:border-border-2 hover:text-fg'
             }`}
           >
             <t.icon className="h-4 w-4" aria-hidden />
@@ -174,16 +174,16 @@ export default function MarketingDashboardPage() {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <Card>
-            <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Distribusi Sumber Pendaftar</h2>
+            <h2 className="mb-4 text-subhead font-semibold text-fg">Distribusi Sumber Pendaftar</h2>
             <div className="space-y-3">
               {Object.entries(bySource).map(([source, count]) => (
                 <div key={source} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Badge className="bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/30">{source}</Badge>
-                    <span className="text-body text-[#F1F5F9]">{count} pendaftar</span>
+                    <Badge className="bg-primary/10 text-primary-text border-primary/30">{source}</Badge>
+                    <span className="text-body text-fg">{count} pendaftar</span>
                   </div>
-                  <div className="w-48 h-2 bg-[#1E293B] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#FBBF24] rounded-full" style={{ width: `${(count / totalPendaftar) * 100}%` }} />
+                  <div className="w-48 h-2 bg-surface rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${(count / totalPendaftar) * 100}%` }} />
                   </div>
                 </div>
               ))}
@@ -191,12 +191,12 @@ export default function MarketingDashboardPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Distribusi per Jalur</h2>
+            <h2 className="mb-4 text-subhead font-semibold text-fg">Distribusi per Jalur</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(byJalur).map(([jalur, count]) => (
                 <Card key={jalur} className="text-center">
-                  <p className="text-caption text-[#94A3B8]">{jalur === 'A' ? 'Anak' : jalur}</p>
-                  <p className="text-2xl font-bold text-[#F1F5F9] font-display mt-1">{count}</p>
+                  <p className="text-caption text-fg-muted">{jalur === 'A' ? 'Anak' : jalur}</p>
+                  <p className="text-2xl font-bold text-fg font-display mt-1">{count}</p>
                 </Card>
               ))}
             </div>
@@ -206,31 +206,31 @@ export default function MarketingDashboardPage() {
 
       {activeTab === 'sources' && (
         <Card>
-          <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Detail Sumber Pendaftar</h2>
+          <h2 className="mb-4 text-subhead font-semibold text-fg">Detail Sumber Pendaftar</h2>
           <Table>
             <thead>
-              <tr className="border-b border-[#334155]">
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Nama</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Jalur</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Sumber</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Detail</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">UTM</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Referral</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Tanggal</th>
+              <tr className="border-b border-border-2">
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Nama</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Jalur</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Sumber</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Detail</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">UTM</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Referral</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Tanggal</th>
               </tr>
             </thead>
             <tbody>
               {pendaftar.map(p => (
-                <tr key={p.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
-                  <td className="px-4 py-3 text-[#F1F5F9] font-medium">{p.nama_lengkap}</td>
+                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface">
+                  <td className="px-4 py-3 text-fg font-medium">{p.nama_lengkap}</td>
                   <td className="px-4 py-3"><Badge>{p.jalur ?? '-'}</Badge></td>
-                  <td className="px-4 py-3 text-[#F1F5F9] font-mono text-sm">{p.source ?? p.utm_source ?? 'organic'}</td>
-                  <td className="px-4 py-3 text-[#94A3B8] text-sm">{p.source_detail ?? '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">
+                  <td className="px-4 py-3 text-fg font-mono text-sm">{p.source ?? p.utm_source ?? 'organic'}</td>
+                  <td className="px-4 py-3 text-fg-muted text-sm">{p.source_detail ?? '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-fg-subtle">
                     {p.utm_medium ? `${p.utm_source}/${p.utm_medium}/${p.utm_campaign}` : '-'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{p.referrer_code ?? '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">{formatJakartaDateTime(p.created_at)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-fg-subtle">{p.referrer_code ?? '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-fg-muted">{formatJakartaDateTime(p.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -241,11 +241,11 @@ export default function MarketingDashboardPage() {
       {activeTab === 'modules' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h2 className="text-subhead font-semibold text-[#F1F5F9]">Modul yang Siap Dipromosikan</h2>
+            <h2 className="text-subhead font-semibold text-fg">Modul yang Siap Dipromosikan</h2>
             <select
               value={''}
               onChange={(e) => console.log(e.target.value)}
-              className="rounded-[4px] border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#F1F5F9] outline-none focus:border-[#FBBF24]"
+              className="rounded-[4px] border border-border-2 bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-primary"
             >
               <option value="">Semua Jalur</option>
               <option value="A">A — Anak</option>
@@ -257,31 +257,31 @@ export default function MarketingDashboardPage() {
 
           <Table>
             <thead>
-              <tr className="border-b border-[#334155]">
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Kode</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Judul</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Jalur</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Durasi</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Siap Promo</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Sudut Promo</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Target</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Aksi</th>
+              <tr className="border-b border-border-2">
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Kode</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Judul</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Jalur</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Durasi</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Siap Promo</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Sudut Promo</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Target</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {modulPromo.map(m => (
-                <tr key={m.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
-                  <td className="px-4 py-3 font-mono text-sm text-[#FBBF24]">{m.kode}</td>
-                  <td className="px-4 py-3 text-[#F1F5F9]">{m.judul}</td>
+                <tr key={m.id} className="border-b border-border last:border-0 hover:bg-surface">
+                  <td className="px-4 py-3 font-mono text-sm text-primary-text">{m.kode}</td>
+                  <td className="px-4 py-3 text-fg">{m.judul}</td>
                   <td className="px-4 py-3"><Badge>{m.jalur}</Badge></td>
-                  <td className="px-4 py-3 font-mono text-sm text-[#94A3B8]">{m.durasi_menit} mnt</td>
+                  <td className="px-4 py-3 font-mono text-sm text-fg-muted">{m.durasi_menit} mnt</td>
                   <td className="px-4 py-3">
                     <Badge className={m.promo_ready ? 'border-green-500/30 text-green-400' : 'border-yellow-500/30 text-yellow-400'}>
                       {m.promo_ready ? 'Siap' : 'Draft'}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-[#94A3B8] text-sm max-w-xs truncate">{m.promo_angle ?? 'Belum diisi'}</td>
-                  <td className="px-4 py-3 text-[#94A3B8] text-sm max-w-xs truncate">{m.target_audience ?? '-'}</td>
+                  <td className="px-4 py-3 text-fg-muted text-sm max-w-xs truncate">{m.promo_angle ?? 'Belum diisi'}</td>
+                  <td className="px-4 py-3 text-fg-muted text-sm max-w-xs truncate">{m.target_audience ?? '-'}</td>
                   <td className="px-4 py-3">
                     <Button size="sm" variant="ghost" onClick={() => toast(`Form edit ${m.kode} sedang dalam pengembangan.`)}>
                       <Edit2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
@@ -298,7 +298,7 @@ export default function MarketingDashboardPage() {
       {activeTab === 'content' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h2 className="text-subhead font-semibold text-[#F1F5F9]">Library Konten Marketing</h2>
+            <h2 className="text-subhead font-semibold text-fg">Library Konten Marketing</h2>
             <Button onClick={() => toast('Formulir konten baru sedang dalam pengembangan.')}>
               <Plus className="mr-2 h-4 w-4" aria-hidden />
               Buat Konten
@@ -307,24 +307,24 @@ export default function MarketingDashboardPage() {
 
           <Table>
             <thead>
-              <tr className="border-b border-[#334155]">
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Judul</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Tipe</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Topik</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Target</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Platform</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Update</th>
+              <tr className="border-b border-border-2">
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Judul</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Tipe</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Topik</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Target</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Platform</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Update</th>
               </tr>
             </thead>
             <tbody>
               {marketingContent.map(c => (
-                <tr key={c.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
-                  <td className="px-4 py-3 font-medium text-[#F1F5F9] max-w-xs truncate">{c.title}</td>
+                <tr key={c.id} className="border-b border-border last:border-0 hover:bg-surface">
+                  <td className="px-4 py-3 font-medium text-fg max-w-xs truncate">{c.title}</td>
                   <td className="px-4 py-3"><Badge className="text-xs">{c.type}</Badge></td>
-                  <td className="px-4 py-3 text-[#94A3B8] text-sm max-w-xs truncate">{c.topic}</td>
-                  <td className="px-4 py-3 text-[#94A3B8] text-sm">{c.target_audience}</td>
-                  <td className="px-4 py-3 text-[#94A3B8] text-sm">{c.platforms.join(', ')}</td>
+                  <td className="px-4 py-3 text-fg-muted text-sm max-w-xs truncate">{c.topic}</td>
+                  <td className="px-4 py-3 text-fg-muted text-sm">{c.target_audience}</td>
+                  <td className="px-4 py-3 text-fg-muted text-sm">{c.platforms.join(', ')}</td>
                   <td className="px-4 py-3">
                     <Badge className={
                       c.status === 'published' ? 'border-green-500/30 text-green-400' :
@@ -333,7 +333,7 @@ export default function MarketingDashboardPage() {
                       'border-gray-500/30 text-gray-400'
                     }>{c.status}</Badge>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{formatJakartaDateTime(c.updated_at)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-fg-subtle">{formatJakartaDateTime(c.updated_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -344,7 +344,7 @@ export default function MarketingDashboardPage() {
       {activeTab === 'tech' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h2 className="text-subhead font-semibold text-[#F1F5F9]">Fitur Teknis untuk Marketing</h2>
+            <h2 className="text-subhead font-semibold text-fg">Fitur Teknis untuk Marketing</h2>
             <Button onClick={() => toast('Form fitur teknis sedang dalam pengembangan.')}>
               <Plus className="mr-2 h-4 w-4" aria-hidden />
               Tambah
@@ -353,11 +353,11 @@ export default function MarketingDashboardPage() {
 
           <div className="space-y-4">
             {techFeatures.map(f => (
-              <Card key={f.id} className="hover:border-[#475569]">
+              <Card key={f.id} className="hover:border-border-3">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-subhead font-semibold text-[#F1F5F9]">{f.name}</h3>
+                      <h3 className="text-subhead font-semibold text-fg">{f.name}</h3>
                       <Badge className={`text-xs ${
                         f.category === 'platform' ? 'border-blue-500/30 text-blue-400' :
                         f.category === 'content' ? 'border-purple-500/30 text-purple-400' :
@@ -366,8 +366,8 @@ export default function MarketingDashboardPage() {
                         'border-pink-500/30 text-pink-400'
                       }`}>{f.category}</Badge>
                     </div>
-                    <p className="mt-1 text-sm text-[#94A3B8]">{f.description}</p>
-                    <p className="mt-1 text-xs text-[#64748B] font-mono">Nilai Marketing: {f.marketing_value}</p>
+                    <p className="mt-1 text-sm text-fg-muted">{f.description}</p>
+                    <p className="mt-1 text-xs text-fg-subtle font-mono">Nilai Marketing: {f.marketing_value}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 shrink-0">
                     <Badge className={

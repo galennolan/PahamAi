@@ -25,7 +25,7 @@ export default function SertifikatPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-bold text-[#F1F5F9]">Sertifikat Saya</h1>
+      <h1 className="text-headline font-bold text-fg">Sertifikat Saya</h1>
 
       {sertifikat.length === 0 ? (
         <EmptyState title="Belum ada sertifikat" desc="Lulus kriteria kelulusan & admin akan terbitkan sertifikat PAHAI/[TAHUN]/[JALUR]/[NOMOR]." />
@@ -35,11 +35,11 @@ export default function SertifikatPage() {
             <Card key={s.id}>
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-mono text-lg text-[#FBBF24]">{s.nomor_seri}</p>
-                  <p className="text-sm text-[#94A3B8] mt-1">
+                  <p className="font-mono text-lg text-primary-text">{s.nomor_seri}</p>
+                  <p className="text-sm text-fg-muted mt-1">
                     Jalur: <Badge>{s.jalur ?? '-'}</Badge> · {s.level_lulus ?? '-'} · {s.tanggal_terbit ? formatJakarta(s.tanggal_terbit) : '-'}
                   </p>
-                  {s.file_url && <p className="text-xs text-[#64748B] mt-1">{s.file_url}</p>}
+                  {s.file_url && <p className="text-xs text-fg-subtle mt-1">{s.file_url}</p>}
                 </div>
                 {s.file_url && (
                   <Button size="sm" onClick={() => window.open(s.file_url!, '_blank')}>

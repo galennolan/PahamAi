@@ -7,20 +7,19 @@ export async function saveCatatan(
   text: string,
   tldrawUrl?: string | null
 ) {
-  const payload = {
+  const base = {
     sesi_peserta_id: sesiPesertaId,
     catatan_text: text || null,
     tldraw_url: tldrawUrl ?? null,
     status_pengumpulan: Boolean(text || tldrawUrl),
-    sync_status: 'pending' as const,
   };
 
   if (!navigator.onLine) {
     await offline.enqueuePending({
       id: crypto.randomUUID(),
       table: 'catatan_ketik',
-      action: 'insert',
-      payload,
+      action: 'upsert',
+      payload: { ...base, sync_status: 'pending' as const },
       at: new Date().toISOString(),
     });
     return;
@@ -28,7 +27,7 @@ export async function saveCatatan(
 
   const { error } = await supabase
     .from('catatan_ketik')
-    .upsert(payload, { onConflict: 'sesi_peserta_id' });
+    .upsert({ ...base, sync_status: 'synced' as const }, { onConflict: 'sesi_peserta_id' });
   if (error) throw new Error(error.message);
 }
 

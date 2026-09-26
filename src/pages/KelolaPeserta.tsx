@@ -152,15 +152,15 @@ export default function KelolaPesertaPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Kelola Peserta</h1>
-          <p className="text-sm text-[#94A3B8]">Daftarkan peserta, assign ke batch, lalu daftarkan ke tiap sesi.</p>
+          <h1 className="text-headline font-bold text-fg">Kelola Peserta</h1>
+          <p className="text-sm text-fg-muted">Daftarkan peserta, assign ke batch, lalu daftarkan ke tiap sesi.</p>
         </div>
         {!showForm && <Button onClick={() => setShowForm(true)}>+ Tambah Peserta</Button>}
       </div>
 
       {showForm && (
         <Card>
-          <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Peserta Baru</h2>
+          <h2 className="mb-4 text-subhead font-semibold text-fg">Peserta Baru</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Nama Lengkap">
@@ -188,14 +188,14 @@ export default function KelolaPesertaPage() {
               <Field label="Jalur">
                 <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
                   {(['A', 'B1', 'B2', 'B3']).map((j) => (
-                    <option key={j} value={j} className="bg-[#1E293B]">{JALUR_LABELS[j as 'A']}</option>
+                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j as 'A']}</option>
                   ))}
                 </SelectInput>
               </Field>
               <Field label="Penempatan">
                 <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
                   {Object.entries(POSISI_LABELS).map(([k, v]) => (
-                    <option key={k} value={k} className="bg-[#1E293B]">{v}</option>
+                    <option key={k} value={k} className="bg-surface">{v}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -203,9 +203,9 @@ export default function KelolaPesertaPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Batch">
                 <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}>
-                  <option value="" className="bg-[#1E293B]">— Belum —</option>
+                  <option value="" className="bg-surface">— Belum —</option>
                   {batches.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-[#1E293B]">{b.nama_batch ?? b.jalur}</option>
+                    <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -219,7 +219,7 @@ export default function KelolaPesertaPage() {
       )}
 
       <Card>
-        <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Daftar Peserta ke Sesi</h2>
+        <h2 className="mb-4 text-subhead font-semibold text-fg">Daftar Peserta ke Sesi</h2>
         <Field label="Pilih Sesi" hint="Ketik untuk mencari kode, judul, atau batch." className="max-w-lg">
           <Combobox
             value={assignSesi}
@@ -245,17 +245,17 @@ export default function KelolaPesertaPage() {
 
         {sesiTerpilih && (
           <div className="mt-4">
-            <p className="mb-3 text-sm text-[#94A3B8]">
-              Pilih peserta untuk sesi <span className="font-mono text-[#FBBF24]">{sesiTerpilih.kode_sesi_friendly}</span> ({sesiTerpilih.judul_sesi})
+            <p className="mb-3 text-sm text-fg-muted">
+              Pilih peserta untuk sesi <span className="font-mono text-primary-text">{sesiTerpilih.kode_sesi_friendly}</span> ({sesiTerpilih.judul_sesi})
             </p>
             {pesertas.filter((p) => !p.batch_id || p.batch_id === sesiTerpilih.batch_id).length === 0 ? (
               <EmptyState title="Tidak ada peserta" desc="Assign peserta ke batch sesi ini dulu." />
             ) : (
-              <div className="max-h-72 space-y-1 overflow-y-auto rounded-[4px] border border-[#334155] p-3">
+              <div className="max-h-72 space-y-1 overflow-y-auto rounded-[4px] border border-border-2 p-3">
                 {pesertas
                   .filter((p) => !p.batch_id || p.batch_id === sesiTerpilih.batch_id)
                   .map((p) => (
-                    <label key={p.id} className="flex cursor-pointer items-center gap-3 rounded-[4px] p-2 hover:bg-[#1E293B]">
+                    <label key={p.id} className="flex cursor-pointer items-center gap-3 rounded-[4px] p-2 hover:bg-surface">
                       <input
                         type="checkbox"
                         checked={assignPeserta.includes(p.id)}
@@ -264,11 +264,11 @@ export default function KelolaPesertaPage() {
                             ? [...assignPeserta, p.id]
                             : assignPeserta.filter((x) => x !== p.id))
                         }
-                        className="h-4 w-4 rounded-[3px] border-[1.5px] border-[#475569] bg-[#0F172A] accent-[#FBBF24]"
+                        className="h-4 w-4 rounded-[3px] border-[1.5px] border-border-3 bg-bg accent-[primary]"
                       />
-                      <span className="text-sm text-[#F1F5F9]">
+                      <span className="text-sm text-fg">
                         {p.nama_panggil ?? p.nama_lengkap}
-                        <span className="ml-2 font-mono text-xs text-[#64748B]">{p.jalur}</span>
+                        <span className="ml-2 font-mono text-xs text-fg-subtle">{p.jalur}</span>
                       </span>
                     </label>
                   ))}
@@ -284,43 +284,43 @@ export default function KelolaPesertaPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Daftar Peserta ({pesertas.length})</h2>
+        <h2 className="mb-4 text-subhead font-semibold text-fg">Daftar Peserta ({pesertas.length})</h2>
         {pesertas.length === 0 ? (
           <EmptyState title="Belum ada peserta" desc="Tambahkan peserta pertama." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#334155]">
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-[#94A3B8]">Nama</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-[#94A3B8]">Jalur</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-[#94A3B8]">Kontak</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-[#94A3B8]">Batch</th>
+                <tr className="border-b border-border-2">
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Nama</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Jalur</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Kontak</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Batch</th>
                 </tr>
               </thead>
               <tbody>
                 {pesertas.map((p) => (
-                  <tr key={p.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
-                      <td className="px-3 py-2 text-[#F1F5F9]">
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface">
+                      <td className="px-3 py-2 text-fg">
                         <div className="flex flex-col">
                           <span>{p.nama_lengkap}</span>
-                          <span className="text-[10px] text-[#64748B]">
+                          <span className="text-[10px] text-fg-subtle">
                             {p.nama_panggil && `"${p.nama_panggil}" · `}
                             Ortu: {p.no_wa_ortu ?? '—'}
                           </span>
                         </div>
                       </td>
-                    <td className="px-3 py-2 font-mono text-xs text-[#FBBF24]">{p.jalur ?? '-'}</td>
-                    <td className="px-3 py-2 text-xs text-[#94A3B8]">{p.no_wa ?? '-'}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-primary-text">{p.jalur ?? '-'}</td>
+                    <td className="px-3 py-2 text-xs text-fg-muted">{p.no_wa ?? '-'}</td>
                     <td className="px-3 py-2">
                       <select
                         value={p.batch_id ?? ''}
                         onChange={(e) => setBatchPeserta(p.id, e.target.value)}
-                        className="rounded-[4px] border border-[#334155] bg-[#0F172A] px-2 py-1 text-xs text-[#F1F5F9] outline-none focus:border-[#FBBF24]"
+                        className="rounded-[4px] border border-border-2 bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-primary"
                       >
-                        <option value="" className="bg-[#1E293B]">— Belum —</option>
+                        <option value="" className="bg-surface">— Belum —</option>
                         {batches.map((b) => (
-<option key={b.id} value={b.id} className="bg-[#1E293B]">{b.nama_batch ?? b.jalur}</option>
+<option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
                         ))}
                       </select>
                     </td>

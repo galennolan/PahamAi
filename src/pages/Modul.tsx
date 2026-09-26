@@ -108,8 +108,8 @@ export default function ModulPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Modul Paham AI</h1>
-          <p className="mt-1 font-mono text-sm text-[#94A3B8]">{JALUR_DESC[jalur]}</p>
+          <h1 className="text-headline font-bold text-fg">Modul Paham AI</h1>
+          <p className="mt-1 font-mono text-sm text-fg-muted">{JALUR_DESC[jalur]}</p>
         </div>
         <div className="flex items-center gap-2" role="tablist" aria-label="Pilih jalur">
           {(['A', 'B1', 'B2', 'B3'] as Jalur[]).map((j) => (
@@ -120,8 +120,8 @@ export default function ModulPage() {
               onClick={() => setJalur(j)}
               className={`rounded-[4px] border px-3 py-2 font-mono text-sm transition ${
                 jalur === j
-                  ? 'border-[#FBBF24] bg-[#FBBF24]/10 text-[#FBBF24]'
-                  : 'border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:border-[#475569] hover:text-[#F1F5F9]'
+                  ? 'border-primary bg-primary/10 text-primary-text'
+                  : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
               }`}
             >
               {j}
@@ -133,13 +133,13 @@ export default function ModulPage() {
       {/* Progress bar */}
       {!loading && moduls.length > 0 && (
         <Card>
-          <div className="flex items-center justify-between font-mono text-xs text-[#94A3B8]">
+          <div className="flex items-center justify-between font-mono text-xs text-fg-muted">
             <span>{JALUR_LABELS[jalur]}</span>
             <span>{doneCount}/{moduls.length} sesi ({pct}%)</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#0F172A]">
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">
             <div
-              className="h-full rounded-full bg-[#FBBF24] transition-all"
+              className="h-full rounded-full bg-primary transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -149,7 +149,7 @@ export default function ModulPage() {
       {loading && <Loading text="Memuat modul..." />}
       {error && (
         <Card>
-          <p className="text-sm text-[#F87171]">Gagal memuat: {error}</p>
+          <p className="text-sm text-destructive">Gagal memuat: {error}</p>
         </Card>
       )}
       {!loading && !error && moduls.length === 0 && (
@@ -157,7 +157,7 @@ export default function ModulPage() {
       )}
 
       {!loading && !error && moduls.length > 0 && (
-        <ol className="relative space-y-0 border-l-2 border-[#334155] pl-0">
+        <ol className="relative space-y-0 border-l-2 border-border-2 pl-0">
           {moduls.map((m, i) => {
             const isDone = done.has(m.kode);
             const isNext = !isDone && (i === 0 || done.has(moduls[i - 1].kode));
@@ -166,7 +166,7 @@ export default function ModulPage() {
               <li key={m.id} className="relative pb-4 pl-8 last:pb-0">
                 <span
                   className={`absolute -left-[9px] top-5 h-4 w-4 rounded-full border-2 ${
-                    isDone ? 'border-[#FBBF24] bg-[#FBBF24]' : isNext ? 'border-[#FBBF24] bg-[#0F172A]' : 'border-[#334155] bg-[#0F172A]'
+                    isDone ? 'border-primary bg-primary' : isNext ? 'border-primary bg-bg' : 'border-border-2 bg-bg'
                   }`}
                   aria-hidden
                 />
@@ -174,37 +174,37 @@ export default function ModulPage() {
                   <Card className="opacity-50 cursor-not-allowed">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="shrink-0 font-mono text-xs text-[#64748B]">{String(i + 1).padStart(2, '0')}</span>
+                        <span className="shrink-0 font-mono text-xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-[#64748B]">{m.judul}</p>
-                            <p className="mt-0.5 font-mono text-xs text-[#64748B]">
+                          <p className="truncate font-semibold text-fg-subtle">{m.judul}</p>
+                            <p className="mt-0.5 font-mono text-xs text-fg-subtle">
                             {m.kode} · {m.durasi_menit} mnt
-                            <span className="ml-2 text-[#64748B] inline-flex items-center gap-1">
+                            <span className="ml-2 text-fg-subtle inline-flex items-center gap-1">
                               <Lock className="h-3 w-3" />
                               terkunci
                             </span>
                           </p>
                         </div>
                       </div>
-                      <span className="shrink-0 font-mono text-sm text-[#64748B]">🔒</span>
+                      <span className="shrink-0 font-mono text-sm text-fg-subtle">🔒</span>
                     </div>
                   </Card>
                 ) : (
                   <Link to={`/modul/${m.kode}`} className="block">
-                    <Card className={`transition hover:border-[#475569] hover:shadow-subtle ${isNext ? 'border-[#FBBF24]/30' : ''}`}>
+                    <Card className={`transition hover:border-border-3 hover:shadow-subtle ${isNext ? 'border-primary/30' : ''}`}>
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="shrink-0 font-mono text-xs text-[#64748B]">{String(i + 1).padStart(2, '0')}</span>
+                          <span className="shrink-0 font-mono text-xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
                           <div className="min-w-0">
-                            <p className="truncate font-semibold text-[#F1F5F9]">{m.judul}</p>
-                            <p className="mt-0.5 font-mono text-xs text-[#94A3B8]">
+                            <p className="truncate font-semibold text-fg">{m.judul}</p>
+                            <p className="mt-0.5 font-mono text-xs text-fg-muted">
                               {m.kode} · {m.durasi_menit} mnt
-                              {isDone && <span className="ml-2 text-[#FBBF24]">✓ selesai</span>}
-                              {isNext && !isDone && <span className="ml-2 text-[#22D3EE]">→ lanjutkan</span>}
+                              {isDone && <span className="ml-2 text-primary-text">✓ selesai</span>}
+                              {isNext && !isDone && <span className="ml-2 text-accent">→ lanjutkan</span>}
                             </p>
                           </div>
                         </div>
-                        <span className="shrink-0 font-mono text-sm text-[#64748B]">›</span>
+                        <span className="shrink-0 font-mono text-sm text-fg-subtle">›</span>
                       </div>
                     </Card>
                   </Link>

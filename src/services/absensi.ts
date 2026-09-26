@@ -24,30 +24,30 @@ export async function createSesiPeserta(sesiId: string, pesertaId: string): Prom
 }
 
 export async function markAttendance(sesiPesertaId: string, status: Kehadiran, menitTelat = 0) {
-  const payload = {
+  const base = {
     sesi_peserta_id: sesiPesertaId,
     status_kehadiran: status,
     menit_telat: menitTelat,
-    sync_status: 'pending' as const,
   };
 
   if (!navigator.onLine) {
     await offline.enqueuePending({
       id: crypto.randomUUID(),
       table: 'absensi',
-      action: 'insert',
-      payload,
+      action: 'upsert',
+      payload: { ...base, sync_status: 'pending' as const },
       at: new Date().toISOString(),
     });
     return;
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('absensi')
-    .upsert(payload, { onConflict: 'sesi_peserta_id' })
+    .upsert({ ...base, sync_status: 'synced' as const }, { onConflict: 'sesi_peserta_id' })
     .select()
     .maybeSingle();
   if (error) throw new Error(error.message);
+  return data as { id: string } | null;
 }
 
 export async function listAbsensiForSesi(sesiId: string) {

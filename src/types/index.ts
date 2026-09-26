@@ -357,11 +357,11 @@ export const KATEGORI_MODUL: KategoriDef[] = [
   { kode: 'TOOL', label: 'Tools & Platform',         color: '#8B5CF6', warnaBadge: 'border-purple-500/30 bg-purple-500/10 text-purple-400' },
   { kode: 'PRMP', label: 'Prompt Engineering',       color: '#EC4899', warnaBadge: 'border-pink-500/30 bg-pink-500/10 text-pink-400' },
   { kode: 'PROD', label: 'Produktivitas',            color: '#10B981', warnaBadge: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' },
-  { kode: 'ETHC', label: 'Etika & Keamanan',         color: '#F59E0B', warnaBadge: 'border-amber-500/30 bg-amber-500/10 text-amber-400' },
+  { kode: 'ETHC', label: 'Etika & Keamanan',         color: 'primary-hover', warnaBadge: 'border-amber-500/30 bg-amber-500/10 text-amber-400' },
   { kode: 'CODE', label: 'Pemrograman & API',        color: '#06B6D4', warnaBadge: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400' },
   { kode: 'AUTO', label: 'Automasi & Agent',         color: '#84CC16', warnaBadge: 'border-lime-500/30 bg-lime-500/10 text-lime-400' },
   { kode: 'ARCH', label: 'Arsitektur Sistem',        color: '#F97316', warnaBadge: 'border-orange-500/30 bg-orange-500/10 text-orange-400' },
-  { kode: 'PROJ', label: 'Proyek & Capstone',        color: '#EF4444', warnaBadge: 'border-red-500/30 bg-red-500/10 text-red-400' },
+  { kode: 'PROJ', label: 'Proyek & Capstone',        color: 'destructive-hover', warnaBadge: 'border-red-500/30 bg-red-500/10 text-red-400' },
   { kode: 'PRES', label: 'Presentasi Skills',        color: '#A78BFA', warnaBadge: 'border-violet-500/30 bg-violet-500/10 text-violet-400' },
 ];
 

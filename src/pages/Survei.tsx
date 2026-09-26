@@ -53,25 +53,25 @@ export default function SurveiPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-headline font-bold text-[#F1F5F9]">Survei Kepuasan</h1>
-        <p className="mt-1 text-sm text-[#94A3B8]">NPS + rating materi, instruktur, dan nilai uang. Bersifat anonim untuk batch.</p>
+        <h1 className="text-headline font-bold text-fg">Survei Kepuasan</h1>
+        <p className="mt-1 text-sm text-fg-muted">NPS + rating materi, instruktur, dan nilai uang. Bersifat anonim untuk batch.</p>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Batch">
             <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })} required>
-              <option value="" className="bg-[#1E293B]">— Pilih batch —</option>
+              <option value="" className="bg-surface">— Pilih batch —</option>
               {batches.map((b) => (
-                <option key={b.id} value={b.id} className="bg-[#1E293B]">{b.nama_batch ?? b.jalur}</option>
+                <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
               ))}
             </SelectInput>
           </Field>
           <Field label="Seberapa mungkin Anda merekomendasikan kursus ini? (0–10)" hint="NPS">
             <SelectInput value={form.nps} onChange={(e) => setForm({ ...form, nps: e.target.value })} required>
-              <option value="" className="bg-[#1E293B]">— Pilih —</option>
+              <option value="" className="bg-surface">— Pilih —</option>
               {Array.from({ length: 11 }, (_, i) => i).map((n) => (
-                <option key={n} value={n} className="bg-[#1E293B]">{n}</option>
+                <option key={n} value={n} className="bg-surface">{n}</option>
               ))}
             </SelectInput>
           </Field>
@@ -83,9 +83,9 @@ export default function SurveiPage() {
             ] as const).map(([key, label]) => (
               <Field key={key} label={label}>
                 <SelectInput value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} required>
-                  <option value="" className="bg-[#1E293B]">—</option>
+                  <option value="" className="bg-surface">—</option>
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n} className="bg-[#1E293B]">{n}</option>
+                    <option key={n} value={n} className="bg-surface">{n}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -97,7 +97,7 @@ export default function SurveiPage() {
               onChange={(e) => setForm({ ...form, feedback: e.target.value })}
               rows={4}
               placeholder="Tulis masukan Anda..."
-              className="w-full rounded-[4px] border border-[#334155] bg-[#0F172A] px-3.5 py-2.5 text-sm text-[#F1F5F9] placeholder-[#64748B] outline-none focus:border-[#FBBF24]"
+              className="w-full rounded-[4px] border border-border-2 bg-bg px-3.5 py-2.5 text-sm text-fg placeholder-[fg-subtle] outline-none focus:border-primary"
             />
           </Field>
           <Button type="submit" disabled={saving} className="w-full">{saving ? 'Mengirim...' : 'Kirim Survei'}</Button>

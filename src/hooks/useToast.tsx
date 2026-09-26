@@ -31,8 +31,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             role="status"
             className={`rounded-[4px] border px-4 py-3 text-sm ${
               t.kind === 'success'
-                ? 'border-[#FBBF24]/25 bg-[#1E293B] text-[#FBBF24] shadow-[0_0_16px_rgba(251,191,36,0.12)]'
-                : 'border-[#F87171]/25 bg-[#1E293B] text-[#F87171] shadow-[0_0_16px_rgba(248,113,113,0.12)]'
+                ? 'border-primary/25 bg-surface text-primary-text shadow-[0_0_16px_rgba(251,191,36,0.12)]'
+                : 'border-[destructive]/25 bg-surface text-destructive shadow-[0_0_16px_rgba(248,113,113,0.12)]'
             }`}
           >
             {t.message}

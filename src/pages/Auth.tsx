@@ -5,11 +5,11 @@ import { Button, Field, TextInput, SecondaryButton } from '../components/ui';
 
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0F172A] px-4 py-12">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-bg px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-headline font-bold text-[#F1F5F9]">{title}</h1>
-          <p className="mt-2 text-body text-[#94A3B8]">{subtitle}</p>
+          <h1 className="text-headline font-bold text-fg">{title}</h1>
+          <p className="mt-2 text-body text-fg-muted">{subtitle}</p>
         </div>
         <div className="surface-card p-6 glow-green">{children}</div>
         {footer && <div className="mt-4">{footer}</div>}
@@ -41,9 +41,9 @@ export function LoginPage() {
       title="Masuk ke Paham AI"
       subtitle="Masukkan email & password akun Anda."
       footer={
-        <p className="text-center text-sm text-[#94A3B8]">
+        <p className="text-center text-sm text-fg-muted">
           Belum punya akun?{' '}
-          <Link to="/daftar" className="text-[#FBBF24] underline">
+          <Link to="/daftar" className="text-primary-text underline">
             Daftar
           </Link>
         </p>
@@ -56,7 +56,7 @@ export function LoginPage() {
         <Field label="Password">
           <TextInput type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </Field>
-        {error && <p className="text-sm text-[#F87171]">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? 'Memproses...' : 'Masuk'}
         </Button>
@@ -102,7 +102,7 @@ export function RegisterPage() {
         <Field label="Password" hint="Minimal 8 karakter.">
           <TextInput type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </Field>
-        {error && <p className="text-sm text-[#F87171]">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? 'Mendaftarkan...' : 'Daftar'}
         </Button>

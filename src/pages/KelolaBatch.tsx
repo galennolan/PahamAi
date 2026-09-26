@@ -321,8 +321,8 @@ export default function KelolaBatchPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-headline font-bold text-[#F1F5F9]">Kelola Kelas</h1>
-          <p className="text-sm text-[#94A3B8]">Buat kelas sekali jalan: info kelas, pilih peserta, sesi otomatis dari modul.</p>
+          <h1 className="text-headline font-bold text-fg">Kelola Kelas</h1>
+          <p className="text-sm text-fg-muted">Buat kelas sekali jalan: info kelas, pilih peserta, sesi otomatis dari modul.</p>
         </div>
         {!showForm && (
           <Button onClick={openWizard}>
@@ -342,21 +342,21 @@ export default function KelolaBatchPage() {
                   onClick={() => setWizStep(s.n)}
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition ${
                     wizStep === s.n
-                      ? 'border-[#FBBF24] bg-[#FBBF24] text-[#0F172A]'
+                      ? 'border-primary bg-primary text-[bg]'
                       : wizStep > s.n
-                        ? 'border-[#4ADE80] bg-[#4ADE80]/15 text-[#4ADE80]'
-                        : 'border-[#334155] bg-[#0F172A] text-[#64748B]'
+                        ? 'border-[success] bg-success/15 text-success'
+                        : 'border-border-2 bg-bg text-fg-subtle'
                   }`}
                   aria-label={`Langkah ${s.n}: ${s.label}`}
                 >
                   {wizStep > s.n ? <Check className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
                 </button>
                 <div className="min-w-0">
-                  <p className={`text-xs font-semibold ${wizStep === s.n ? 'text-[#FBBF24]' : 'text-[#94A3B8]'}`}>
+                  <p className={`text-xs font-semibold ${wizStep === s.n ? 'text-primary-text' : 'text-fg-muted'}`}>
                     {s.n}. {s.label}
                   </p>
                 </div>
-                {i < STEPS.length - 1 && <div className="mx-1 h-px flex-1 bg-[#334155]" />}
+                {i < STEPS.length - 1 && <div className="mx-1 h-px flex-1 bg-surface-2" />}
               </div>
             ))}
           </div>
@@ -378,7 +378,7 @@ export default function KelolaBatchPage() {
                     placeholder="PAHAI/A/2601"
                     value={form.kode_batch}
                     disabled
-                    className="bg-[#334155]/50"
+                    className="bg-surface-2/50"
                   />
                   <Button type="button" variant="secondary" onClick={() => setForm({ ...form, kode_batch: suggestKode(form.jalur) })}>
                     Refresh
@@ -397,7 +397,7 @@ export default function KelolaBatchPage() {
                     }}
                   >
                     {(['A', 'B1', 'B2', 'B3'] as Jalur[]).map((j) => (
-                      <option key={j} value={j} className="bg-[#1E293B]">{JALUR_LABELS[j]}</option>
+                      <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j]}</option>
                     ))}
                   </SelectInput>
                 </Field>
@@ -428,7 +428,7 @@ export default function KelolaBatchPage() {
               <Field label="Link Rapat Default" hint="Opsional, dipakai semua sesi">
                 <TextInput placeholder="https://meet..." value={form.link_rapat} onChange={(e) => setForm({ ...form, link_rapat: e.target.value })} />
               </Field>
-              <p className="rounded-[8px] border border-[#22D3EE]/25 bg-[#22D3EE]/5 px-4 py-3 text-xs text-[#94A3B8]">
+              <p className="rounded-[8px] border border-[accent]/25 bg-accent/5 px-4 py-3 text-xs text-fg-muted">
                 {modulsLoading
                   ? 'Memuat modul...'
                   : `${moduls.length} modul di jalur ${form.jalur} akan otomatis jadi sesi di langkah 3.`}
@@ -440,8 +440,8 @@ export default function KelolaBatchPage() {
           {wizStep === 2 && (
             <div className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[#94A3B8]">
-                  Terpilih <span className={`font-bold ${overCapacity ? 'text-[#F87171]' : 'text-[#FBBF24]'}`}>{selectedPeserta.length}</span>
+                <p className="text-sm text-fg-muted">
+                  Terpilih <span className={`font-bold ${overCapacity ? 'text-destructive' : 'text-primary-text'}`}>{selectedPeserta.length}</span>
                   {' / '}{form.kapasitas_maks} kursi · {seJalurCount} calon sesuai jalur {form.jalur}
                 </p>
                 <TextInput
@@ -451,10 +451,10 @@ export default function KelolaBatchPage() {
                   className="!w-full sm:!w-64"
                 />
               </div>
-              {overCapacity && <p className="text-xs font-medium text-[#F87171]">Kurangi peserta agar sesuai kapasitas.</p>}
-              <div className="max-h-80 space-y-2 overflow-y-auto rounded-[8px] border border-[#334155] p-3">
+              {overCapacity && <p className="text-xs font-medium text-destructive">Kurangi peserta agar sesuai kapasitas.</p>}
+              <div className="max-h-80 space-y-2 overflow-y-auto rounded-[8px] border border-border-2 p-3">
                 {filteredPeserta.length === 0 && (
-                  <p className="py-6 text-center text-sm text-[#64748B]">Tidak ada peserta. Tambahkan dulu di menu Peserta.</p>
+                  <p className="py-6 text-center text-sm text-fg-subtle">Tidak ada peserta. Tambahkan dulu di menu Peserta.</p>
                 )}
                 {filteredPeserta.map((p) => {
                   const checked = selectedPeserta.includes(p.id);
@@ -463,20 +463,20 @@ export default function KelolaBatchPage() {
                     <label
                       key={p.id}
                       className={`flex cursor-pointer items-center gap-3 rounded-[8px] border px-3 py-2.5 transition ${
-                        checked ? 'border-[#FBBF24]/50 bg-[#FBBF24]/5' : 'border-[#334155] bg-[#0F172A] hover:border-[#475569]'
+                        checked ? 'border-primary/50 bg-primary/5' : 'border-border-2 bg-bg hover:border-border-3'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => togglePeserta(p.id)}
-                        className="h-5 w-5 shrink-0 accent-[#FBBF24]"
+                        className="h-5 w-5 shrink-0 accent-[primary]"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-[#F1F5F9]">{p.nama_lengkap}</span>
-                        <span className="block truncate text-xs text-[#64748B]">{p.email ?? p.no_wa ?? '—'}{p.batch_id ? ' · sudah ada kelas' : ''}</span>
+                        <span className="block truncate text-sm font-medium text-fg">{p.nama_lengkap}</span>
+                        <span className="block truncate text-xs text-fg-subtle">{p.email ?? p.no_wa ?? '—'}{p.batch_id ? ' · sudah ada kelas' : ''}</span>
                       </span>
-                      <Badge className={mismatch ? 'border-[#F87171]/30 text-[#F87171]' : ''}>{p.jalur ?? '—'}</Badge>
+                      <Badge className={mismatch ? 'border-[destructive]/30 text-destructive' : ''}>{p.jalur ?? '—'}</Badge>
                     </label>
                   );
                 })}
@@ -488,9 +488,9 @@ export default function KelolaBatchPage() {
           {wizStep === 3 && (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[#94A3B8]">
-                  <span className="font-bold text-[#FBBF24]">{includedSesi.length}</span> sesi ·{' '}
-                  <span className="font-bold text-[#F1F5F9]">{selectedPeserta.length}</span> peserta
+                <p className="text-sm text-fg-muted">
+                  <span className="font-bold text-primary-text">{includedSesi.length}</span> sesi ·{' '}
+                  <span className="font-bold text-fg">{selectedPeserta.length}</span> peserta
                   {lastTanggal ? ` · berakhir ${formatJakarta(lastTanggal)}` : ''}
                 </p>
                 <Button type="button" variant="secondary" size="sm" onClick={rebuildDraft} disabled={moduls.length === 0}>
@@ -505,19 +505,19 @@ export default function KelolaBatchPage() {
                 {sesiDraft.map((s) => (
                   <div
                     key={s.key}
-                    className={`rounded-[8px] border p-3 transition ${s.included ? 'border-[#334155] bg-[#0F172A]' : 'border-[#1E293B] bg-[#0F172A]/50 opacity-60'}`}
+                    className={`rounded-[8px] border p-3 transition ${s.included ? 'border-border-2 bg-bg' : 'border-border bg-bg/50 opacity-60'}`}
                   >
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
                         checked={s.included}
                         onChange={(e) => updateDraft(s.key, { included: e.target.checked })}
-                        className="h-5 w-5 shrink-0 accent-[#FBBF24]"
+                        className="h-5 w-5 shrink-0 accent-[primary]"
                         aria-label={`Sertakan ${s.kode}`}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-mono text-sm font-semibold text-[#FBBF24]">{s.kode} <span className="font-body font-normal text-[#F1F5F9]">— {s.judul}</span></p>
-                        <p className="text-xs text-[#64748B]">{s.durasi} mnt</p>
+                        <p className="truncate font-mono text-sm font-semibold text-primary-text">{s.kode} <span className="font-body font-normal text-fg">— {s.judul}</span></p>
+                        <p className="text-xs text-fg-subtle">{s.durasi} mnt</p>
                       </div>
                     </div>
                     {s.included && (
@@ -581,15 +581,15 @@ export default function KelolaBatchPage() {
               <Card key={b.id}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-semibold text-[#FBBF24]">{b.kode_batch}</p>
-                    <p className="text-sm text-[#F1F5F9]">{b.nama_batch ?? JALUR_LABELS[b.jalur as Jalur] ?? b.jalur}</p>
-                    <p className="mt-1 text-xs text-[#64748B]">
+                    <p className="font-mono text-sm font-semibold text-primary-text">{b.kode_batch}</p>
+                    <p className="text-sm text-fg">{b.nama_batch ?? JALUR_LABELS[b.jalur as Jalur] ?? b.jalur}</p>
+                    <p className="mt-1 text-xs text-fg-subtle">
                       {b.tanggal_mulai ? formatJakarta(b.tanggal_mulai) : '-'} → {b.tanggal_akhir ? formatJakarta(b.tanggal_akhir) : '-'}
                     </p>
-                    <div className="mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-[#334155]">
-                      <div className="h-full rounded-full bg-[#FBBF24]" style={{ width: `${Math.min(fill, 100)}%` }} />
+                    <div className="mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-surface-2">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(fill, 100)}%` }} />
                     </div>
-                    <p className="mt-1 text-xs text-[#64748B]">{b.terdaftar}/{b.kapasitas_maks ?? '-'} peserta ({fill}%)</p>
+                    <p className="mt-1 text-xs text-fg-subtle">{b.terdaftar}/{b.kapasitas_maks ?? '-'} peserta ({fill}%)</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex flex-wrap gap-1">
@@ -599,7 +599,7 @@ export default function KelolaBatchPage() {
                         </Button>
                       ))}
                     </div>
-                    <Button size="sm" variant="ghost" className="text-[#F87171] hover:bg-[#F87171]/10" onClick={() => setDeleting(b)}>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleting(b)}>
                       Hapus
                     </Button>
                   </div>

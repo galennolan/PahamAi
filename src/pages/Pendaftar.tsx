@@ -48,7 +48,7 @@ export default function PendaftarPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-bold text-[#F1F5F9]">Kelola Pendaftar</h1>
+      <h1 className="text-headline font-bold text-fg">Kelola Pendaftar</h1>
 
       {pendaftars.length === 0 && <EmptyState title="Belum ada pendaftar" desc="Formulir pendaftaran akan mengisi daftar ini." />}
 
@@ -57,12 +57,12 @@ export default function PendaftarPage() {
           <Card key={p.id} className="hover:shadow-subtle">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-medium text-[#F1F5F9]">{p.nama_lengkap}</p>
-                <p className="text-sm text-[#64748B]">{p.email ?? p.no_wa ?? '-'}</p>
+                <p className="font-medium text-fg">{p.nama_lengkap}</p>
+                <p className="text-sm text-fg-subtle">{p.email ?? p.no_wa ?? '-'}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="font-mono">{p.status}</Badge>
-                <Badge className="font-mono text-[#FBBF24]">{p.jalur ?? '-'}</Badge>
+                <Badge className="font-mono text-primary-text">{p.jalur ?? '-'}</Badge>
                 {p.status === 'pending' && (
                   <>
                     <Button size="sm" onClick={() => handleApprove(p)} disabled={saving}>
