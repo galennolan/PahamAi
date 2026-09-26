@@ -13,6 +13,6 @@ export default function ProtectedRoute({
   const { user, role, loading } = useAuth();
   if (loading) return <Loading text="Memeriksa sesi..." />;
   if (!user) return <Navigate to="/masuk" replace />;
-  if (allow && role && !allow.includes(role)) return <Navigate to="/" replace />;
+  if (allow && role && !allow.includes(role)) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }

@@ -62,7 +62,7 @@ export default function PendaftarPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="font-mono">{p.status}</Badge>
-                <Badge className="font-mono text-[#22D3EE]">{p.jalur ?? '-'}</Badge>
+                <Badge className="font-mono text-[#FBBF24]">{p.jalur ?? '-'}</Badge>
                 {p.status === 'pending' && (
                   <>
                     <Button size="sm" onClick={() => handleApprove(p)} disabled={saving}>

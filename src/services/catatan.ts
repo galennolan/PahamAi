@@ -2,13 +2,17 @@ import { supabase } from '../lib/supabaseClient';
 import * as offline from '../lib/offline';
 import type { Catatan } from '../types';
 
-export async function saveCatatan(sesiPesertaId: string, text: string) {
+export async function saveCatatan(
+  sesiPesertaId: string,
+  text: string,
+  tldrawUrl?: string | null
+) {
   const payload = {
     sesi_peserta_id: sesiPesertaId,
-    catatan_text: text,
-    status_pengumpulan: true,
+    catatan_text: text || null,
+    tldraw_url: tldrawUrl ?? null,
+    status_pengumpulan: Boolean(text || tldrawUrl),
     sync_status: 'pending' as const,
-    at: new Date().toISOString(),
   };
 
   if (!navigator.onLine) {
@@ -22,22 +26,10 @@ export async function saveCatatan(sesiPesertaId: string, text: string) {
     return;
   }
 
-  const { data: existing } = await supabase
+  const { error } = await supabase
     .from('catatan_ketik')
-    .select('id')
-    .eq('sesi_peserta_id', sesiPesertaId)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from('catatan_ketik')
-      .update({ catatan_text: text, status_pengumpulan: true })
-      .eq('id', existing.id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase.from('catatan_ketik').insert(payload);
-    if (error) throw new Error(error.message);
-  }
+    .upsert(payload, { onConflict: 'sesi_peserta_id' });
+  if (error) throw new Error(error.message);
 }
 
 export async function getCatatanBySesi(sesiPesertaId: string): Promise<Catatan | null> {

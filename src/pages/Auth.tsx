@@ -32,7 +32,7 @@ export function LoginPage() {
     setError(null);
     const { error } = await signIn(email, password);
     if (error) setError(error);
-    else navigate('/');
+    else navigate('/app');
     setLoading(false);
   };
 
@@ -43,7 +43,7 @@ export function LoginPage() {
       footer={
         <p className="text-center text-sm text-[#94A3B8]">
           Belum punya akun?{' '}
-          <Link to="/daftar" className="text-[#4ADE80] underline">
+          <Link to="/daftar" className="text-[#FBBF24] underline">
             Daftar
           </Link>
         </p>

@@ -1,0 +1,35 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { Card, Loading, EmptyState, Badge } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
+import type { Peserta } from '../types';
+
+export default function ProfilPage() {
+  const { user } = useAuth();
+  const [profil, setProfil] = useState<Peserta | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase.from('peserta').select('*').eq('user_id', user.id).maybeSingle();
+      setProfil((data as Peserta) ?? null);
+      setLoading(false);
+    })();
+  }, [user]);
+
+  if (loading) return <Loading text="Memuat profil..." />;
+  if (!profil) return <EmptyState title="Belum terdaftar" desc="Hubungi admin untuk pendaftaran." />;
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-headline font-bold text-[#F1F5F9]">Profil Saya</h1>
+      <Card>
+        <p className="text-subhead font-semibold text-[#F1F5F9]">{profil.nama_panggil ?? profil.nama_lengkap}</p>
+        <p className="text-sm text-[#94A3B8] mt-1">Jalur: <Badge>{profil.jalur ?? '-'}</Badge></p>
+        <p className="text-sm text-[#94A3B8] mt-1">Email: {user?.email}</p>
+        <p className="text-sm text-[#94A3B8] mt-1">WA: {profil.no_wa ?? '-'}</p>
+      </Card>
+    </div>
+  );
+}

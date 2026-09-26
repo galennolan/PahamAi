@@ -1,0 +1,393 @@
+import { BarChart2, Target, BookOpen, PenLine, Settings, Download, Plus, Edit2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { Card, Loading, EmptyState, Badge, Table, Button } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
+import { formatJakarta } from '../lib/time';
+import { useToast } from '../hooks/useToast';
+
+type PendaftarWithSource = {
+  id: string;
+  nama_lengkap: string;
+  email: string | null;
+  no_wa: string | null;
+  jalur: string | null;
+  usia: number | null;
+  status: string;
+  source: string | null;
+  source_detail: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  referrer_code: string | null;
+  created_at: string;
+};
+
+type ModulPromo = {
+  id: string;
+  kode: string;
+  judul: string;
+  jalur: string;
+  durasi_menit: number;
+  content_md: string | null;
+  promo_ready: boolean;
+  promo_angle: string | null;
+  target_audience: string | null;
+  difficulty: 'mudah' | 'sedang' | 'sulit';
+};
+
+type MarketingContent = {
+  id: string;
+  title: string;
+  type: 'post_ig' | 'post_fb' | 'artikel_blog' | 'video_script' | 'whatsapp_blast' | 'email_template' | 'landing_copy';
+  target_audience: string;
+  topic: string;
+  content: string;
+  status: 'draft' | 'review' | 'approved' | 'published';
+  platforms: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+type TechFeature = {
+  id: string;
+  name: string;
+  category: 'platform' | 'content' | 'analytics' | 'automation' | 'community';
+  description: string;
+  marketing_value: string;
+  implementation_effort: 'rendah' | 'sedang' | 'tinggi';
+  status: 'tersedia' | 'dalam_pengembangan' | 'direncanakan';
+};
+
+export default function MarketingDashboardPage() {
+  const { role, loading: authLoading } = useAuth();
+  const { push: toast } = useToast();
+  const [pendaftar, setPendaftar] = useState<PendaftarWithSource[]>([]);
+  const [modulPromo, setModulPromo] = useState<ModulPromo[]>([]);
+  const [marketingContent, setMarketingContent] = useState<MarketingContent[]>([]);
+  const [techFeatures, setTechFeatures] = useState<TechFeature[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'sources' | 'modules' | 'content' | 'tech'>('overview');
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (role !== 'admin' && role !== 'marketing') { setLoading(false); return; }
+    loadAll();
+  }, [authLoading, role]);
+
+  async function loadAll() {
+    setLoading(true);
+    const [pendaftarRes, modulRes, contentRes, techRes] = await Promise.all([
+      supabase.from('pendaftar').select('*').order('created_at', { ascending: false }),
+      supabase.from('modul').select('*').order('jalur, urutan_sesi'),
+      supabase.from('marketing_content').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('tech_features').select('*').order('category'),
+    ]);
+    setPendaftar((pendaftarRes.data ?? []) as PendaftarWithSource[]);
+    setModulPromo((modulRes.data ?? []) as ModulPromo[]);
+    setMarketingContent((contentRes.data ?? []) as MarketingContent[]);
+    setTechFeatures((techRes.data ?? []) as TechFeature[]);
+    setLoading(false);
+  }
+
+  if (authLoading || loading) return <Loading text="Memuat dashboard marketing..." />;
+  if (role !== 'admin' && role !== 'marketing') return <EmptyState title="Akses ditolak" desc="Hanya admin/marketing yang bisa akses dashboard ini." />;
+
+  // Overview stats
+  const totalPendaftar = pendaftar.length;
+  const bySource = pendaftar.reduce((acc, p) => {
+    const s = p.source || p.utm_source || 'organic';
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const byJalur = pendaftar.reduce((acc, p) => {
+    const j = p.jalur || 'unknown';
+    acc[j] = (acc[j] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const readyToPromo = modulPromo.filter(m => m.promo_ready).length;
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: BarChart2 },
+    { id: 'sources', label: 'Sumber Pendaftar', icon: Target },
+    { id: 'modules', label: 'Modul Promosikan', icon: BookOpen },
+    { id: 'content', label: 'Konten Marketing', icon: PenLine },
+    { id: 'tech', label: 'Fitur Teknis', icon: Settings },
+  ] as const;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-headline font-bold text-[#F1F5F9]">Dashboard Marketing</h1>
+          <p className="mt-1 text-body text-[#94A3B8]">Pantau performa akuisisi, konten promosi, & fitur teknis untuk marketing.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => toast('Fitur export CSV sedang dalam pengembangan.')}>
+            <Download className="mr-2 h-4 w-4" aria-hidden />
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <p className="text-caption text-[#94A3B8]">Total Pendaftar</p>
+          <p className="text-3xl font-bold text-[#FBBF24] font-display mt-1">{totalPendaftar}</p>
+        </Card>
+        <Card>
+          <p className="text-caption text-[#94A3B8]">Sumber Unik</p>
+          <p className="text-3xl font-bold text-[#22D3EE] font-display mt-1">{Object.keys(bySource).length}</p>
+        </Card>
+        <Card>
+          <p className="text-caption text-[#94A3B8]">Modul Siap Promo</p>
+          <p className="text-3xl font-bold text-[#4ADE80] font-display mt-1">{readyToPromo}/{modulPromo.length}</p>
+        </Card>
+        <Card>
+          <p className="text-caption text-[#94A3B8]">Konten Siap Publikasi</p>
+          <p className="text-3xl font-bold text-[#F1F5F9] font-display mt-1">
+            {marketingContent.filter(c => c.status === 'approved' || c.status === 'published').length}
+          </p>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 border-b border-[#334155] pb-2">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-[4px] text-sm font-medium transition ${
+              activeTab === t.id
+                ? 'bg-[#FBBF24]/10 border border-[#FBBF24] text-[#FBBF24]'
+                : 'border border-transparent text-[#94A3B8] hover:border-[#334155] hover:text-[#F1F5F9]'
+            }`}
+          >
+            <t.icon className="h-4 w-4" aria-hidden />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          <Card>
+            <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Distribusi Sumber Pendaftar</h2>
+            <div className="space-y-3">
+              {Object.entries(bySource).map(([source, count]) => (
+                <div key={source} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/30">{source}</Badge>
+                    <span className="text-body text-[#F1F5F9]">{count} pendaftar</span>
+                  </div>
+                  <div className="w-48 h-2 bg-[#1E293B] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#FBBF24] rounded-full" style={{ width: `${(count / totalPendaftar) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Distribusi per Jalur</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(byJalur).map(([jalur, count]) => (
+                <Card key={jalur} className="text-center">
+                  <p className="text-caption text-[#94A3B8]">{jalur === 'A' ? 'Anak' : jalur}</p>
+                  <p className="text-2xl font-bold text-[#F1F5F9] font-display mt-1">{count}</p>
+                </Card>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'sources' && (
+        <Card>
+          <h2 className="mb-4 text-subhead font-semibold text-[#F1F5F9]">Detail Sumber Pendaftar</h2>
+          <Table>
+            <thead>
+              <tr className="border-b border-[#334155]">
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Nama</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Jalur</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Sumber</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Detail</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">UTM</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Referral</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Tanggal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendaftar.map(p => (
+                <tr key={p.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
+                  <td className="px-4 py-3 text-[#F1F5F9] font-medium">{p.nama_lengkap}</td>
+                  <td className="px-4 py-3"><Badge>{p.jalur ?? '-'}</Badge></td>
+                  <td className="px-4 py-3 text-[#F1F5F9] font-mono text-sm">{p.source ?? p.utm_source ?? 'organic'}</td>
+                  <td className="px-4 py-3 text-[#94A3B8] text-sm">{p.source_detail ?? '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">
+                    {p.utm_medium ? `${p.utm_source}/${p.utm_medium}/${p.utm_campaign}` : '-'}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{p.referrer_code ?? '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#94A3B8]">{formatJakarta(p.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+
+      {activeTab === 'modules' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 className="text-subhead font-semibold text-[#F1F5F9]">Modul yang Siap Dipromosikan</h2>
+            <select
+              value={''}
+              onChange={(e) => console.log(e.target.value)}
+              className="rounded-[4px] border border-[#334155] bg-[#1E293B] px-3 py-2 text-sm text-[#F1F5F9] outline-none focus:border-[#FBBF24]"
+            >
+              <option value="">Semua Jalur</option>
+              <option value="A">A — Anak</option>
+              <option value="B1">B1 — Pemula</option>
+              <option value="B2">B2 — Menengah</option>
+              <option value="B3">B3 — Expert</option>
+            </select>
+          </div>
+
+          <Table>
+            <thead>
+              <tr className="border-b border-[#334155]">
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Kode</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Judul</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Jalur</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Durasi</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Siap Promo</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Sudut Promo</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Target</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {modulPromo.map(m => (
+                <tr key={m.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
+                  <td className="px-4 py-3 font-mono text-sm text-[#FBBF24]">{m.kode}</td>
+                  <td className="px-4 py-3 text-[#F1F5F9]">{m.judul}</td>
+                  <td className="px-4 py-3"><Badge>{m.jalur}</Badge></td>
+                  <td className="px-4 py-3 font-mono text-sm text-[#94A3B8]">{m.durasi_menit} mnt</td>
+                  <td className="px-4 py-3">
+                    <Badge className={m.promo_ready ? 'border-green-500/30 text-green-400' : 'border-yellow-500/30 text-yellow-400'}>
+                      {m.promo_ready ? 'Siap' : 'Draft'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-[#94A3B8] text-sm max-w-xs truncate">{m.promo_angle ?? 'Belum diisi'}</td>
+                  <td className="px-4 py-3 text-[#94A3B8] text-sm max-w-xs truncate">{m.target_audience ?? '-'}</td>
+                  <td className="px-4 py-3">
+                    <Button size="sm" variant="ghost" onClick={() => toast(`Form edit ${m.kode} sedang dalam pengembangan.`)}>
+                      <Edit2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                      Edit
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+
+      {activeTab === 'content' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 className="text-subhead font-semibold text-[#F1F5F9]">Library Konten Marketing</h2>
+            <Button onClick={() => toast('Formulir konten baru sedang dalam pengembangan.')}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden />
+              Buat Konten
+            </Button>
+          </div>
+
+          <Table>
+            <thead>
+              <tr className="border-b border-[#334155]">
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Judul</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Tipe</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Topik</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Target</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Platform</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs text-[#94A3B8] uppercase">Update</th>
+              </tr>
+            </thead>
+            <tbody>
+              {marketingContent.map(c => (
+                <tr key={c.id} className="border-b border-[#1E293B] last:border-0 hover:bg-[#1E293B]">
+                  <td className="px-4 py-3 font-medium text-[#F1F5F9] max-w-xs truncate">{c.title}</td>
+                  <td className="px-4 py-3"><Badge className="text-xs">{c.type}</Badge></td>
+                  <td className="px-4 py-3 text-[#94A3B8] text-sm max-w-xs truncate">{c.topic}</td>
+                  <td className="px-4 py-3 text-[#94A3B8] text-sm">{c.target_audience}</td>
+                  <td className="px-4 py-3 text-[#94A3B8] text-sm">{c.platforms.join(', ')}</td>
+                  <td className="px-4 py-3">
+                    <Badge className={
+                      c.status === 'published' ? 'border-green-500/30 text-green-400' :
+                      c.status === 'approved' ? 'border-blue-500/30 text-blue-400' :
+                      c.status === 'review' ? 'border-yellow-500/30 text-yellow-400' :
+                      'border-gray-500/30 text-gray-400'
+                    }>{c.status}</Badge>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#64748B]">{formatJakarta(c.updated_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+
+      {activeTab === 'tech' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 className="text-subhead font-semibold text-[#F1F5F9]">Fitur Teknis untuk Marketing</h2>
+            <Button onClick={() => toast('Form fitur teknis sedang dalam pengembangan.')}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden />
+              Tambah
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {techFeatures.map(f => (
+              <Card key={f.id} className="hover:border-[#475569]">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-subhead font-semibold text-[#F1F5F9]">{f.name}</h3>
+                      <Badge className={`text-xs ${
+                        f.category === 'platform' ? 'border-blue-500/30 text-blue-400' :
+                        f.category === 'content' ? 'border-purple-500/30 text-purple-400' :
+                        f.category === 'analytics' ? 'border-green-500/30 text-green-400' :
+                        f.category === 'automation' ? 'border-orange-500/30 text-orange-400' :
+                        'border-pink-500/30 text-pink-400'
+                      }`}>{f.category}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-[#94A3B8]">{f.description}</p>
+                    <p className="mt-1 text-xs text-[#64748B] font-mono">Nilai Marketing: {f.marketing_value}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <Badge className={
+                      f.status === 'tersedia' ? 'border-green-500/30 text-green-400' :
+                      f.status === 'dalam_pengembangan' ? 'border-yellow-500/30 text-yellow-400' :
+                      'border-gray-500/30 text-gray-400'
+                    }>{f.status}</Badge>
+                    <Badge className={`text-xs ${
+                      f.implementation_effort === 'rendah' ? 'border-green-500/30 text-green-400' :
+                      f.implementation_effort === 'sedang' ? 'border-yellow-500/30 text-yellow-400' :
+                      'border-red-500/30 text-red-400'
+                    }`}>Effort: {f.implementation_effort}</Badge>
+                    <Button size="sm" variant="ghost">Detail</Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

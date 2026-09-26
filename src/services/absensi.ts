@@ -29,7 +29,6 @@ export async function markAttendance(sesiPesertaId: string, status: Kehadiran, m
     status_kehadiran: status,
     menit_telat: menitTelat,
     sync_status: 'pending' as const,
-    at: new Date().toISOString(),
   };
 
   if (!navigator.onLine) {
@@ -43,7 +42,11 @@ export async function markAttendance(sesiPesertaId: string, status: Kehadiran, m
     return;
   }
 
-  const { error } = await supabase.from('absensi').insert(payload);
+  const { error } = await supabase
+    .from('absensi')
+    .upsert(payload, { onConflict: 'sesi_peserta_id' })
+    .select()
+    .maybeSingle();
   if (error) throw new Error(error.message);
 }
 

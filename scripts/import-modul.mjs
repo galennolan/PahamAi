@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const ROOT = 'C:/Users/Galih Setiawan/Downloads/KURSUS';
+const ROOT = process.env.KURSUS_ROOT || 'C:/Users/Galih Setiawan/Downloads/KURSUS';
 const MODUL_DIR = join(ROOT, '01-kurikulum-dan-konten/modul-ajar');
 
 const url = process.env.VITE_SUPABASE_URL;

@@ -15,6 +15,17 @@ export async function listModulByJalur(jalur: Jalur): Promise<Modul[]> {
   return result;
 }
 
+export async function listModulByKategori(jalur: Jalur, kategori: string): Promise<Modul[]> {
+  const { data, error } = await supabase
+    .from('modul')
+    .select('*')
+    .eq('jalur', jalur)
+    .eq('kategori', kategori)
+    .order('urutan_sesi', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data as Modul[];
+}
+
 export async function getModulByKode(kode: string): Promise<Modul | null> {
   const { data, error } = await supabase.from('modul').select('*').eq('kode', kode).maybeSingle();
   if (error) return null;

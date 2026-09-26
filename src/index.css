@@ -70,4 +70,39 @@
   details[open] summary::before {
     transform: rotate(90deg);
   }
+
+  .prose-md h1 { @apply text-subhead font-bold text-[#F1F5F9] mt-6 mb-3; }
+  .prose-md h2 { @apply text-lg font-semibold text-[#F1F5F9] mt-6 mb-2; }
+  .prose-md h3 { @apply text-base font-semibold text-[#F1F5F9] mt-5 mb-2; }
+  .prose-md p { @apply text-body leading-relaxed mb-3; }
+  .prose-md ul { @apply list-disc pl-6 mb-3 space-y-1; }
+  .prose-md ol { @apply list-decimal pl-6 mb-3 space-y-1; }
+  .prose-md li { @apply text-body; }
+  .prose-md table { @apply w-full text-sm my-4 border-collapse; }
+  .prose-md th, .prose-md td { @apply border border-[#334155] px-3 py-2 text-left; }
+  .prose-md th { @apply bg-[#334155] font-semibold; }
+  .prose-md tr:nth-child(even) td { @apply bg-[#1E293B]/50; }
+  .prose-md code { @apply bg-[#0F172A] px-1.5 py-0.5 rounded text-sm text-[#FBBF24] font-mono; }
+  .prose-md pre { @apply bg-[#0F172A] border border-[#334155] rounded-[6px] p-4 overflow-x-auto my-4; }
+  .prose-md pre code { @apply bg-transparent p-0 text-[#E2E8F0]; }
+  .prose-md blockquote { @apply border-l-4 border-[#FBBF24] pl-4 italic text-[#94A3B8] my-4; }
+  .prose-md a { @apply text-[#FBBF24] underline; }
+  .prose-md strong { @apply text-[#F1F5F9] font-semibold; }
+
+  /* Bottom tab bar: fixed height + safe area */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    min-height: 60px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background-color: rgba(30, 41, 59, 0.97);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid #334155;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

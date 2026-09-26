@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthValue | undefined>(undefined);
 
 function roleFromUser(u: User | null): UserRole | null {
   const r = (u?.user_metadata as Record<string, unknown> | undefined)?.role;
-  if (r === 'admin' || r === 'instruktur' || r === 'peserta' || r === 'parent') return r;
+  if (r === 'admin' || r === 'instruktur' || r === 'peserta' || r === 'parent' || r === 'marketing') return r;
   return null;
 }
 
