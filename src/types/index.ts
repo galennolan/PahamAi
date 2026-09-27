@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'instruktur' | 'peserta' | 'parent' | 'marketing';
 
-export type Jalur = 'A' | 'B1' | 'B2' | 'B3';
+export type Jalur = 'A' | 'B1' | 'B2' | 'B3' | 'G';
 
 export type SesiStatus = 'belum' | 'berlangsung' | 'selesai' | 'dibatalkan';
 
@@ -324,6 +324,7 @@ export const JALUR_LABELS: Record<Jalur, string> = {
   B1: 'B1 — Pemula',
   B2: 'B2 — Menengah',
   B3: 'B3 — Expert',
+  G: 'G — Generative AI for Beginners (GAFB)',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {

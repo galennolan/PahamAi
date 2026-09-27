@@ -51,6 +51,7 @@ function suggestKode(jalur: Jalur): string {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(2);
   const mm = String(now.getMonth() + 1).padStart(2, '0');
+  if (jalur === 'G') return `GAFB/${yy}${mm}`;
   return `PAHAI/${jalur}/${yy}${mm}`;
 }
 
@@ -396,7 +397,7 @@ export default function KelolaBatchPage() {
                       setSesiDraft([]);
                     }}
                   >
-                    {(['A', 'B1', 'B2', 'B3'] as Jalur[]).map((j) => (
+                    {(['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]).map((j) => (
                       <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j]}</option>
                     ))}
                   </SelectInput>

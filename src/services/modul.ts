@@ -33,7 +33,7 @@ export async function getModulByKode(kode: string): Promise<Modul | null> {
 }
 
 export async function getModulFromCache(kode: string): Promise<Modul | null> {
-  for (const jalur of ['A', 'B1', 'B2', 'B3'] as Jalur[]) {
+  for (const jalur of ['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]) {
     const arr = await offline.cacheGet<Modul[]>(`modul-${jalur}`);
     const found = arr?.find((m) => m.kode === kode);
     if (found) return found;

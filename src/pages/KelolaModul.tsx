@@ -156,12 +156,13 @@ export default function KelolaModulPage() {
         label="Pilih jalur"
         value={jalur}
         onChange={(j) => setJalur(j)}
-        options={[
-          { key: 'A', label: 'A — Anak' },
-          { key: 'B1', label: 'B1 — Pemula' },
-          { key: 'B2', label: 'B2 — Menengah' },
-          { key: 'B3', label: 'B3 — Expert' },
-        ]}
+          options={[
+            { key: 'A', label: 'A — Anak' },
+            { key: 'B1', label: 'B1 — Pemula' },
+            { key: 'B2', label: 'B2 — Menengah' },
+            { key: 'B3', label: 'B3 — Expert' },
+            { key: 'G', label: 'G — GAFB' },
+          ]}
       />
 
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter kategori">
@@ -245,7 +246,7 @@ export default function KelolaModulPage() {
                   value={form.jalur}
                   onChange={(e) => setForm({ ...form, jalur: e.target.value as Jalur })}
                 >
-                  {(['A', 'B1', 'B2', 'B3'] as Jalur[]).map((j) => (
+                  {(['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]).map((j) => (
                     <option key={j} value={j} className="bg-surface">
                       {JALUR_LABELS[j]}
                     </option>

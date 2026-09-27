@@ -90,7 +90,7 @@ export default function PendaftaranPage() {
               </Field>
               <Field label="Jalur">
                 <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-                  {(['A', 'B1', 'B2', 'B3']).map((j) => (
+                  {(['A', 'B1', 'B2', 'B3', 'G']).map((j) => (
                     <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j as 'A']}</option>
                   ))}
                 </SelectInput>

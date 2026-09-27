@@ -13,6 +13,7 @@ const JALUR_DESC: Record<Jalur, string> = {
   B1: 'Pemula · 7 sesi · 90 mnt',
   B2: 'Menengah · 11 sesi · 120 mnt',
   B3: 'Expert · 11 sesi · 120–150 mnt',
+  G: 'GAFB · 10 sesi · 90 mnt',
 };
 
 export default function ModulPage() {
@@ -112,7 +113,7 @@ export default function ModulPage() {
           <p className="mt-1 font-mono text-sm text-fg-muted">{JALUR_DESC[jalur]}</p>
         </div>
         <div className="flex items-center gap-2" role="tablist" aria-label="Pilih jalur">
-          {(['A', 'B1', 'B2', 'B3'] as Jalur[]).map((j) => (
+          {(['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]).map((j) => (
             <button
               key={j}
               role="tab"
