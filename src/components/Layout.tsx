@@ -29,8 +29,7 @@ import {
   Eye,
 } from 'lucide-react';
 
-const navLinkCls = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? 'bg-primary text-on-primary shadow-[0_0_16px_rgb(var(--primary)/0.2)]' : 'text-fg-muted hover:bg-surface hover:text-fg'}`;
+
 
 interface NavItem {
   to: string;
@@ -99,17 +98,27 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       {adminGroups.map((group, gi) => (
-        <div key={group.label} className="flex items-center gap-1">
-          {gi > 0 && <span className="mx-1 h-5 w-px bg-border-2" aria-hidden />}
-          <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-fg-subtle lg:block">
+        <div key={group.label} className="flex items-center gap-0.5">
+          {gi > 0 && <span className="mx-1.5 h-5 w-px bg-border-2" aria-hidden />}
+          <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-fg-subtle xl:block">
             {group.label}
           </span>
           {group.items.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end} className={navLinkCls} onClick={onNavigate}>
-              <span className="flex items-center gap-1.5">
-                {l.icon}
-                <span className="hidden sm:inline">{l.label}</span>
-              </span>
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                  isActive
+                    ? 'bg-primary/10 text-primary-text'
+                    : 'text-fg-muted hover:bg-surface hover:text-fg'
+                }`
+              }
+            >
+              {l.icon}
+              <span className="hidden lg:inline">{l.label}</span>
             </NavLink>
           ))}
         </div>
@@ -158,8 +167,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ) : (
             <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex" aria-label="Navigasi utama">
               {links.map((l) => (
-                <NavLink key={l.to} to={l.to} end={l.end} className={navLinkCls}>
-                  <span className="flex items-center gap-2">{l.icon} {l.label}</span>
+                <NavLink
+                  key={l.to}
+                  to={l.to}
+                  end={l.end}
+                  className={({ isActive }) =>
+                    `flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                      isActive
+                        ? 'bg-primary/10 text-primary-text'
+                        : 'text-fg-muted hover:bg-surface hover:text-fg'
+                    }`
+                  }
+                >
+                  {l.icon}
+                  <span className="hidden lg:inline">{l.label}</span>
                 </NavLink>
               ))}
             </nav>
