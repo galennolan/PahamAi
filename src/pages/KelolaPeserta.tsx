@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Combobox } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta } from '../lib/time';
-import type { Peserta, Batch, JadwalSesi, SesiPeserta } from '../types';
+import type { Peserta, Batch, JadwalSesi, SesiPeserta, Jalur } from '../types';
 import { JALUR_LABELS } from '../types';
 
 const POSISI_LABELS: Record<string, string> = {
@@ -16,6 +16,7 @@ export default function KelolaPesertaPage() {
   const { push: toast } = useToast();
   const [pesertas, setPesertas] = useState<Peserta[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [jalurOptions, setJalurOptions] = useState<Jalur[]>(['A', 'B1', 'B2', 'B3']);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -41,14 +42,28 @@ export default function KelolaPesertaPage() {
   const [terdaftar, setTerdaftar] = useState<SesiPeserta[]>([]);
 
   const load = async () => {
-    const [{ data: p, error: pe }, { data: b, error: be }, { data: j, error: je }] = await Promise.all([
+    const [{ data: p, error: pe }, { data: b, error: be }, { data: j, error: je }, { data: ja, error: jae }] = await Promise.all([
       supabase.from('peserta').select('*').order('created_at', { ascending: false }),
       supabase.from('batch').select('*').order('created_at', { ascending: false }),
       supabase.from('jadwal_sesi').select('*, modul(*)').order('tanggal_kelas', { ascending: true }),
+      supabase.from('modul').select('jalur').order('jalur'),
     ]);
     if (!pe) setPesertas((p as Peserta[]) ?? []);
     if (!be) setBatches((b as Batch[]) ?? []);
     if (!je) setJadwals((j as JadwalSesi[]) ?? []);
+    if (!jae) {
+      const seen = new Set<string>();
+      const ordered: Jalur[] = [];
+      const priority = ['A', 'B1', 'B2', 'B3', 'G'];
+      for (const r of (ja as Array<{ jalur: string }>) ?? []) {
+        if (!seen.has(r.jalur)) {
+          seen.add(r.jalur);
+          const idx = priority.indexOf(r.jalur);
+          if (idx >= 0) ordered.push(r.jalur as Jalur);
+        }
+      }
+      if (ordered.length) setJalurOptions(ordered);
+    }
   };
 
   useEffect(() => {
@@ -187,8 +202,8 @@ export default function KelolaPesertaPage() {
               </Field>
               <Field label="Jalur">
                 <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-                  {(['A', 'B1', 'B2', 'B3', 'G']).map((j) => (
-                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j as 'A']}</option>
+                  {jalurOptions.map((j) => (
+                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j] ?? j}</option>
                   ))}
                 </SelectInput>
               </Field>

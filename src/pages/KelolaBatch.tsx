@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Field, Loading, SelectInput, TextInput } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta } from '../lib/time';
+import { listJalurs } from '../services/modul';
 import type { Batch, Jalur, Modul, Peserta } from '../types';
 import { JALUR_LABELS } from '../types';
 
@@ -68,6 +69,7 @@ export default function KelolaBatchPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Batch | null>(null);
+  const [jalurOptions, setJalurOptions] = useState<Jalur[]>(['A', 'B1', 'B2', 'B3']);
 
   // wizard state
   const [wizStep, setWizStep] = useState(1);
@@ -92,6 +94,8 @@ export default function KelolaBatchPage() {
   const load = async () => {
     const { data, error } = await supabase.from('batch').select('*').order('created_at', { ascending: false });
     if (!error) setBatches((data as Batch[]) ?? []);
+    const j = await listJalurs();
+    if (j.length > 0) setJalurOptions(j);
   };
 
   useEffect(() => {
@@ -397,8 +401,8 @@ export default function KelolaBatchPage() {
                       setSesiDraft([]);
                     }}
                   >
-                    {(['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]).map((j) => (
-                      <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j]}</option>
+                    {jalurOptions.map((j) => (
+                      <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j] ?? j}</option>
                     ))}
                   </SelectInput>
                 </Field>

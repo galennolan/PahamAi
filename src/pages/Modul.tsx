@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock, Check, ArrowRight } from 'lucide-react';
-import { listModulByJalur } from '../services/modul';
+import { listJalurs, listModulByJalur } from '../services/modul';
 import { Card, Loading, EmptyState } from '../components/ui';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import type { Modul, Jalur } from '../types';
 import { JALUR_LABELS } from '../types';
 
-const JALUR_DESC: Record<Jalur, string> = {
+const JALUR_DESC: Record<string, string> = {
   A: 'Anak 8–14 th · 9 sesi · 60 mnt',
   B1: 'Pemula · 7 sesi · 90 mnt',
   B2: 'Menengah · 11 sesi · 120 mnt',
@@ -20,10 +20,20 @@ export default function ModulPage() {
   const { user, role } = useAuth();
   const isStaff = role === 'admin' || role === 'instruktur';
   const [jalur, setJalur] = useState<Jalur>('A');
+  const [allJalur, setAllJalur] = useState<Jalur[]>([]);
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const j = await listJalurs();
+      if (j.length === 0) return;
+      setAllJalur(j);
+      setJalur((prev) => (j.includes(prev) ? prev : j[0]));
+    })();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,10 +120,10 @@ export default function ModulPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-headline font-bold text-fg">Modul Paham AI</h1>
-          <p className="mt-1 font-mono text-sm text-fg-muted">{JALUR_DESC[jalur]}</p>
+          <p className="mt-1 font-mono text-sm text-fg-muted">{JALUR_DESC[jalur] ?? jalur}</p>
         </div>
         <div className="flex items-center gap-2" role="tablist" aria-label="Pilih jalur">
-          {(['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]).map((j) => (
+          {allJalur.map((j) => (
             <button
               key={j}
               role="tab"
@@ -135,7 +145,7 @@ export default function ModulPage() {
       {!loading && moduls.length > 0 && (
         <Card>
           <div className="flex items-center justify-between font-mono text-xs text-fg-muted">
-            <span>{JALUR_LABELS[jalur]}</span>
+            <span>{JALUR_LABELS[jalur] ?? jalur}</span>
             <span>{doneCount}/{moduls.length} sesi ({pct}%)</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">

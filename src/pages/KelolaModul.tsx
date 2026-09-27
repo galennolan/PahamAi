@@ -4,7 +4,7 @@ import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge
 import { useToast } from '../hooks/useToast';
 import type { Modul, Jalur, ModulKategori } from '../types';
 import { JALUR_LABELS, KATEGORI_MODUL, resolveKategori } from '../types';
-import { listModulByJalur } from '../services/modul';
+import { listModulByJalur, listJalurs } from '../services/modul';
 import { ChevronDown, Plus } from 'lucide-react';
 
 type FilterKategori = ModulKategori | 'SEMUA';
@@ -24,12 +24,21 @@ const EMPTY_FORM = {
 export default function KelolaModulPage() {
   const { push: toast } = useToast();
   const [jalur, setJalur] = useState<Jalur>('A');
+  const [allJalur, setAllJalur] = useState<Jalur[]>([]);
   const [filterKategori, setFilterKategori] = useState<FilterKategori>('SEMUA');
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Modul | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  const loadJalur = useCallback(async () => {
+    const j = await listJalurs();
+    if (j.length > 0) {
+      setAllJalur(j);
+      setJalur((prev) => (j.includes(prev) ? prev : j[0]));
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setModuls(await listModulByJalur(jalur));
@@ -39,13 +48,39 @@ export default function KelolaModulPage() {
     (async () => {
       setLoading(true);
       try {
-        await load();
+        await loadJalur();
       } catch (e: unknown) {
         toast((e as Error).message, 'error');
       } finally {
         setLoading(false);
       }
     })();
+  }, [loadJalur, toast]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        await load();
+      } catch (e: unknown) {
+        if (mounted) toast((e as Error).message, 'error');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    const channel = supabase
+      .channel('modul-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'modul' }, () => {
+        if (mounted) load();
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [load, toast]);
 
   const kategoriCounts = useMemo(() => {
@@ -156,13 +191,7 @@ export default function KelolaModulPage() {
         label="Pilih jalur"
         value={jalur}
         onChange={(j) => setJalur(j)}
-          options={[
-            { key: 'A', label: 'A — Anak' },
-            { key: 'B1', label: 'B1 — Pemula' },
-            { key: 'B2', label: 'B2 — Menengah' },
-            { key: 'B3', label: 'B3 — Expert' },
-            { key: 'G', label: 'G — GAFB' },
-          ]}
+        options={allJalur.map((j) => ({ key: j, label: JALUR_LABELS[j] ?? j }))}
       />
 
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter kategori">
@@ -246,7 +275,7 @@ export default function KelolaModulPage() {
                   value={form.jalur}
                   onChange={(e) => setForm({ ...form, jalur: e.target.value as Jalur })}
                 >
-                  {(['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]).map((j) => (
+                  {allJalur.map((j) => (
                     <option key={j} value={j} className="bg-surface">
                       {JALUR_LABELS[j]}
                     </option>

@@ -32,6 +32,23 @@ export async function getModulByKode(kode: string): Promise<Modul | null> {
   return (data ?? null) as Modul | null;
 }
 
+export async function listJalurs(): Promise<Jalur[]> {
+  const res = await supabase.from('modul').select('jalur');
+  if (res.error) return [];
+  const seen = new Set<string>();
+  const order: Jalur[] = [];
+  for (const r of res.data as Array<{ jalur: string }>) {
+    if (!seen.has(r.jalur)) {
+      seen.add(r.jalur);
+      order.push(r.jalur as Jalur);
+    }
+  }
+  const priority = ['A', 'B1', 'B2', 'B3', 'G'] as Jalur[];
+  order.sort((a, b) => priority.indexOf(a) - priority.indexOf(b));
+  return order;
+}
+
+
 export async function getModulFromCache(kode: string): Promise<Modul | null> {
   for (const jalur of ['A', 'B1', 'B2', 'B3', 'G'] as Jalur[]) {
     const arr = await offline.cacheGet<Modul[]>(`modul-${jalur}`);

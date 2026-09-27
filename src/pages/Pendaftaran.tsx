@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Button, Field, TextInput, SelectInput } from '../components/ui';
 import { useToast } from '../hooks/useToast';
+import { listJalurs } from '../services/modul';
+import type { Jalur } from '../types';
 import { JALUR_LABELS } from '../types';
 
 const POSISI_LABELS: Record<string, string> = {
@@ -17,6 +19,7 @@ export default function PendaftaranPage() {
   const { push: toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [jalurOptions, setJalurOptions] = useState<Jalur[]>(['A', 'B1', 'B2', 'B3']);
   const [form, setForm] = useState({
     nama_lengkap: '',
     nama_panggil: '',
@@ -38,6 +41,13 @@ export default function PendaftaranPage() {
   });
 
   useEffect(() => {
+    (async () => {
+      const j = await listJalurs();
+      if (j.length > 0) {
+        setJalurOptions(j);
+        setForm((f) => ({ ...f, jalur: j[0] }));
+      }
+    })();
     const params = new URLSearchParams(window.location.search);
     const utm: Record<string, string> = {};
     for (const k of UTM_KEYS) {
@@ -90,8 +100,8 @@ export default function PendaftaranPage() {
               </Field>
               <Field label="Jalur">
                 <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-                  {(['A', 'B1', 'B2', 'B3', 'G']).map((j) => (
-                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j as 'A']}</option>
+                  {jalurOptions.map((j) => (
+                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j] ?? j}</option>
                   ))}
                 </SelectInput>
               </Field>
