@@ -5,7 +5,8 @@ import { useToast } from '../hooks/useToast';
 import type { Modul, Jalur, ModulKategori } from '../types';
 import { JALUR_LABELS, KATEGORI_MODUL, resolveKategori } from '../types';
 import { listModulByJalur, listJalurs } from '../services/modul';
-import { ChevronDown, Plus } from 'lucide-react';
+import { renderMarkdown } from '../lib/markdown';
+import { ChevronDown, Plus, Eye, X } from 'lucide-react';
 
 type FilterKategori = ModulKategori | 'SEMUA';
 
@@ -30,6 +31,7 @@ export default function KelolaModulPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Modul | null>(null);
+  const [viewing, setViewing] = useState<Modul | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const loadJalur = useCallback(async () => {
@@ -420,6 +422,10 @@ export default function KelolaModulPage() {
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5">
+                            <Button size="sm" variant="ghost" onClick={() => setViewing(m)}>
+                              <Eye className="h-3.5 w-3.5" />
+                              Lihat
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => startEdit(m)}>
                               Edit
                             </Button>
@@ -445,6 +451,48 @@ export default function KelolaModulPage() {
         <ChevronDown className="h-3 w-3" aria-hidden />
         Urutan sesi tetap mengikuti urutan_sesi di dalam masing-masing kategori.
       </p>
+
+      {viewing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setViewing(null)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border-2 bg-surface p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-primary-text">{viewing.kode}</span>
+                  <Badge className="font-mono">{viewing.kategori ?? '—'}</Badge>
+                </div>
+                <h2 className="mt-1 text-lg font-semibold text-fg">{viewing.judul}</h2>
+                <p className="mt-0.5 font-mono text-xs text-fg-subtle">
+                  #{viewing.urutan_sesi} · {viewing.durasi_menit} menit · {JALUR_LABELS[viewing.jalur] ?? viewing.jalur}
+                </p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setViewing(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {viewing.slide_url && (
+              <a
+                href={viewing.slide_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-4 inline-flex items-center gap-1.5 text-sm text-primary-text underline"
+              >
+                Buka Slide
+              </a>
+            )}
+            <div
+              className="prose prose-sm max-w-none text-fg"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(viewing.content_md) }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
