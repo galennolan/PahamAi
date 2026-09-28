@@ -1,50 +1,44 @@
-# React + TypeScript + Vite
+# Paham AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Platform belajar AI untuk semua usia — dari anak-anak sampai expert.
 
-Currently, two official plugins are available:
+## Apa itu Paham AI?
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Paham AI adalah platform kursus yang membantu orang belajar Artificial Intelligence secara bertahap, mulai dari konsep dasar sampai topik lanjutan seperti agent engineering dan sistem otonom.
 
-## Expanding the ESLint configuration
+## Siapa yang bisa belajar?
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+| Jalur | Untuk siapa | Durasi |
+|-------|-------------|--------|
+| **A — Anak** | Usia 8–14 tahun | 9 sesi × 60 menit |
+| **B1 — Pemula** | Belum pernah kenal AI | 7 sesi × 90 menit |
+| **B2 — Menengah** | Sudah pakai tools AI | 11 sesi × 120 menit |
+| **B3 — Expert** | Ingin bangun sistem AI | 11 sesi × 120–150 menit |
+| **G — GAFB** | Generative AI for Beginners | 10 sesi × 90 menit |
 
-- Configure the top-level `parserOptions` property like this:
+## Fitur Utama
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- **Modul terstruktur** — Setiap jalur punya modur yang saling berkaitan, dibuka bertahap
+- **Pre-test & Post-test** — Ukur pemahaman sebelum dan sesudah belajar
+- **Absensi digital** — Peserta bisa absen langsung dari HP
+- **Catatan belajar** — Peserta bisa simpan catatan teks dan kanvas visual (tldraw)
+- **Portfolio** — Karya peserta bisa dikumpulkan dan dilacak
+- **Monitoring instruktur** — Pantau progres peserta per sesi per modul
+- **Offline-ready** — Bisa dipakai tanpa internet (PWA)
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## Alur Belajar
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+1. Peserta pilih jalur sesuai level
+2. Ikuti sesi per modul (terkunci sampai sesi sebelumnya selesai)
+3. Kerjakan pre-test sebelum mulai
+4. Baca materi, hadir di kelas, isi catatan
+5. Kerjakan post-test setelah selesai
+6. Kumpulkan karya (portfolio)
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+## Konten
+
+Modul diambil dari kurikulum open-source [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch) yang sudah diterjemahkan ke Bahasa Indonesia, plus modul lokal yang dibuat khusus untuk program ini.
+
+## Lisensi
+
+MIT
