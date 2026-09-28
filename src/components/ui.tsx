@@ -5,10 +5,10 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const variantCls: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-on-primary border border-primary hover:bg-primary-hover active:bg-primary-active hover:shadow-[0_0_16px_rgb(var(--primary)/0.2)]',
+  primary: 'bg-primary text-[rgb(var(--on-primary))] border border-primary hover:bg-primary-hover active:bg-primary-active hover:shadow-[0_0_16px_rgb(var(--primary)/0.2)]',
   secondary: 'bg-surface text-fg border border-border-2 hover:bg-surface-2 active:bg-border-3 hover:border-border-3',
   ghost: 'bg-transparent text-fg-muted border-none hover:bg-surface active:bg-surface-2 hover:text-fg',
-  destructive: 'bg-destructive text-on-primary border border-destructive hover:bg-destructive-hover active:bg-destructive-active hover:shadow-[0_0_16px_rgb(var(--destructive)/0.2)]',
+  destructive: 'bg-destructive text-white border border-destructive hover:bg-destructive-hover active:bg-destructive-active hover:shadow-[0_0_16px_rgb(var(--destructive)/0.2)]',
 };
 
 const sizeCls: Record<ButtonSize, string> = {
@@ -44,7 +44,7 @@ export function DangerButton({ className = '', ...props }: ButtonHTMLAttributes<
   return (
     <button
       {...props}
-      className={`btn-devlog min-h-[44px] bg-destructive text-on-primary border border-destructive hover:bg-destructive-hover active:bg-destructive-active ${className}`}
+      className={`btn-devlog min-h-[44px] bg-destructive text-white border border-destructive hover:bg-destructive-hover active:bg-destructive-active ${className}`}
     />
   );
 }

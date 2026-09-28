@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, Tabs, ConfirmDialog } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
-import { formatJakarta } from '../lib/time';
-import {
-  Plus, User, Users, UserCheck, Mail, Shield, Search, X,
-  Trash2, Pencil, Eye, ShieldCheck, UserPlus, Key
-} from 'lucide-react';
+import { Plus, Trash2, Pencil, Search } from 'lucide-react';
 
 type UserRole = 'peserta' | 'parent' | 'instruktur' | 'marketing';
-type UserStatus = 'active' | 'inactive' | 'pending';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   peserta: 'Peserta',
@@ -18,31 +13,17 @@ const ROLE_LABELS: Record<UserRole, string> = {
   marketing: 'Marketing',
 };
 
-const ROLE_DESC: Record<UserRole, string> = {
-  peserta: 'Bisa akses modul, absen, kuis, upload karya',
-  parent: 'Read-only lihat progres anak',
-  instruktur: 'Input absensi, nilai, lesson plan',
-  marketing: 'Dashboard marketing, akses data pendaftar',
-};
-
 const EMPTY_FORM = {
   email: '',
   password: '',
   nama_lengkap: '',
-  role: 'peserta' as 'peserta' | 'parent' | 'instruktur' | 'marketing',
-  // peserta
+  role: 'peserta' as UserRole,
   no_wa: '',
   no_wa_ortu: '',
   usia: '',
   jalur: 'A',
   kelas_penempatan: 'baru-kenal-hp',
   batch_id: '',
-  // parent
-  anak_email: '',
-  // instruktur
-  spesialisasi: '',
-  // marketing
-  kampanye: '',
 };
 
 interface UserRow {
@@ -53,25 +34,14 @@ interface UserRow {
   status: string;
   created_at: string;
   last_sign_in_at: string | null;
-  // profile fields
   no_wa?: string;
   no_wa_ortu?: string;
   usia?: number;
   jalur?: string;
   kelas_penempatan?: string;
   batch_id?: string;
-  anak_email?: string;
-  spesialisasi?: string;
-  kampanye?: string;
   batch_nama?: string;
 }
-
-const ROLE_OPTIONS = [
-  { key: 'peserta', label: 'Peserta' },
-  { key: 'parent', label: 'Orang Tua' },
-  { key: 'instruktur', label: 'Instruktur' },
-  { key: 'marketing', label: 'Marketing' },
-];
 
 const JALUR_OPTIONS = ['A', 'B1', 'B2', 'B3', 'G'];
 
@@ -83,70 +53,50 @@ const POSISI_LABELS: Record<string, string> = {
 
 export default function KelolaUserPage() {
   const { push: toast } = useToast();
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState<Record<string, any>>(EMPTY_FORM);
+  const [editing, setEditing] = useState<UserRow | null>(null);
+  const [deleting, setDeleting] = useState<UserRow | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('semua');
+  const [roleFilter, setRoleFilter] = useState('semua');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. List all auth users
       const { data: authUsers, error: authErr } = await supabase.auth.admin.listUsers();
       if (authErr) throw authErr;
 
-      // 2. Fetch all profiles in parallel
-      const [
-        { data: peserta },
-        { data: parentUsers },
-        { data: batches },
-      ] = await Promise.all([
+      const [{ data: peserta }, { data: batches }] = await Promise.all([
         supabase.from('peserta').select('*'),
-        supabase.from('parent_user').select('*'),
         supabase.from('batch').select('id, kode_batch, nama_batch'),
       ]);
 
       const pesertaMap = new Map((peserta ?? []).map((p) => [p.user_id, p]));
-      const parentMap = new Map((parentUsers ?? []).map((p) => [p.user_id, p]));
       const batchMap = new Map((batches ?? []).map((b) => [b.id, b]));
 
-      // 3. Merge auth users with profiles
-      const merged = (authUsers.users ?? []).map((u) => {
+      const merged: UserRow[] = (authUsers.users ?? []).map((u) => {
         const metadata = u.user_metadata ?? {};
-        const role = (metadata.role as 'peserta' | 'parent' | 'instruktur' | 'marketing') ?? 'peserta';
-        const profile = role === 'parent' ? parentMap.get(u.id) : pesertaMap.get(u.id);
+        const role = (metadata.role as UserRole) ?? 'peserta';
+        const profile = pesertaMap.get(u.id);
         const batch = profile?.batch_id ? batchMap.get(profile.batch_id) : null;
-
-        let anak_email = '';
-        if (role === 'parent' && profile) {
-          // find child email
-          const { data: links } = supabase.from('parent_child_link').select('child_id').eq('parent_id', profile.id);
-          // async but we'll skip for now
-        }
 
         return {
           id: u.id,
-          email: u.email,
+          email: u.email ?? '',
           role,
-          nama_lengkap: metadata.nama_lengkap ?? u.email.split('@')[0],
-          status: u.banned_until ? 'inactive' : (u.email_confirmed_at ? 'active' : 'pending'),
+          nama_lengkap: (metadata.nama_lengkap as string) ?? u.email?.split('@')[0] ?? '',
+          status: (u as any).banned_until ? 'inactive' : (u.email_confirmed_at ? 'active' : 'pending'),
           created_at: u.created_at,
-          last_sign_in_at: u.last_sign_in_at,
-          // profile fields
+          last_sign_in_at: u.last_sign_in_at ?? null,
           no_wa: profile?.no_wa ?? '',
           no_wa_ortu: profile?.no_wa_ortu ?? '',
-          usia: profile?.usia ?? null,
+          usia: profile?.usia ?? undefined,
           jalur: profile?.jalur ?? '',
           kelas_penempatan: profile?.kelas_penempatan ?? '',
           batch_id: profile?.batch_id ?? '',
-          anak_email: profile?.anak_email ?? '',
-          spesialisasi: profile?.spesialisasi ?? '',
-          kampanye: profile?.kampanye ?? '',
           batch_nama: batch?.nama_batch ?? batch?.kode_batch ?? '-',
         };
       });
@@ -157,7 +107,7 @@ export default function KelolaUserPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -170,7 +120,6 @@ export default function KelolaUserPage() {
 
     setSaving(true);
     try {
-      // 1. Create auth user
       const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
         email: form.email,
         password: form.password,
@@ -180,7 +129,6 @@ export default function KelolaUserPage() {
       if (authErr || !authData.user) throw new Error(authErr?.message ?? 'Gagal buat auth user');
       const userId = authData.user.id;
 
-      // 2. Insert profile by role
       if (form.role === 'peserta') {
         const { error } = await supabase.from('peserta').insert({
           user_id: userId,
@@ -194,18 +142,11 @@ export default function KelolaUserPage() {
           batch_id: form.batch_id || null,
         });
         if (error) throw new Error(error.message);
-      } else if (form.role === 'parent') {
-        const { data: parentRow, error: parentErr } = await supabase.from('parent_user').insert({
-          user_id: form.email, // parent_user PK is user_id (email in seed, but should be uuid)
-          user_id: (await supabase.auth.admin.getUserById((await supabase.auth.admin.listUsers()).users.find(u => u.email === form.email)?.id ?? '')).data.user?.id ?? '',
-          nama_lengkap: form.nama_lengkap,
-          email: form.email,
-          no_wa_notifikasi: form.no_wa || null,
-          email_notifikasi: form.email,
-        }).select().single();
-        // Actually parent_user uses email as PK in seed, but should be uuid. Let's use user_id from auth.
+      } else if (form.role === 'instruktur' || form.role === 'marketing') {
+        await supabase.auth.admin.updateUserById(userId, {
+          user_metadata: { role: form.role, nama_lengkap: form.nama_lengkap },
+        });
       }
-      // This is getting complex. Let me simplify.
 
       toast('User dibuat', 'success');
       setShowForm(false);
@@ -218,59 +159,184 @@ export default function KelolaUserPage() {
     }
   };
 
-  // Simplified approach - use service role for all DB ops
-  const createUser = async (data: any) => {
-    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
-      email: form.email,
-      password: form.password,
-      email_confirm: true,
-      user_metadata: { role: form.role, nama_lengkap: form.nama_lengkap },
-    });
-    if (authErr) throw authErr;
-    const userId = authData.user.id;
-
-    if (form.role === 'peserta') {
-      await supabase.from('peserta').insert({
-        user_id: userId,
-        nama_lengkap: form.nama_lengkap,
-        email: form.email,
-        no_wa: form.no_wa || null,
-        no_wa_ortu: form.no_wa_ortu || null,
-        usia: form.usia ? parseInt(form.usia) : null,
-        jalur: form.jalur,
-        kelas_penempatan: form.kelas_penempatan,
-        batch_id: form.batch_id || null,
-      });
-    } else if (form.role === 'parent') {
-      // parent_user uses email as PK in current schema
-      await supabase.from('parent_user').insert({
-        user_id: userId, // use auth user_id
-        nama_lengkap: form.nama_lengkap,
-        email: form.email,
-        no_wa_notifikasi: form.no_wa || null,
-        email_notifikasi: form.email,
-      });
-    } else if (form.role === 'instruktur') {
-      await supabase.auth.admin.updateUserById(userId, { user_metadata: { role: 'instruktur', nama_lengkap: form.nama_lengkap } });
-      await supabase.from('peserta').insert({
-        user_id: userId,
-        nama_lengkap: form.nama_lengkap,
-        email: form.email,
-        no_wa: form.no_wa || null,
-        jalur: form.jalur,
-        // mark as instruktur via metadata
-      });
-    } else if (form.role === 'marketing') {
-      await supabase.auth.admin.updateUserById(userId, { user_metadata: { role: 'marketing', nama_lengkap: form.nama_lengkap } });
+  const handleDelete = async () => {
+    if (!deleting) return;
+    setSaving(true);
+    const { error } = await supabase.auth.admin.deleteUser(deleting.id);
+    setSaving(false);
+    setDeleting(null);
+    if (error) toast(error.message, 'error');
+    else {
+      toast('User dihapus', 'success');
+      await load();
     }
   };
 
-  // ... rest of component
+  const filtered = users.filter((u) => {
+    if (roleFilter !== 'semua' && u.role !== roleFilter) return false;
+    if (search && !`${u.email} ${u.nama_lengkap}`.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
-  return null; // placeholder
-}
+  if (loading) return <Loading text="Memuat user..." />;
 
-export default function KelolaUserPage() {
-  // Full implementation below
-  return <div>Kelola User - Implementation below</div>;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-headline font-bold text-fg">Kelola User</h1>
+          <p className="mt-0.5 text-sm text-fg-muted">{users.length} user terdaftar</p>
+        </div>
+        <Button onClick={() => { setEditing(null); setForm(EMPTY_FORM); setShowForm(true); }}>
+          <Plus className="h-4 w-4" /> Tambah User
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" />
+          <TextInput placeholder="Cari email / nama..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <SelectInput value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+          <option value="semua">Semua Role</option>
+          {Object.entries(ROLE_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </SelectInput>
+      </div>
+
+      {showForm && (
+        <Card>
+          <h2 className="mb-4 text-subhead font-semibold text-fg">{editing ? 'Edit User' : 'User Baru'}</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Email">
+                <TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              </Field>
+              <Field label="Password">
+                <TextInput type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Nama Lengkap">
+                <TextInput value={form.nama_lengkap} onChange={(e) => setForm({ ...form, nama_lengkap: e.target.value })} required />
+              </Field>
+              <Field label="Role">
+                <SelectInput value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}>
+                  {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </SelectInput>
+              </Field>
+            </div>
+            {form.role === 'peserta' && (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="No. WhatsApp">
+                    <TextInput value={form.no_wa} onChange={(e) => setForm({ ...form, no_wa: e.target.value })} />
+                  </Field>
+                  <Field label="No. WA Orang Tua">
+                    <TextInput value={form.no_wa_ortu} onChange={(e) => setForm({ ...form, no_wa_ortu: e.target.value })} />
+                  </Field>
+                  <Field label="Usia">
+                    <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Jalur">
+                    <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
+                      {JALUR_OPTIONS.map((j) => (
+                        <option key={j} value={j}>{j}</option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                  <Field label="Penempatan">
+                    <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
+                      {Object.entries(POSISI_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                  <Field label="Batch">
+                    <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}>
+                      <option value="">— Belum —</option>
+                    </SelectInput>
+                  </Field>
+                </div>
+              </>
+            )}
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1" disabled={saving}>
+                {saving ? 'Menyimpan...' : 'Simpan'}
+              </Button>
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => { setShowForm(false); setEditing(null); }}>
+                Batal
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {filtered.length === 0 ? (
+        <EmptyState title="Tidak ada user" desc="Coba ubah filter atau tambah user baru." />
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border-2">
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Nama</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Email</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Role</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Status</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Jalur</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Batch</th>
+                  <th className="px-3 py-2 text-right font-mono text-overline uppercase text-fg-muted">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((u) => (
+                  <tr key={u.id} className="border-b border-border last:border-0 hover:bg-surface">
+                    <td className="px-3 py-2 text-fg">{u.nama_lengkap}</td>
+                    <td className="px-3 py-2 text-xs text-fg-muted">{u.email}</td>
+                    <td className="px-3 py-2">
+                      <Badge className="font-mono">{ROLE_LABELS[u.role as UserRole] ?? u.role}</Badge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge className={u.status === 'active' ? 'border-success/30 bg-success/10 text-success' : u.status === 'inactive' ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-border-2 bg-surface text-fg-muted'}>
+                        {u.status}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-primary-text">{u.jalur || '-'}</td>
+                    <td className="px-3 py-2 text-xs text-fg-muted">{u.batch_nama || '-'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => { setEditing(u); setForm({ ...EMPTY_FORM, email: u.email, nama_lengkap: u.nama_lengkap, role: u.role as UserRole, jalur: u.jalur ?? 'A', kelas_penempatan: u.kelas_penempatan ?? 'baru-kenal-hp' }); setShowForm(true); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDeleting(u)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Hapus User?"
+          message={`User "${deleting.nama_lengkap}" (${deleting.email}) akan dihapus permanen.`}
+          confirmLabel="Hapus"
+          onConfirm={handleDelete}
+          onCancel={() => setDeleting(null)}
+          busy={saving}
+        />
+      )}
+    </div>
+  );
 }
