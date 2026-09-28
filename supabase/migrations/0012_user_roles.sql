@@ -53,9 +53,9 @@ returns boolean language sql security definer stable as $$
   );
 $$;
 
--- Migrasi data existing: copy role dari user_metadata ke user_roles
+-- Migrasi data existing: copy role dari raw_user_meta_data ke user_roles
 insert into public.user_roles (user_id, role)
-select id, user_metadata->>'role'
+select id, raw_user_meta_data->>'role'
 from auth.users
-where user_metadata->>'role' in ('admin','instruktur','peserta','parent','marketing')
+where raw_user_meta_data->>'role' in ('admin','instruktur','peserta','parent','marketing')
 on conflict (user_id, role) do nothing;
