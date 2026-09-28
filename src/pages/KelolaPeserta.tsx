@@ -317,7 +317,12 @@ export default function KelolaPesertaPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2 font-mono text-xs text-primary-text">{p.jalur ?? '-'}</td>
-                        <td className="px-3 py-2 text-xs text-fg-muted">{p.no_wa ?? '-'}</td>
+                        <td className="px-3 py-2 text-xs text-fg-muted">
+                          <div className="flex flex-col">
+                            <span>{p.email ?? '-'}</span>
+                            <span>WA: {p.no_wa ?? '-'}</span>
+                          </div>
+                        </td>
                         <td className="px-3 py-2">
                           <select
                             value={p.batch_id ?? ''}
