@@ -23,11 +23,9 @@ const PendaftaranPage = lazy(() => import('./pages/Pendaftaran'));
 const BerandaPage = lazy(() => import('./pages/Beranda'));
 const SesiPage = lazy(() => import('./pages/Sesi'));
 const AbsensiPage = lazy(() => import('./pages/Absensi'));
-const PendaftarPage = lazy(() => import('./pages/Pendaftar'));
-const KelolaSesiPage = lazy(() => import('./pages/KelolaSesi'));
 const KelolaModulPage = lazy(() => import('./pages/KelolaModul'));
 const OrangTuaPage = lazy(() => import('./pages/OrangTua'));
-const KelolaBatchPage = lazy(() => import('./pages/KelolaBatch'));
+const KelolaKelasPage = lazy(() => import('./pages/KelolaKelas'));
 const KelolaPesertaPage = lazy(() => import('./pages/KelolaPeserta'));
 const PembayaranPage = lazy(() => import('./pages/Pembayaran'));
 const BelajarPage = lazy(() => import('./pages/Belajar'));
@@ -37,6 +35,7 @@ const ProgresPage = lazy(() => import('./pages/Progres'));
 const KaryaPage = lazy(() => import('./pages/Karya'));
 const ProfilPage = lazy(() => import('./pages/Profil'));
 const MarketingDashboardPage = lazy(() => import('./pages/MarketingDashboard'));
+const KelolaSoalPage = lazy(() => import('./pages/KelolaSoal'));
 
 function Protected({ children, allow }: { children: React.ReactNode; allow?: Parameters<typeof ProtectedRoute>[0]['allow'] }) {
   return (
@@ -72,10 +71,9 @@ function App() {
               <Route path="/marketing" element={<Protected allow={['marketing', 'admin']}><MarketingDashboardPage /></Protected>} />
 
               <Route path="/absensi" element={<Protected allow={['admin', 'instruktur']}><AbsensiPage /></Protected>} />
-              <Route path="/pendaftar" element={<Protected allow={['admin']}><PendaftarPage /></Protected>} />
-              <Route path="/kelola-sesi" element={<Protected allow={['admin', 'instruktur']}><KelolaSesiPage /></Protected>} />
               <Route path="/kelola-modul" element={<Protected allow={['admin']}><KelolaModulPage /></Protected>} />
-              <Route path="/kelola-batch" element={<Protected allow={['admin']}><KelolaBatchPage /></Protected>} />
+              <Route path="/kelola-soal" element={<Protected allow={['admin', 'instruktur']}><KelolaSoalPage /></Protected>} />
+              <Route path="/kelola-kelas" element={<Protected allow={['admin', 'instruktur']}><KelolaKelasPage /></Protected>} />
               <Route path="/kelola-peserta" element={<Protected allow={['admin', 'instruktur']}><KelolaPesertaPage /></Protected>} />
               <Route path="/pembayaran" element={<Protected allow={['admin']}><PembayaranPage /></Protected>} />
 

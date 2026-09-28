@@ -319,13 +319,33 @@ export interface SurveiRespons {
   created_at: string;
 }
 
-export const JALUR_LABELS: Record<Jalur, string> = {
-  A: 'A — Anak',
-  B1: 'B1 — Pemula',
-  B2: 'B2 — Menengah',
-  B3: 'B3 — Expert',
-  G: 'G — Generative AI for Beginners (GAFB)',
-};
+export interface JalurInfo {
+  kode: string;
+  label: string;
+  deskripsi: string | null;
+  urutan: number;
+  aktif: boolean;
+}
+
+/** Fallback statis bila tabel jalur belum termuat / migration 0011 belum jalan. */
+export const JALUR_FALLBACK: JalurInfo[] = [
+  { kode: 'A', label: 'A — Anak', deskripsi: 'Anak 8–14 th · 9 sesi · 60 mnt', urutan: 1, aktif: true },
+  { kode: 'B1', label: 'B1 — Pemula', deskripsi: 'Pemula · 7 sesi · 90 mnt', urutan: 2, aktif: true },
+  { kode: 'B2', label: 'B2 — Menengah', deskripsi: 'Menengah · 11 sesi · 120 mnt', urutan: 3, aktif: true },
+  { kode: 'B3', label: 'B3 — Expert', deskripsi: 'Expert · 11 sesi · 120–150 mnt', urutan: 4, aktif: true },
+  { kode: 'G', label: 'G — GAFB', deskripsi: 'Generative AI for Beginners · 10 sesi · 90 mnt', urutan: 5, aktif: true },
+];
+
+export const JALUR_LABELS: Record<string, string> = Object.fromEntries(
+  JALUR_FALLBACK.map((j) => [j.kode, j.label]),
+);
+
+export function jalurLabel(list: JalurInfo[] | null | undefined, kode: string | null | undefined): string {
+  if (!kode) return '—';
+  const hit = (list ?? []).find((j) => j.kode === kode);
+  if (hit) return hit.label;
+  return JALUR_LABELS[kode] ?? kode;
+}
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',

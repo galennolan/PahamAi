@@ -6,7 +6,9 @@ import {
   Clock,
   GraduationCap,
   Plus,
+  ArrowUpRight,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, EmptyState, Field, Loading, SelectInput, TextInput } from '../components/ui';
 import { useToast } from '../hooks/useToast';
@@ -265,9 +267,28 @@ export default function KelolaSesiPage() {
       </div>
 
       {batches.length === 0 ? (
-        <EmptyState title="Belum ada kelas" desc="Buat kelas baru di menu Batch/Kelas terlebih dahulu." />
+        <EmptyState
+          title="Belum ada kelas"
+          desc="Buat kelas baru — info kelas, peserta, dan sesi dibuat sekali jalan."
+          action={
+            <Link to="/kelola-batch">
+              <Button>
+                Buat Kelas <ArrowUpRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </Link>
+          }
+        />
       ) : (
         <>
+          {moduls.length === 0 && currBatchObj && (
+            <div className="rounded-[8px] border border-primary/25 bg-primary/5 p-3">
+              <p className="text-sm text-fg">
+                Belum ada modul di jalur {currBatchObj.jalur}. Buat dulu di{' '}
+                <Link to="/kelola-modul" className="text-primary-text underline">Kelola Modul</Link>{' '}
+                sebelum menambah sesi manual.
+              </p>
+            </div>
+          )}
           {/* Tab Navigation & Sub Header */}
           <div className="flex items-center justify-between border-b border-border-2 pb-2">
             <div className="flex gap-2">

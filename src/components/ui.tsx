@@ -350,7 +350,7 @@ export function SectionHeader({ title, desc, action }: { title: string; desc?: s
   );
 }
 
-export function Tabs<T extends string>({ options, value, onChange, label }: { options: Array<{ key: T; label: string }>; value: T; onChange: (k: T) => void; label: string }) {
+export function Tabs<T extends string>({ options, value, onChange, label }: { options: Array<{ key: T; label: string }>; value: T; onChange: (k: T) => void | ((prev: T) => T); label: string }) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" role="tablist" aria-label={label}>
       {options.map((o) => (

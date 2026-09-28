@@ -16,7 +16,6 @@ import {
   CheckCircle2,
   Calendar,
   Book,
-  FileText,
   DollarSign,
   Baby,
   Clipboard,
@@ -55,11 +54,10 @@ const adminGroups: NavGroup[] = [
   {
     label: 'Kelola',
     items: [
-      { to: '/kelola-sesi', label: 'Sesi', icon: <ClipboardList className="h-4 w-4" /> },
+      { to: '/kelola-kelas', label: 'Kelas', icon: <Calendar className="h-4 w-4" /> },
       { to: '/kelola-peserta', label: 'Peserta', icon: <Users className="h-4 w-4" /> },
-      { to: '/kelola-batch', label: 'Batch', icon: <Calendar className="h-4 w-4" /> },
       { to: '/kelola-modul', label: 'Modul', icon: <Book className="h-4 w-4" /> },
-      { to: '/pendaftar', label: 'Pendaftar', icon: <FileText className="h-4 w-4" /> },
+      { to: '/kelola-soal', label: 'Soal', icon: <ClipboardList className="h-4 w-4" /> },
       { to: '/pembayaran', label: 'Bayar', icon: <DollarSign className="h-4 w-4" /> },
     ],
   },

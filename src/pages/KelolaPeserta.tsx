@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Combobox } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, Tabs, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
-import { formatJakarta } from '../lib/time';
-import type { Peserta, Batch, JadwalSesi, SesiPeserta, Jalur } from '../types';
-import { JALUR_LABELS } from '../types';
+import type { Pendaftar, Peserta, Batch } from '../types';
+import { JALUR_FALLBACK, jalurLabel } from '../types';
+import { listJalurInfo } from '../services/modul';
 
 const POSISI_LABELS: Record<string, string> = {
   'baru-kenal-hp': 'Baru Kenal HP',
@@ -12,57 +12,48 @@ const POSISI_LABELS: Record<string, string> = {
   'digital-savvy': 'Digital Savvy',
 };
 
+const EMPTY_FORM = {
+  nama_lengkap: '',
+  nama_panggil: '',
+  email: '',
+  no_wa: '',
+  no_wa_ortu: '',
+  usia: '',
+  jalur: 'A',
+  kelas_penempatan: 'baru-kenal-hp',
+  batch_id: '',
+};
+
+type OrangTab = 'pendaftar' | 'peserta';
+
 export default function KelolaPesertaPage() {
   const { push: toast } = useToast();
+  const [activeTab, setActiveTab] = useState<OrangTab>('pendaftar');
   const [pesertas, setPesertas] = useState<Peserta[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [jalurOptions, setJalurOptions] = useState<Jalur[]>(['A', 'B1', 'B2', 'B3']);
+  const [pendaftars, setPendaftars] = useState<Pendaftar[]>([]);
+  const [jalurOptions, setJalurOptions] = useState<string[]>(['A', 'B1', 'B2', 'B3']);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    nama_lengkap: '',
-    nama_panggil: '',
-    email: '',
-    no_wa: '',
-    no_wa_ortu: '',
-    usia: '',
-    jalur: 'A',
-    kelas_penempatan: 'baru-kenal-hp',
-    batch_id: '',
-    user_id: '',
-  });
-
-  // assign state
-  const [assignSesi, setAssignSesi] = useState<string>('');
-  const [jadwals, setJadwals] = useState<JadwalSesi[]>([]);
-  const [assignPeserta, setAssignPeserta] = useState<string[]>([]);
-  const [assignBusy, setAssignBusy] = useState(false);
-  const [sesiTerpilih, setSesiTerpilih] = useState<JadwalSesi | null>(null);
-  const [terdaftar, setTerdaftar] = useState<SesiPeserta[]>([]);
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const load = async () => {
-    const [{ data: p, error: pe }, { data: b, error: be }, { data: j, error: je }, { data: ja, error: jae }] = await Promise.all([
-      supabase.from('peserta').select('*').order('created_at', { ascending: false }),
+    const [{ data: pa, error: pae }, { data: b, error: be }, { data: p, error: pe }] = await Promise.all([
+      supabase.from('pendaftar').select('*').order('created_at', { ascending: false }),
       supabase.from('batch').select('*').order('created_at', { ascending: false }),
-      supabase.from('jadwal_sesi').select('*, modul(*)').order('tanggal_kelas', { ascending: true }),
-      supabase.from('modul').select('jalur').order('jalur'),
+      supabase.from('peserta').select('*').order('created_at', { ascending: false }),
     ]);
-    if (!pe) setPesertas((p as Peserta[]) ?? []);
+    if (!pae) setPendaftars((pa as Pendaftar[]) ?? []);
     if (!be) setBatches((b as Batch[]) ?? []);
-    if (!je) setJadwals((j as JadwalSesi[]) ?? []);
-    if (!jae) {
-      const seen = new Set<string>();
-      const ordered: Jalur[] = [];
-      const priority = ['A', 'B1', 'B2', 'B3', 'G'];
-      for (const r of (ja as Array<{ jalur: string }>) ?? []) {
-        if (!seen.has(r.jalur)) {
-          seen.add(r.jalur);
-          const idx = priority.indexOf(r.jalur);
-          if (idx >= 0) ordered.push(r.jalur as Jalur);
-        }
-      }
-      if (ordered.length) setJalurOptions(ordered);
+    if (!pe) setPesertas((p as Peserta[]) ?? []);
+    try {
+      const jal = await listJalurInfo(false);
+      const aktif = (jal.length > 0 ? jal : JALUR_FALLBACK).filter((j) => j.aktif);
+      setJalurOptions(aktif.map((j) => j.kode));
+    } catch {
+      setJalurOptions(JALUR_FALLBACK.map((j) => j.kode));
     }
   };
 
@@ -73,39 +64,75 @@ export default function KelolaPesertaPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (!assignSesi) {
-      setSesiTerpilih(null);
-      return;
-    }
-    (async () => {
-      const { data: list } = await supabase.from('sesi_peserta').select('*').eq('sesi_id', assignSesi);
-      const registered = (list as SesiPeserta[]) ?? [];
-      setTerdaftar(registered);
-      setAssignPeserta(registered.map((r) => r.peserta_id));
-    })();
-  }, [assignSesi, jadwals]);
+  const handleApprove = async (p: Pendaftar) => {
+    setSaving(true);
+    try {
+      const { data: row, error: insErr } = await supabase.from('peserta').insert({
+        user_id: null,
+        nama_lengkap: p.nama_lengkap,
+        nama_panggil: null,
+        email: p.email || null,
+        no_wa: p.no_wa || null,
+        no_wa_ortu: null,
+        usia: p.usia,
+        jalur: p.jalur,
+        kelas_penempatan: null,
+        batch_id: null,
+      }).select('id').single();
+      if (insErr || !row) throw new Error(insErr?.message ?? 'Gagal membuat peserta');
 
-  useEffect(() => {
-    if (!assignSesi) return;
-    const found = jadwals.find((j) => j.id === assignSesi) ?? null;
-    setSesiTerpilih(found);
-  }, [assignSesi, jadwals]);
+      const { error: upErr } = await supabase
+        .from('pendaftar')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', p.id);
+      if (upErr) throw new Error(upErr.message);
+
+      toast('Pendaftar disetujui. Peserta dibuat.', 'success');
+      await load();
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectId) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('pendaftar')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', rejectId);
+      if (error) throw new Error(error.message);
+      toast('Pendaftar ditolak', 'success');
+      setRejectId(null);
+      await load();
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.nama_lengkap.trim()) {
+      toast('Nama lengkap wajib diisi', 'error');
+      return;
+    }
     setSaving(true);
     const payload = {
-      nama_lengkap: form.nama_lengkap,
-      nama_panggil: form.nama_panggil || null,
-      email: form.email || null,
-      no_wa: form.no_wa || null,
-      no_wa_ortu: form.no_wa_ortu || null,
+      user_id: null,
+      nama_lengkap: form.nama_lengkap.trim(),
+      nama_panggil: form.nama_panggil.trim() || null,
+      email: form.email.trim() || null,
+      no_wa: form.no_wa.trim() || null,
+      no_wa_ortu: form.no_wa_ortu.trim() || null,
       usia: form.usia ? parseInt(form.usia) : null,
       jalur: form.jalur,
       kelas_penempatan: form.kelas_penempatan,
       batch_id: form.batch_id || null,
-      user_id: form.user_id || null,
     };
     const { error } = await supabase.from('peserta').insert(payload);
     setSaving(false);
@@ -115,41 +142,8 @@ export default function KelolaPesertaPage() {
     }
     toast('Peserta ditambahkan', 'success');
     setShowForm(false);
-    setForm({ nama_lengkap: '', nama_panggil: '', email: '', no_wa: '', no_wa_ortu: '', usia: '', jalur: 'A', kelas_penempatan: 'baru-kenal-hp', batch_id: '', user_id: '' });
+    setForm(EMPTY_FORM);
     await load();
-  };
-
-  const handleAssign = async () => {
-    if (!sesiTerpilih) return;
-    setAssignBusy(true);
-    const existing = new Set(terdaftar.map((t) => t.peserta_id));
-    const toAdd = assignPeserta.filter((id) => !existing.has(id));
-    const toRemove = terdaftar.filter((t) => !assignPeserta.includes(t.peserta_id)).map((t) => t.id);
-
-    if (toAdd.length > 0) {
-      const { error } = await supabase.from('sesi_peserta').insert(toAdd.map((peserta_id) => ({ sesi_id: sesiTerpilih.id, peserta_id })));
-      if (error) {
-        setAssignBusy(false);
-        toast(error.message, 'error');
-        return;
-      }
-    }
-    for (const id of toRemove) {
-      await supabase.from('sesi_peserta').delete().eq('id', id);
-    }
-
-    const count = assignPeserta.length;
-    const batchId = sesiTerpilih.batch_id;
-    const batch = batches.find((b) => b.id === batchId);
-    if (batch) {
-      await supabase.from('batch').update({ terdaftar: count }).eq('id', batchId);
-    }
-
-    setAssignBusy(false);
-    toast(`${count} peserta terdaftar di sesi`, 'success');
-    await load();
-    const { data: list } = await supabase.from('sesi_peserta').select('*').eq('sesi_id', assignSesi);
-    setTerdaftar((list as SesiPeserta[]) ?? []);
   };
 
   const setBatchPeserta = async (id: string, batchId: string) => {
@@ -161,191 +155,201 @@ export default function KelolaPesertaPage() {
     }
   };
 
-  if (loading) return <Loading text="Memuat peserta..." />;
+  if (loading) return <Loading text="Memuat data..." />;
+
+  const pendingCount = pendaftars.filter((p) => p.status === 'pending').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-headline font-bold text-fg">Kelola Peserta</h1>
-          <p className="text-sm text-fg-muted">Daftarkan peserta, assign ke batch, lalu daftarkan ke tiap sesi.</p>
+          <p className="mt-0.5 text-sm text-fg-muted">
+            {pendingCount > 0 ? `${pendingCount} pendaftar menunggu persetujuan` : 'Tidak ada pendaftar menunggu'} · {pesertas.length} peserta terdaftar
+          </p>
         </div>
-        {!showForm && <Button onClick={() => setShowForm(true)}>+ Tambah Peserta</Button>}
+        {activeTab === 'peserta' && !showForm && (
+          <Button onClick={() => setShowForm(true)}>+ Tambah Peserta</Button>
+        )}
       </div>
 
-      {showForm && (
-        <Card>
-          <h2 className="mb-4 text-subhead font-semibold text-fg">Peserta Baru</h2>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Nama Lengkap">
-                <TextInput value={form.nama_lengkap} onChange={(e) => setForm({ ...form, nama_lengkap: e.target.value })} required />
-              </Field>
-              <Field label="Nama Panggil">
-                <TextInput value={form.nama_panggil} onChange={(e) => setForm({ ...form, nama_panggil: e.target.value })} />
-              </Field>
-            </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Email" hint="Untuk invite akun.">
-                  <TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                </Field>
-                <Field label="No. WhatsApp">
-                  <TextInput placeholder="0812xxxxxxx" value={form.no_wa} onChange={(e) => setForm({ ...form, no_wa: e.target.value })} />
-                </Field>
-                <Field label="No. WA Orang Tua" hint="Khusus anak / peserta usia sekolah.">
-                  <TextInput placeholder="0812xxxxxxx" value={form.no_wa_ortu} onChange={(e) => setForm({ ...form, no_wa_ortu: e.target.value })} />
-                </Field>
-              </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field label="Usia">
-                <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} />
-              </Field>
-              <Field label="Jalur">
-                <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-                  {jalurOptions.map((j) => (
-                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j] ?? j}</option>
-                  ))}
-                </SelectInput>
-              </Field>
-              <Field label="Penempatan">
-                <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
-                  {Object.entries(POSISI_LABELS).map(([k, v]) => (
-                    <option key={k} value={k} className="bg-surface">{v}</option>
-                  ))}
-                </SelectInput>
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Batch">
-                <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}>
-                  <option value="" className="bg-surface">— Belum —</option>
-                  {batches.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
-                  ))}
-                </SelectInput>
-              </Field>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Menyimpan...' : 'Simpan'}</Button>
-              <Button type="button" variant="secondary" onClick={() => setShowForm(false)} className="flex-1">Batal</Button>
-            </div>
-          </form>
-        </Card>
+      <Tabs
+        label="Pilih tampilan"
+        value={activeTab}
+        onChange={setActiveTab}
+        options={[
+          { key: 'pendaftar', label: `Pendaftar${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
+          { key: 'peserta', label: `Peserta (${pesertas.length})` },
+        ]}
+      />
+
+      {activeTab === 'pendaftar' && (
+        <div className="space-y-4">
+          {pendaftars.length === 0 ? (
+            <EmptyState title="Belum ada pendaftar" desc="Formulir pendaftaran publik akan mengisi daftar ini." />
+          ) : (
+            pendaftars.map((p) => (
+              <Card key={p.id} className="hover:shadow-subtle">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-fg">{p.nama_lengkap}</p>
+                    <p className="text-sm text-fg-subtle">{p.email ?? p.no_wa ?? '-'}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge className={
+                        p.status === 'pending' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                          : p.status === 'approved' ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                          : p.status === 'rejected' ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                          : ''
+                      }>{p.status}</Badge>
+                      <Badge className="font-mono text-primary-text">{p.jalur ?? '-'}</Badge>
+                      {p.usia != null && <Badge className="font-mono">{p.usia} th</Badge>}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {p.status === 'pending' && (
+                      <>
+                        <Button size="sm" onClick={() => handleApprove(p)} disabled={saving}>
+                          Setujui
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setRejectId(p.id)} disabled={saving}>
+                          Tolak
+                        </Button>
+                      </>
+                    )}
+                    {p.status === 'approved' && (
+                      <span className="font-mono text-xs text-green-400">sudah jadi peserta</span>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       )}
 
-      <Card>
-        <h2 className="mb-4 text-subhead font-semibold text-fg">Daftar Peserta ke Sesi</h2>
-        <Field label="Pilih Sesi" hint="Ketik untuk mencari kode, judul, atau batch." className="max-w-lg">
-          <Combobox
-            value={assignSesi}
-            onChange={setAssignSesi}
-            placeholder="Cari sesi — mis. B101, Evaluasi..."
-            searchPlaceholder="Ketik kode / judul sesi..."
-            emptyLabel="Tidak ada sesi yang cocok"
-            options={batches.flatMap((b) =>
-              jadwals
-                .filter((j) => j.batch_id === b.id)
-                .map((j) => ({
-                  value: j.id,
-                  label: j.judul_sesi,
-                  sublabel: `${j.tanggal_kelas ? formatJakarta(j.tanggal_kelas) : 'Belum dijadwalkan'}${j.jam_mulai ? ` · ${j.jam_mulai}` : ''}`,
-                  badge: j.kode_sesi_friendly,
-                  group: `${b.kode_batch}${b.nama_batch ? ` · ${b.nama_batch}` : ''}`,
-                }))
-            )}
-            allowEmpty
-            emptyText="Batal / kosongkan pilihan"
-          />
-        </Field>
+      {activeTab === 'peserta' && (
+        <div className="space-y-4">
+          {showForm && (
+            <Card>
+              <h2 className="mb-4 text-subhead font-semibold text-fg">Peserta Baru</h2>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Nama Lengkap">
+                    <TextInput value={form.nama_lengkap} onChange={(e) => setForm({ ...form, nama_lengkap: e.target.value })} required />
+                  </Field>
+                  <Field label="Nama Panggil">
+                    <TextInput value={form.nama_panggil} onChange={(e) => setForm({ ...form, nama_panggil: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Email" hint="Untuk invite akun.">
+                    <TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  </Field>
+                  <Field label="No. WhatsApp">
+                    <TextInput placeholder="0812xxxxxxx" value={form.no_wa} onChange={(e) => setForm({ ...form, no_wa: e.target.value })} />
+                  </Field>
+                  <Field label="No. WA Orang Tua" hint="Khusus anak / peserta usia sekolah.">
+                    <TextInput placeholder="0812xxxxxxx" value={form.no_wa_ortu} onChange={(e) => setForm({ ...form, no_wa_ortu: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Usia">
+                    <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} />
+                  </Field>
+                  <Field label="Jalur">
+                    <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
+                      {jalurOptions.map((j) => (
+                        <option key={j} value={j} className="bg-surface">{jalurLabel(undefined, j) ?? j}</option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                  <Field label="Penempatan">
+                    <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
+                      {Object.entries(POSISI_LABELS).map(([k, v]) => (
+                        <option key={k} value={k} className="bg-surface">{v}</option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Batch">
+                    <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}>
+                      <option value="" className="bg-surface">— Belum —</option>
+                      {batches.map((b) => (
+                        <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Menyimpan...' : 'Simpan'}</Button>
+                  <Button type="button" variant="secondary" onClick={() => setShowForm(false)} className="flex-1">Batal</Button>
+                </div>
+              </form>
+            </Card>
+          )}
 
-        {sesiTerpilih && (
-          <div className="mt-4">
-            <p className="mb-3 text-sm text-fg-muted">
-              Pilih peserta untuk sesi <span className="font-mono text-primary-text">{sesiTerpilih.kode_sesi_friendly}</span> ({sesiTerpilih.judul_sesi})
-            </p>
-            {pesertas.filter((p) => !p.batch_id || p.batch_id === sesiTerpilih.batch_id).length === 0 ? (
-              <EmptyState title="Tidak ada peserta" desc="Assign peserta ke batch sesi ini dulu." />
+          <Card>
+            <h2 className="mb-4 text-subhead font-semibold text-fg">Daftar Peserta ({pesertas.length})</h2>
+            {pesertas.length === 0 ? (
+              <EmptyState title="Belum ada peserta" desc="Setujui pendaftar atau tambahkan peserta manual." />
             ) : (
-              <div className="max-h-72 space-y-1 overflow-y-auto rounded-[4px] border border-border-2 p-3">
-                {pesertas
-                  .filter((p) => !p.batch_id || p.batch_id === sesiTerpilih.batch_id)
-                  .map((p) => (
-                    <label key={p.id} className="flex cursor-pointer items-center gap-3 rounded-[4px] p-2 hover:bg-surface">
-                      <input
-                        type="checkbox"
-                        checked={assignPeserta.includes(p.id)}
-                        onChange={(e) =>
-                          setAssignPeserta(e.target.checked
-                            ? [...assignPeserta, p.id]
-                            : assignPeserta.filter((x) => x !== p.id))
-                        }
-                        className="h-4 w-4 rounded-[3px] border-[1.5px] border-border-3 bg-bg accent-[primary]"
-                      />
-                      <span className="text-sm text-fg">
-                        {p.nama_panggil ?? p.nama_lengkap}
-                        <span className="ml-2 font-mono text-xs text-fg-subtle">{p.jalur}</span>
-                      </span>
-                    </label>
-                  ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border-2">
+                      <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Nama</th>
+                      <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Jalur</th>
+                      <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Kontak</th>
+                      <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Batch</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pesertas.map((p) => (
+                      <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface">
+                        <td className="px-3 py-2 text-fg">
+                          <div className="flex flex-col">
+                            <span>{p.nama_lengkap}</span>
+                            <span className="text-[10px] text-fg-subtle">
+                              {p.nama_panggil && `"${p.nama_panggil}" · `}
+                              Ortu: {p.no_wa_ortu ?? '—'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-primary-text">{p.jalur ?? '-'}</td>
+                        <td className="px-3 py-2 text-xs text-fg-muted">{p.no_wa ?? '-'}</td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={p.batch_id ?? ''}
+                            onChange={(e) => setBatchPeserta(p.id, e.target.value)}
+                            className="rounded-[4px] border border-border-2 bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-primary"
+                          >
+                            <option value="" className="bg-surface">— Belum —</option>
+                            {batches.map((b) => (
+                              <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-            <div className="mt-3">
-              <Button onClick={handleAssign} disabled={assignBusy}>
-                {assignBusy ? 'Menyimpan...' : `Simpan (${assignPeserta.length} peserta)`}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
+          </Card>
+        </div>
+      )}
 
-      <Card>
-        <h2 className="mb-4 text-subhead font-semibold text-fg">Daftar Peserta ({pesertas.length})</h2>
-        {pesertas.length === 0 ? (
-          <EmptyState title="Belum ada peserta" desc="Tambahkan peserta pertama." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border-2">
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Nama</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Jalur</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Kontak</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Batch</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pesertas.map((p) => (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface">
-                      <td className="px-3 py-2 text-fg">
-                        <div className="flex flex-col">
-                          <span>{p.nama_lengkap}</span>
-                          <span className="text-[10px] text-fg-subtle">
-                            {p.nama_panggil && `"${p.nama_panggil}" · `}
-                            Ortu: {p.no_wa_ortu ?? '—'}
-                          </span>
-                        </div>
-                      </td>
-                    <td className="px-3 py-2 font-mono text-xs text-primary-text">{p.jalur ?? '-'}</td>
-                    <td className="px-3 py-2 text-xs text-fg-muted">{p.no_wa ?? '-'}</td>
-                    <td className="px-3 py-2">
-                      <select
-                        value={p.batch_id ?? ''}
-                        onChange={(e) => setBatchPeserta(p.id, e.target.value)}
-                        className="rounded-[4px] border border-border-2 bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-primary"
-                      >
-                        <option value="" className="bg-surface">— Belum —</option>
-                        {batches.map((b) => (
-<option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      {rejectId && (
+        <ConfirmDialog
+          title="Tolak Pendaftar?"
+          message="Tindakan ini tidak bisa dibatalkan."
+          onConfirm={handleReject}
+          onCancel={() => setRejectId(null)}
+          busy={saving}
+        />
+      )}
     </div>
   );
 }
+

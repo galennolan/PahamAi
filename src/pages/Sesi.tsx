@@ -9,7 +9,9 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta, todayJakartaISO } from '../lib/time';
 import { renderMarkdown } from '../lib/markdown';
-import type { Modul, JadwalSesi, SesiPeserta, Kehadiran } from '../types';
+import type { Modul, JadwalSesi, SesiPeserta, Kehadiran, SoalButir } from '../types';
+
+type TestPhase = 'pre' | 'post' | null;
 
 export default function SesiPage() {
   const { kode } = useParams<{ kode: string }>();
@@ -29,6 +31,14 @@ export default function SesiPage() {
   const [wantChange, setWantChange] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lockedMsg, setLockedMsg] = useState<string | null>(null);
+
+  // Pre-test / Post-test
+  const [testPhase, setTestPhase] = useState<TestPhase>(null);
+  const [soalList, setSoalList] = useState<SoalButir[]>([]);
+  const [jawaban, setJawaban] = useState<Record<number, string>>({});
+  const [testResult, setTestResult] = useState<{ skor: number; benar: number; total: number } | null>(null);
+  const [preDone, setPreDone] = useState(false);
+  const [postDone, setPostDone] = useState(false);
 
   // Portfolio form
   const [showPortForm, setShowPortForm] = useState(false);
@@ -60,15 +70,19 @@ export default function SesiPage() {
           if (sp) {
             setSesiPeserta(sp as SesiPeserta);
             setWantChange(false);
-            const [{ data: myAbs }, c] = await Promise.all([
+            const [{ data: myAbs }, c, { data: preAtt }, { data: postAtt }] = await Promise.all([
               supabase.from('absensi').select('status_kehadiran').eq('sesi_peserta_id', sp.id).maybeSingle(),
               getCatatanBySesi(sp.id),
+              supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', profil.id).eq('kode_paket', `PRE-${kode}`).limit(1),
+              supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', profil.id).eq('kode_paket', `POST-${kode}`).limit(1),
             ]);
             setMyStatus((myAbs as { status_kehadiran: Kehadiran } | null)?.status_kehadiran ?? null);
             if (c) {
               setCatatan(c.catatan_text ?? '');
               setTldrawUrl(c.tldraw_url ?? '');
             }
+            setPreDone((preAtt?.length ?? 0) > 0);
+            setPostDone((postAtt?.length ?? 0) > 0);
 
             const modulId = (j as JadwalSesi).modul_id;
             if (modulId) {
@@ -150,6 +164,64 @@ export default function SesiPage() {
     setPortForm({ item_url: '', item_type: 'image', deskripsi: '' });
   };
 
+  const startTest = async (phase: 'pre' | 'post') => {
+    const paketKode = phase === 'pre' ? `PRE-${kode}` : `POST-${kode}`;
+    const { data: paket } = await supabase.from('soal_paket').select('kode_paket').eq('kode_paket', paketKode).maybeSingle();
+    if (!paket) {
+      toast('Soal tidak ditemukan untuk modul ini', 'error');
+      return;
+    }
+    const { data: soal } = await supabase.from('soal_butir_view').select('*').eq('kode_paket', paketKode).order('no_soal');
+    if (!soal || soal.length === 0) {
+      toast('Soal belum tersedia', 'error');
+      return;
+    }
+    setSoalList(soal as SoalButir[]);
+    setJawaban({});
+    setTestResult(null);
+    setTestPhase(phase);
+  };
+
+  const submitTest = async () => {
+    if (!user || !testPhase || soalList.length === 0) return;
+    const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
+    if (!profil) return;
+
+    const paketKode = testPhase === 'pre' ? `PRE-${kode}` : `POST-${kode}`;
+    const { data: full } = await supabase.from('soal_butir').select('*').eq('kode_paket', paketKode);
+    const kunciMap = new Map((full as SoalButir[] ?? []).map(s => [s.no_soal, s.kunci]));
+
+    let benar = 0;
+    let totalSkor = 0;
+    const totalBobot = soalList.reduce((a, s) => a + s.bobot_skor, 0);
+
+    for (const s of soalList) {
+      const jwb = jawaban[s.no_soal];
+      const kunci = kunciMap.get(s.no_soal);
+      if (jwb === kunci) benar++;
+      if (jwb) totalSkor += s.bobot_skor;
+    }
+
+    const skor = totalBobot > 0 ? Math.round((totalSkor / totalBobot) * 100) : 0;
+    setTestResult({ skor, benar, total: soalList.length });
+
+    const rows = soalList.map(s => ({
+      id_peserta_fk: profil.id,
+      kode_paket: paketKode,
+      no_soal: s.no_soal,
+      attempt_no: 1,
+      jawaban: jawaban[s.no_soal] ?? null,
+      benar: jawaban[s.no_soal] === kunciMap.get(s.no_soal),
+      skor: s.bobot_skor,
+    }));
+    await supabase.from('quiz_attempt').upsert(rows, { onConflict: 'id_peserta_fk,kode_paket,no_soal,attempt_no' });
+
+    if (testPhase === 'pre') setPreDone(true);
+    else setPostDone(true);
+
+    toast(`Skor: ${skor}/100`, skor >= 70 ? 'success' : 'error');
+  };
+
     const isPeserta = role === 'peserta';
     const isStaff = role === 'admin' || role === 'instruktur';
     const materiPeserta = modul?.materi_peserta_md?.trim() || modul?.content_md;
@@ -204,7 +276,71 @@ export default function SesiPage() {
         </Card>
       )}
 
-      {isPeserta && sesiPeserta && (
+      {isPeserta && sesiPeserta && !testPhase && (
+        <Card className="border-primary/20 bg-primary/5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 className="text-subhead font-semibold text-fg">Pre-Test</h2>
+              <p className="text-sm text-fg-muted">Jawab 5 pertanyaan sebelum memulai materi</p>
+            </div>
+            <Button onClick={() => startTest('pre')} disabled={preDone} className="shrink-0">
+              {preDone ? 'Pre-Test Selesai' : 'Mulai Pre-Test'}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {isPeserta && sesiPeserta && testPhase === 'pre' && (
+        <Card>
+          <SectionHeader title="Pre-Test" desc={`${soalList.length} soal · Pilih jawaban yang benar`} />
+          <div className="mt-4 space-y-4">
+            {soalList.map((s) => (
+              <div key={s.id} className="rounded-[8px] border border-border-2 p-4">
+                <p className="font-medium text-fg">
+                  <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(['A', 'B', 'C', 'D'] as const).map((pil) => {
+                    const val = s[`pilihan_${pil.toLowerCase()}` as 'pilihan_a'] as string | null;
+                    if (!val) return null;
+                    return (
+                      <label key={pil} className="flex items-start gap-3 cursor-pointer p-2 rounded-[4px] hover:bg-surface transition">
+                        <input
+                          type="radio"
+                          name={`soal-${s.no_soal}`}
+                          value={pil}
+                          checked={jawaban[s.no_soal] === pil}
+                          onChange={() => setJawaban({ ...jawaban, [s.no_soal]: pil })}
+                          className="mt-1 accent-[primary]"
+                        />
+                        <span className="text-body text-fg"><span className="font-mono text-fg-muted mr-2">{pil}.</span>{val}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {testResult && testPhase === 'pre' && (
+            <div className="mt-4 rounded-[8px] border border-border-2 p-4 text-center">
+              <p className="text-2xl font-bold text-primary-text">{testResult.skor}/100</p>
+              <p className="text-sm text-fg-muted">{testResult.benar} benar dari {testResult.total} soal</p>
+            </div>
+          )}
+          <div className="mt-4 flex gap-2">
+            <Button onClick={submitTest} disabled={saving || Object.keys(jawaban).length < soalList.length} className="flex-1">
+              {saving ? 'Memproses...' : 'Submit Pre-Test'}
+            </Button>
+            {testResult && (
+              <Button variant="secondary" onClick={() => setTestPhase(null)} className="flex-1">
+                Lanjut ke Materi
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {isPeserta && sesiPeserta && !testPhase && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 space-y-5">
             {modul.slide_url && (
@@ -219,6 +355,18 @@ export default function SesiPage() {
                 <div className="prose-md mt-4" dangerouslySetInnerHTML={{ __html: renderMarkdown(materiPeserta) }} />
               </Card>
             )}
+
+            <Card className="border-accent/20 bg-accent/5">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-subhead font-semibold text-fg">Post-Test</h2>
+                  <p className="text-sm text-fg-muted">Jawab 5 pertanyaan setelah selesai membaca materi</p>
+                </div>
+                <Button onClick={() => startTest('post')} disabled={postDone} className="shrink-0">
+                  {postDone ? 'Post-Test Selesai' : 'Mulai Post-Test'}
+                </Button>
+              </div>
+            </Card>
           </div>
 
           <div className="space-y-5">
@@ -305,6 +453,56 @@ export default function SesiPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {isPeserta && sesiPeserta && testPhase === 'post' && (
+        <Card>
+          <SectionHeader title="Post-Test" desc={`${soalList.length} soal · Pilih jawaban yang benar`} />
+          <div className="mt-4 space-y-4">
+            {soalList.map((s) => (
+              <div key={s.id} className="rounded-[8px] border border-border-2 p-4">
+                <p className="font-medium text-fg">
+                  <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(['A', 'B', 'C', 'D'] as const).map((pil) => {
+                    const val = s[`pilihan_${pil.toLowerCase()}` as 'pilihan_a'] as string | null;
+                    if (!val) return null;
+                    return (
+                      <label key={pil} className="flex items-start gap-3 cursor-pointer p-2 rounded-[4px] hover:bg-surface transition">
+                        <input
+                          type="radio"
+                          name={`soal-${s.no_soal}`}
+                          value={pil}
+                          checked={jawaban[s.no_soal] === pil}
+                          onChange={() => setJawaban({ ...jawaban, [s.no_soal]: pil })}
+                          className="mt-1 accent-[primary]"
+                        />
+                        <span className="text-body text-fg"><span className="font-mono text-fg-muted mr-2">{pil}.</span>{val}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {testResult && testPhase === 'post' && (
+            <div className="mt-4 rounded-[8px] border border-border-2 p-4 text-center">
+              <p className="text-2xl font-bold text-primary-text">{testResult.skor}/100</p>
+              <p className="text-sm text-fg-muted">{testResult.benar} benar dari {testResult.total} soal</p>
+            </div>
+          )}
+          <div className="mt-4 flex gap-2">
+            <Button onClick={submitTest} disabled={saving || Object.keys(jawaban).length < soalList.length} className="flex-1">
+              {saving ? 'Memproses...' : 'Submit Post-Test'}
+            </Button>
+            {testResult && (
+              <Button variant="secondary" onClick={() => setTestPhase(null)} className="flex-1">
+                Selesai
+              </Button>
+            )}
+          </div>
+        </Card>
       )}
 
       {isStaff && materiStaff && (

@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabaseClient';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Field, Loading, SelectInput, TextInput } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta } from '../lib/time';
-import { listJalurs } from '../services/modul';
-import type { Batch, Jalur, Modul, Peserta } from '../types';
-import { JALUR_LABELS } from '../types';
+import { listJalurInfo } from '../services/modul';
+import type { Batch, Jalur, JalurInfo, Modul, Peserta } from '../types';
+import { JALUR_FALLBACK, jalurLabel } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
   terbuka: 'Terbuka',
@@ -69,7 +69,7 @@ export default function KelolaBatchPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Batch | null>(null);
-  const [jalurOptions, setJalurOptions] = useState<Jalur[]>(['A', 'B1', 'B2', 'B3']);
+  const [jalurOptions, setJalurOptions] = useState<JalurInfo[]>(JALUR_FALLBACK);
 
   // wizard state
   const [wizStep, setWizStep] = useState(1);
@@ -94,8 +94,9 @@ export default function KelolaBatchPage() {
   const load = async () => {
     const { data, error } = await supabase.from('batch').select('*').order('created_at', { ascending: false });
     if (!error) setBatches((data as Batch[]) ?? []);
-    const j = await listJalurs();
-    if (j.length > 0) setJalurOptions(j);
+    const list = await listJalurInfo(false);
+    const pool = list.length > 0 ? list : JALUR_FALLBACK;
+    setJalurOptions(pool.filter((j) => j.aktif).length > 0 ? pool.filter((j) => j.aktif) : pool);
   };
 
   useEffect(() => {
@@ -402,7 +403,7 @@ export default function KelolaBatchPage() {
                     }}
                   >
                     {jalurOptions.map((j) => (
-                      <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j] ?? j}</option>
+                      <option key={j.kode} value={j.kode} className="bg-surface">{j.label}</option>
                     ))}
                   </SelectInput>
                 </Field>
@@ -587,7 +588,7 @@ export default function KelolaBatchPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-mono text-sm font-semibold text-primary-text">{b.kode_batch}</p>
-                    <p className="text-sm text-fg">{b.nama_batch ?? JALUR_LABELS[b.jalur as Jalur] ?? b.jalur}</p>
+                    <p className="text-sm text-fg">{b.nama_batch ?? jalurLabel(jalurOptions, b.jalur)}</p>
                     <p className="mt-1 text-xs text-fg-subtle">
                       {b.tanggal_mulai ? formatJakarta(b.tanggal_mulai) : '-'} → {b.tanggal_akhir ? formatJakarta(b.tanggal_akhir) : '-'}
                     </p>
