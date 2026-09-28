@@ -61,6 +61,16 @@ export default function PendaftaranPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const { data: existing } = await supabase
+        .from('pendaftar')
+        .select('id')
+        .eq('email', form.email)
+        .maybeSingle();
+      if (existing) {
+        toast('Email sudah terdaftar. Hubungi admin untuk info lebih lanjut.', 'error');
+        setSaving(false);
+        return;
+      }
       const { error } = await supabase.from('pendaftar').insert(form);
       if (error) throw error;
       toast('Pendaftaran berhasil! Admin akan menghubungi Anda.', 'success');

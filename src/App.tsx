@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './hooks/useToast';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Loading } from './components/ui';
 import { LoginPage, RegisterPage } from './pages/Auth';
 import { supabaseEnvMissing } from './lib/supabaseClient';
@@ -51,8 +52,9 @@ function App() {
       <ToastProvider>
         <EnvMissingBanner />
         <BrowserRouter>
-          <Suspense fallback={<Loading text="Memuat halaman..." />}>
-            <Routes>
+          <ErrorBoundary>
+            <Suspense fallback={<Loading text="Memuat halaman..." />}>
+              <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/pendaftaran" element={<PendaftaranPage />} />
               <Route path="/masuk" element={<LoginPage />} />
@@ -88,8 +90,9 @@ function App() {
               <Route path="/survei" element={<Protected allow={['peserta', 'parent']}><LegacyRedirect path="/survei" /></Protected>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </BrowserRouter>
       </ToastProvider>
     </AuthProvider>

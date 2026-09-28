@@ -71,18 +71,37 @@ export default function KelolaBatchPage() {
   const [deleting, setDeleting] = useState<Batch | null>(null);
   const [jalurOptions, setJalurOptions] = useState<JalurInfo[]>(JALUR_FALLBACK);
 
-  // wizard state
-  const [wizStep, setWizStep] = useState(1);
-  const [form, setForm] = useState({
-    kode_batch: suggestKode('A'),
-    jalur: 'A' as Jalur,
-    nama_batch: '',
-    tanggal_mulai: '',
-    jam_mulai: '14:00',
-    interval_hari: 7,
-    lokasi: '',
-    link_rapat: '',
-    kapasitas_maks: 12,
+  // wizard state (persisted to localStorage)
+  const WIZARD_KEY = 'pahamai-batch-wizard';
+  const [wizStep, setWizStep] = useState(() => {
+    try {
+      const saved = localStorage.getItem(WIZARD_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.wizStep >= 1 && parsed.wizStep <= 3) return parsed.wizStep;
+      }
+    } catch { /* ignore */ }
+    return 1;
+  });
+  const [form, setForm] = useState(() => {
+    try {
+      const saved = localStorage.getItem(WIZARD_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.form) return { ...parsed.form, jalur: parsed.form.jalur ?? 'A' };
+      }
+    } catch { /* ignore */ }
+    return {
+      kode_batch: suggestKode('A'),
+      jalur: 'A' as Jalur,
+      nama_batch: '',
+      tanggal_mulai: '',
+      jam_mulai: '14:00',
+      interval_hari: 7,
+      lokasi: '',
+      link_rapat: '',
+      kapasitas_maks: 12,
+    };
   });
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [modulsLoading, setModulsLoading] = useState(false);
@@ -90,6 +109,12 @@ export default function KelolaBatchPage() {
   const [pesertasAll, setPesertasAll] = useState<Peserta[]>([]);
   const [selectedPeserta, setSelectedPeserta] = useState<string[]>([]);
   const [pesertaSearch, setPesertaSearch] = useState('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(WIZARD_KEY, JSON.stringify({ wizStep, form }));
+    } catch { /* ignore */ }
+  }, [wizStep, form]);
 
   const load = async () => {
     const { data, error } = await supabase.from('batch').select('*').order('created_at', { ascending: false });
@@ -203,7 +228,7 @@ export default function KelolaBatchPage() {
     setSesiDraft([]);
     setSelectedPeserta([]);
     setPesertaSearch('');
-    setForm((f) => ({ ...f, kode_batch: f.kode_batch || suggestKode(f.jalur) }));
+    setForm((f: typeof form) => ({ ...f, kode_batch: f.kode_batch || suggestKode(f.jalur) }));
     setShowForm(true);
   };
 
@@ -216,7 +241,7 @@ export default function KelolaBatchPage() {
       toast(`Peserta melebihi kapasitas (${form.kapasitas_maks})`, 'error');
       return;
     }
-    setWizStep((s) => Math.min(3, s + 1));
+    setWizStep((s: number) => Math.min(3, s + 1));
   };
 
   const handleWizardSubmit = async () => {
@@ -291,6 +316,7 @@ export default function KelolaBatchPage() {
       setWizStep(1);
       setSesiDraft([]);
       setSelectedPeserta([]);
+      try { localStorage.removeItem(WIZARD_KEY); } catch { /* ignore */ }
       await load();
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Gagal membuat kelas', 'error');
@@ -554,7 +580,7 @@ export default function KelolaBatchPage() {
           {/* nav */}
           <div className="mt-6 flex gap-2">
             {wizStep > 1 ? (
-              <Button type="button" variant="secondary" onClick={() => setWizStep((s) => s - 1)} className="flex-1">
+              <Button type="button" variant="secondary" onClick={() => setWizStep((s: number) => s - 1)} className="flex-1">
                 <ArrowLeft className="mr-2 h-4 w-4" aria-hidden /> Kembali
               </Button>
             ) : (

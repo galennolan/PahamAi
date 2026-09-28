@@ -15,9 +15,15 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | undefined>(undefined);
 
-function roleFromUser(u: User | null): UserRole | null {
-  const r = (u?.user_metadata as Record<string, unknown> | undefined)?.role;
-  if (r === 'admin' || r === 'instruktur' || r === 'peserta' || r === 'parent' || r === 'marketing') return r;
+async function fetchRole(userId: string): Promise<UserRole | null> {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const r = (data as { role: string }).role;
+  if (r === 'admin' || r === 'instruktur' || r === 'peserta' || r === 'parent' || r === 'marketing') return r as UserRole;
   return null;
 }
 
@@ -28,23 +34,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setRole(roleFromUser(data.session?.user ?? null));
+      if (data.session?.user) {
+        setRole(await fetchRole(data.session.user.id));
+      } else {
+        setRole(null);
+      }
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, sess) => {
       setSession(sess);
       setUser(sess?.user ?? null);
-      setRole(roleFromUser(sess?.user ?? null));
+      if (sess?.user) {
+        setRole(await fetchRole(sess.user.id));
+      } else {
+        setRole(null);
+      }
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    if (!email || !password) return { error: 'Email dan password wajib diisi' };
+    if (password.length < 8) return { error: 'Password minimal 8 karakter' };
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { role: 'peserta' } },
+    });
     return { error: error ? error.message : null };
   };
 
