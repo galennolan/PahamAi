@@ -27,6 +27,7 @@ export interface Peserta {
   nik: string | null;
   no_wa: string | null;
   email: string | null;
+  email_ortu?: string | null;
   alamat: string | null;
   pekerjaan_status: string | null;
   byod: boolean;
