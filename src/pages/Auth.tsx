@@ -18,6 +18,26 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
   );
 }
 
+function mapAuthError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes('invalid login credentials')) {
+    return 'Email atau password salah. Periksa kembali email Anda, atau hubungi admin jika lupa password.';
+  }
+  if (m.includes('email not confirmed')) {
+    return 'Email belum diverifikasi. Cek inbox Anda atau hubungi admin.';
+  }
+  if (m.includes('too many requests') || m.includes('rate limit')) {
+    return 'Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.';
+  }
+  if (m.includes('user not found')) {
+    return 'Email tidak terdaftar. Pastikan email benar atau daftar akun baru.';
+  }
+  if (m.includes('database error')) {
+    return 'Server auth sedang bermasalah. Coba lagi beberapa saat, atau hubungi admin.';
+  }
+  return msg;
+}
+
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,9 +54,16 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await signIn(email, password);
-    if (error) setError(error);
-    else navigate('/app');
+    try {
+      const { error } = await signIn(email.trim(), password);
+      if (error) {
+        setError(mapAuthError(error));
+      } else {
+        navigate('/app');
+      }
+    } catch {
+      setError('Terjadi kesalahan jaringan. Periksa koneksi lalu coba lagi.');
+    }
     setLoading(false);
   };
 
