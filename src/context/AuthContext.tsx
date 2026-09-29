@@ -16,14 +16,22 @@ interface AuthValue {
 const AuthContext = createContext<AuthValue | undefined>(undefined);
 
 async function fetchRole(userId: string): Promise<UserRole | null> {
+  // Coba ambil dari tabel user_roles
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
     .maybeSingle();
-  if (error || !data) return null;
-  const r = (data as { role: string }).role;
-  if (r === 'admin' || r === 'instruktur' || r === 'peserta' || r === 'parent' || r === 'marketing') return r as UserRole;
+  if (!error && data) {
+    const r = (data as { role: string }).role;
+    if (r === 'admin' || r === 'instruktur' || r === 'peserta' || r === 'parent' || r === 'marketing') return r as UserRole;
+  }
+  // Fallback ke JWT metadata (raw_user_meta_data)
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    const metaRole = auth.user?.user_metadata?.role;
+    if (metaRole === 'admin' || metaRole === 'instruktur' || metaRole === 'peserta' || metaRole === 'parent' || metaRole === 'marketing') return metaRole as UserRole;
+  } catch { /* ignore */ }
   return null;
 }
 

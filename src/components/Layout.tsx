@@ -290,7 +290,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <nav className="tab-bar md:hidden" aria-label="Navigasi bawah">
         {isAdmin ? (
           <>
-            {adminGroups[0].items.slice(0, 3).map((link) => (
+            {adminGroups[0].items.slice(0, 4).map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
