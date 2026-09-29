@@ -5,8 +5,11 @@
 ALTER TABLE public.peserta
   ADD COLUMN IF NOT EXISTS email_ortu text;
 
--- 2. Buat fungsi RPC admin_create_peserta
-CREATE OR REPLACE FUNCTION public.admin_create_peserta(
+-- 2. Drop fungsi lama agar recreate bersih
+DROP FUNCTION IF EXISTS public.admin_create_peserta(text, text, text, text, text, text, text, int, uuid, text);
+
+-- 3. Buat fungsi RPC admin_create_peserta
+CREATE FUNCTION public.admin_create_peserta(
   p_email text,
   p_password text,
   p_nama text,
@@ -21,7 +24,8 @@ CREATE OR REPLACE FUNCTION public.admin_create_peserta(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+SET search_path = public, auth, pg_temp
+AS $func$
 DECLARE
   v_user_id uuid;
   v_peserta_id uuid;
@@ -30,14 +34,15 @@ BEGIN
     RAISE EXCEPTION 'Hanya admin yang boleh membuat peserta';
   END IF;
 
-  -- Hash password
+  v_user_id := gen_random_uuid();
+
   INSERT INTO auth.users (
     instance_id, id, aud, role, email, encrypted_password,
     email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-    created_at, updated_at
+    created_at, updated_at, confirmation_sent_at, recovery_sent_at
   ) VALUES (
     '00000000-0000-0000-0000-000000000000',
-    gen_random_uuid(),
+    v_user_id,
     'authenticated',
     'authenticated',
     p_email,
@@ -45,33 +50,19 @@ BEGIN
     now(),
     '{"provider":"email","providers":["email"]}',
     jsonb_build_object('role', 'peserta', 'nama_lengkap', p_nama),
-    now(), now()
-  )
-  RETURNING id INTO v_user_id;
+    now(), now(), now(), now()
+  );
 
-  -- Identity row
   INSERT INTO auth.identities (
-    id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+    provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
   ) VALUES (
-    gen_random_uuid(),
-    v_user_id,
     v_user_id::text,
+    v_user_id,
     jsonb_build_object('sub', v_user_id, 'email', p_email),
     'email',
     now(), now(), now()
   );
 
-  -- Session (optional, not needed for login but required by some GoTrue versions)
-  INSERT INTO auth.instances (id, uuid, raw_base_config, created_at, updated_at)
-  VALUES ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000', '{}', now(), now())
-  ON CONFLICT DO NOTHING;
-
-  -- Insert identity for provider
-  INSERT INTO auth.instances (id, uuid, raw_base_config, created_at, updated_at)
-  VALUES ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000', '{}', now(), now())
-  ON CONFLICT DO NOTHING;
-
-  -- Insert into peserta
   INSERT INTO public.peserta (
     user_id, nama_lengkap, email, jalur, no_wa, no_wa_ortu,
     email_ortu, usia, batch_id, kelas_penempatan,
@@ -83,15 +74,14 @@ BEGIN
   )
   RETURNING id INTO v_peserta_id;
 
-  -- Insert role
   INSERT INTO public.user_roles (user_id, role)
   VALUES (v_user_id, 'peserta')
   ON CONFLICT (user_id, role) DO NOTHING;
 
   RETURN jsonb_build_object('user_id', v_user_id, 'peserta_id', v_peserta_id);
 END;
-$$;
+$func$;
 
--- 3. RLS: hanya admin bisa panggil
-REVOKE ALL ON FUNCTION public.admin_create_peserta(text, text, text, text, text, text, text, int, uuid, text) FROM authenticated;
+-- 4. Izin panggil: hanya authenticated (fungsi sendiri menolak non-admin)
+REVOKE ALL ON FUNCTION public.admin_create_peserta(text, text, text, text, text, text, text, int, uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_create_peserta(text, text, text, text, text, text, text, int, uuid, text) TO authenticated;
