@@ -1,6 +1,9 @@
 -- Migration 0013: admin_create_peserta RPC & email_ortu
 -- RPC untuk admin membuat akun peserta dari frontend tanpa service role key
 
+-- 0. Aktifkan pgcrypto untuk crypt() / gen_salt()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. Tambah kolom email_ortu
 ALTER TABLE public.peserta
   ADD COLUMN IF NOT EXISTS email_ortu text;
