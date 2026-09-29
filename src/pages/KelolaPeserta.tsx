@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, ConfirmDialog } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import type { Peserta, Batch } from '../types';
 import { JALUR_FALLBACK, jalurLabel } from '../types';
