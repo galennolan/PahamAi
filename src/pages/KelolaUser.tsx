@@ -129,6 +129,9 @@ export default function KelolaUserPage() {
       if (authErr || !authData.user) throw new Error(authErr?.message ?? 'Gagal buat auth user');
       const userId = authData.user.id;
 
+      // Insert ke auth.identities untuk memenuhi NOT NULL provider_id
+      await supabase.rpc('exec_sql', { sql: `insert into auth.identities (id, user_id, provider_id, identity_data) values (gen_random_uuid(), '${userId}', 'email', jsonb_build_object('sub', '${userId}'))` }).then(() => { /* ignore */ });
+
       if (form.role === 'peserta') {
         const { error } = await supabase.from('peserta').insert({
           user_id: userId,
