@@ -13,7 +13,7 @@ import LegacyRedirect from './components/LegacyRedirect';
 function EnvMissingBanner() {
   if (!supabaseEnvMissing) return null;
   return (
-    <div className="bg-destructive px-4 py-2 text-center text-sm font-medium text-[bg]">
+    <div className="bg-destructive px-4 py-2 text-center text-sm font-medium text-[rgb(var(--on-primary))]">
       VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY belum diset. Salin .env.example menjadi .env lalu isi nilainya.
     </div>
   );

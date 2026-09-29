@@ -297,7 +297,7 @@ export default function KelolaSesiPage() {
                 onClick={() => setActiveTab('progres')}
                 className={`flex items-center gap-2 rounded-[8px] px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'progres'
-                    ? 'bg-primary text-[bg]'
+                    ? 'bg-primary text-[rgb(var(--on-primary))]'
                     : 'text-fg-muted hover:bg-surface hover:text-fg'
                 }`}
               >
@@ -314,7 +314,7 @@ export default function KelolaSesiPage() {
                 onClick={() => setActiveTab('jadwal')}
                 className={`flex items-center gap-2 rounded-[8px] px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'jadwal'
-                    ? 'bg-primary text-[bg]'
+                    ? 'bg-primary text-[rgb(var(--on-primary))]'
                     : 'text-fg-muted hover:bg-surface hover:text-fg'
                 }`}
               >

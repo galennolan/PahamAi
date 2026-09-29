@@ -374,7 +374,7 @@ export default function KelolaBatchPage() {
                   onClick={() => setWizStep(s.n)}
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition ${
                     wizStep === s.n
-                      ? 'border-primary bg-primary text-[bg]'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))]'
                       : wizStep > s.n
                         ? 'border-[success] bg-success/15 text-success'
                         : 'border-border-2 bg-bg text-fg-subtle'

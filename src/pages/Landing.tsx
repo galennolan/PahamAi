@@ -65,7 +65,7 @@ export default function LandingPage() {
             dengan metode project-based, mentor lokal, & sertifikat resmi.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/pendaftaran" className="w-full sm:w-auto min-h-[56px] rounded-[8px] bg-primary px-8 py-3 text-base font-bold text-[bg] transition hover:bg-primary-hover">
+            <Link to="/pendaftaran" className="w-full sm:w-auto min-h-[56px] rounded-[8px] bg-primary px-8 py-3 text-base font-bold text-[rgb(var(--on-primary))] transition hover:bg-primary-hover">
               Daftar Sekarang
               <ArrowRight className="inline h-4 w-4 ml-2" />
             </Link>
@@ -151,7 +151,7 @@ export default function LandingPage() {
                 </ul>
                 <Link
                   to="/pendaftaran"
-                  className="mt-6 block min-h-[48px] rounded-[8px] bg-primary px-4 py-2.5 text-center text-sm font-bold text-[bg] transition hover:bg-primary-hover"
+                  className="mt-6 block min-h-[48px] rounded-[8px] bg-primary px-4 py-2.5 text-center text-sm font-bold text-[rgb(var(--on-primary))] transition hover:bg-primary-hover"
                 >
                   Pilih Jalur Ini
                 </Link>
@@ -188,7 +188,7 @@ export default function LandingPage() {
           <h2 className="text-3xl font-bold text-fg">Siap Memulai?</h2>
           <p className="mt-3 text-fg-muted">Batch berikutnya Oktober 2026. Kuota terbatas, daftar sekarang.</p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/pendaftaran" className="w-full sm:w-auto min-h-[56px] rounded-[8px] bg-primary px-8 py-3 text-base font-bold text-[bg] transition hover:bg-primary-hover">
+            <Link to="/pendaftaran" className="w-full sm:w-auto min-h-[56px] rounded-[8px] bg-primary px-8 py-3 text-base font-bold text-[rgb(var(--on-primary))] transition hover:bg-primary-hover">
               Mulai Pendaftaran
               <ArrowRight className="inline h-4 w-4 ml-2" />
             </Link>

@@ -178,7 +178,7 @@ export default function BelajarPage() {
                     <Link to={`/modul/${m.kode}`} className="block">
                       <Card className={`transition active:scale-[0.99] hover:border-border-3 ${isDone ? '' : 'border-primary/25'}`}>
                         <div className="flex items-start gap-3">
-                          <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold font-mono ${isDone ? 'border-primary bg-primary text-[bg]' : 'border-primary bg-transparent text-primary-text'}`}>
+                          <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold font-mono ${isDone ? 'border-primary bg-primary text-[rgb(var(--on-primary))]' : 'border-primary bg-transparent text-primary-text'}`}>
                             {isDone ? <Check className="h-4 w-4" /> : String(i + 1).padStart(2, '0')}
                           </span>
                           <div className="min-w-0 flex-1">

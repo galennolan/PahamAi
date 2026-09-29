@@ -155,7 +155,7 @@ export default function BerandaPage() {
           desc="Akun Anda belum memiliki profil peserta. Hubungi Admin, atau daftarkan diri Anda lewat form pre-registrasi."
           action={
             <div className="flex gap-2 justify-center">
-              <Link to="/pendaftaran" className="inline-block min-h-[48px] rounded-[8px] bg-primary px-5 py-2.5 text-sm font-bold text-[bg]">
+              <Link to="/pendaftaran" className="inline-block min-h-[48px] rounded-[8px] bg-primary px-5 py-2.5 text-sm font-bold text-[rgb(var(--on-primary))]">
                 Daftar Sekarang
               </Link>
               <Link to="/masuk" className="inline-block min-h-[48px] rounded-[8px] border border-border-2 bg-surface px-5 py-2.5 text-sm font-medium text-fg">
@@ -207,7 +207,7 @@ export default function BerandaPage() {
           {nextSesi.lokasi && <p className="mt-0.5 text-xs text-fg-subtle">{nextSesi.lokasi}</p>}
           <Link
             to={`/modul/${nextSesi.modul?.kode ?? nextSesi.kode_sesi_friendly}`}
-            className="mt-4 block min-h-[48px] rounded-[8px] bg-primary px-4 py-3 text-center text-sm font-bold text-[bg] transition hover:bg-primary-hover active:bg-primary-active"
+            className="mt-4 block min-h-[48px] rounded-[8px] bg-primary px-4 py-3 text-center text-sm font-bold text-[rgb(var(--on-primary))] transition hover:bg-primary-hover active:bg-primary-active"
           >
             Masuk Kelas <ArrowRight className="inline h-4 w-4" />
           </Link>
