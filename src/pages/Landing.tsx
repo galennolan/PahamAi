@@ -77,6 +77,30 @@ export default function LandingPage() {
             <MapPin className="inline h-3 w-3 mr-1" />
             Solo · Sukoharjo · Wonogiri · Hybrid (Offline + Online)
           </p>
+
+          {/* Quick login */}
+          <div className="mt-10 border-t border-border-2 pt-8">
+            <p className="text-sm font-medium text-fg-muted">Sudah punya akun?</p>
+            <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                to="/masuk?role=peserta"
+                className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[8px] border border-border-2 bg-surface px-6 py-3 text-sm font-semibold text-fg transition hover:border-primary sm:w-auto"
+              >
+                <GraduationCap className="h-5 w-5 text-primary-text" />
+                Masuk sebagai Peserta
+              </Link>
+              <Link
+                to="/masuk?role=tutor"
+                className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[8px] border border-border-2 bg-surface px-6 py-3 text-sm font-semibold text-fg transition hover:border-primary sm:w-auto"
+              >
+                <Users className="h-5 w-5 text-primary-text" />
+                Masuk sebagai Tutor
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-fg-subtle">
+              Lupa password? Hubungi admin/instruktur untuk reset.
+            </p>
+          </div>
         </div>
       </section>
 

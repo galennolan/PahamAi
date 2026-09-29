@@ -38,6 +38,8 @@ export default function KelolaPesertaPage() {
   const [editing, setEditing] = useState<Peserta | null>(null);
   const [deleting, setDeleting] = useState<Peserta | null>(null);
   const [bayarMap, setBayarMap] = useState<Record<string, string>>({});
+  const [resettingPw, setResettingPw] = useState<{ peserta: Peserta; show: boolean } | null>(null);
+  const [newPw, setNewPw] = useState('');
 
   const load = async () => {
     const [{ data: b, error: be }, { data: p, error: pe }] = await Promise.all([
@@ -213,6 +215,29 @@ export default function KelolaPesertaPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!resettingPw || !resettingPw.peserta.user_id) return;
+    if (newPw.length < 8) {
+      toast('Password minimal 8 karakter', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc('admin_reset_password', {
+        p_user_id: resettingPw.peserta.user_id,
+        p_new_password: newPw,
+      });
+      if (error) throw new Error(error.message);
+      toast(`Password untuk ${resettingPw.peserta.nama_lengkap} berhasil direset`, 'success');
+      setResettingPw(null);
+      setNewPw('');
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Loading text="Memuat data..." />;
 
   return (
@@ -368,6 +393,7 @@ export default function KelolaPesertaPage() {
                       <td className="px-3 py-2">
                         <div className="flex gap-1.5">
                           <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>Edit</Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setResettingPw({ peserta: p, show: true }); setNewPw(''); }}>Reset Pw</Button>
                           <Button size="sm" variant="ghost" onClick={() => setDeleting(p)}>Hapus</Button>
                         </div>
                       </td>
@@ -389,6 +415,31 @@ export default function KelolaPesertaPage() {
           onCancel={() => setDeleting(null)}
           busy={saving}
         />
+      )}
+
+      {resettingPw && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md space-y-4">
+            <h3 className="text-subhead font-semibold text-fg">Reset Password — {resettingPw.peserta.nama_lengkap}</h3>
+            <Field label="Password Baru" hint="Minimal 8 karakter.">
+              <TextInput
+                type="password"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                placeholder="••••••••"
+                autoFocus
+              />
+            </Field>
+            <div className="flex gap-2">
+              <Button onClick={handleResetPassword} disabled={saving} className="flex-1">
+                {saving ? 'Menyimpan...' : 'Reset Password'}
+              </Button>
+              <Button variant="secondary" onClick={() => { setResettingPw(null); setNewPw(''); }} className="flex-1">
+                Batal
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

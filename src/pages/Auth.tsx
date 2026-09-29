@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button, Field, TextInput, SecondaryButton } from '../components/ui';
 
@@ -25,6 +25,10 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const presetRole = searchParams.get('role');
+
+  const roleLabel = presetRole === 'tutor' ? 'Tutor / Instruktur' : presetRole === 'peserta' ? 'Peserta' : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +42,7 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      title="Masuk ke Paham AI"
+      title={roleLabel ? `Masuk sebagai ${roleLabel}` : 'Masuk ke Paham AI'}
       subtitle="Masukkan email & password akun Anda."
       footer={
         <p className="text-center text-sm text-fg-muted">
@@ -50,16 +54,26 @@ export function LoginPage() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {roleLabel && (
+          <div className="rounded-[8px] border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-primary-text">
+            Anda masuk sebagai <strong>{roleLabel}</strong>
+          </div>
+        )}
         <Field label="Email">
           <TextInput type="email" placeholder="nama@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <Field label="Password">
-          <TextInput type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <TextInput type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         </Field>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? 'Memproses...' : 'Masuk'}
         </Button>
+        {roleLabel && (
+          <button type="button" onClick={() => navigate('/masuk')} className="w-full text-center text-xs text-fg-subtle hover:text-primary-text">
+            Masuk sebagai role lain
+          </button>
+        )}
       </form>
     </AuthShell>
   );
