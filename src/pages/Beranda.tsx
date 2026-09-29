@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { BookOpen, BarChart3, Award, User, ArrowRight, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, EmptyState, Badge, ProgressBar, Stat, Skeleton } from '../components/ui';
@@ -118,23 +118,52 @@ export default function BerandaPage() {
           <p className="mt-0.5 text-sm text-fg-muted">Pilih menu di navigasi untuk mulai.</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Card className="p-4 hover:border-primary/40 transition cursor-pointer" onClick={() => window.location.href = '/kelola-sesi'}>
-            <h3 className="font-semibold text-fg">Kelola Sesi</h3>
-            <p className="mt-1 text-sm text-fg-muted">Absensi, nilai, jadwal</p>
-          </Card>
-          <Card className="p-4 hover:border-primary/40 transition cursor-pointer" onClick={() => window.location.href = '/kelola-peserta'}>
-            <h3 className="font-semibold text-fg">Kelola Peserta</h3>
-            <p className="mt-1 text-sm text-fg-muted">Tambah, edit, hapus</p>
-          </Card>
-          <Card className="p-4 hover:border-primary/40 transition cursor-pointer" onClick={() => window.location.href = '/kelola-modul'}>
-            <h3 className="font-semibold text-fg">Kelola Modul</h3>
-            <p className="mt-1 text-sm text-fg-muted">Materi per sesi</p>
-          </Card>
-          <Card className="p-4 hover:border-primary/40 transition cursor-pointer" onClick={() => window.location.href = '/absensi'}>
-            <h3 className="font-semibold text-fg">Absensi</h3>
-            <p className="mt-1 text-sm text-fg-muted">Monitor kehadiran</p>
-          </Card>
+          <div className="cursor-pointer" onClick={() => window.location.href = '/kelola-sesi'}>
+            <Card className="p-4 hover:border-primary/40 transition">
+              <h3 className="font-semibold text-fg">Kelola Sesi</h3>
+              <p className="mt-1 text-sm text-fg-muted">Absensi, nilai, jadwal</p>
+            </Card>
+          </div>
+          <div className="cursor-pointer" onClick={() => window.location.href = '/kelola-peserta'}>
+            <Card className="p-4 hover:border-primary/40 transition">
+              <h3 className="font-semibold text-fg">Kelola Peserta</h3>
+              <p className="mt-1 text-sm text-fg-muted">Tambah, edit, hapus</p>
+            </Card>
+          </div>
+          <div className="cursor-pointer" onClick={() => window.location.href = '/kelola-modul'}>
+            <Card className="p-4 hover:border-primary/40 transition">
+              <h3 className="font-semibold text-fg">Kelola Modul</h3>
+              <p className="mt-1 text-sm text-fg-muted">Materi per sesi</p>
+            </Card>
+          </div>
+          <div className="cursor-pointer" onClick={() => window.location.href = '/absensi'}>
+            <Card className="p-4 hover:border-primary/40 transition">
+              <h3 className="font-semibold text-fg">Absensi</h3>
+              <p className="mt-1 text-sm text-fg-muted">Monitor kehadiran</p>
+            </Card>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!peserta) {
+    return (
+      <div className="pt-6 text-center">
+        <EmptyState
+          title="Belum terdaftar sebagai peserta"
+          desc="Akun Anda belum memiliki profil peserta. Hubungi Admin, atau daftarkan diri Anda lewat form pre-registrasi."
+          action={
+            <div className="flex gap-2 justify-center">
+              <Link to="/pendaftaran" className="inline-block min-h-[48px] rounded-[8px] bg-primary px-5 py-2.5 text-sm font-bold text-[bg]">
+                Daftar Sekarang
+              </Link>
+              <Link to="/masuk" className="inline-block min-h-[48px] rounded-[8px] border border-border-2 bg-surface px-5 py-2.5 text-sm font-medium text-fg">
+                Login Lain
+              </Link>
+            </div>
+          }
+        />
       </div>
     );
   }
