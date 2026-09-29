@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Button, Field, TextInput, SecondaryButton } from '../components/ui';
+import { Button, Field, TextInput, PasswordInput, SecondaryButton } from '../components/ui';
 
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
@@ -90,7 +90,7 @@ export function LoginPage() {
           <TextInput type="email" placeholder="nama@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <Field label="Password">
-          <TextInput type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          <PasswordInput placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         </Field>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">
