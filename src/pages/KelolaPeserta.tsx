@@ -42,25 +42,31 @@ export default function KelolaPesertaPage() {
   const [newPw, setNewPw] = useState('');
 
   const load = async () => {
-    const [{ data: b, error: be }, { data: p, error: pe }] = await Promise.all([
-      supabase.from('batch').select('*').order('created_at', { ascending: false }),
-      supabase.from('peserta').select('*').order('created_at', { ascending: false }),
-    ]);
-    if (!be) setBatches((b as Batch[]) ?? []);
-    if (!pe) setPesertas((p as Peserta[]) ?? []);
-    if (!pe && p) {
-      const ids = (p as Peserta[]).map((x) => x.id);
-      if (ids.length > 0) {
-        const { data: bayar } = await supabase
-          .from('pembayaran')
-          .select('peserta_id, status_bayar')
-          .in('peserta_id', ids);
-        const map: Record<string, string> = {};
-        ((bayar ?? []) as Array<{ peserta_id: string; status_bayar: string }>).forEach(
-          (r) => { map[r.peserta_id] = r.status_bayar; },
-        );
-        setBayarMap(map);
+    try {
+      const [{ data: b, error: be }, { data: p, error: pe }] = await Promise.all([
+        supabase.from('batch').select('*').order('created_at', { ascending: false }),
+        supabase.from('peserta').select('*').order('created_at', { ascending: false }),
+      ]);
+      if (be) toast(be.message, 'error');
+      if (pe) toast(pe.message, 'error');
+      if (!be) setBatches((b as Batch[]) ?? []);
+      if (!pe) setPesertas((p as Peserta[]) ?? []);
+      if (!pe && p) {
+        const ids = (p as Peserta[]).map((x) => x.id);
+        if (ids.length > 0) {
+          const { data: bayar } = await supabase
+            .from('pembayaran')
+            .select('peserta_id, status_bayar')
+            .in('peserta_id', ids);
+          const map: Record<string, string> = {};
+          ((bayar ?? []) as Array<{ peserta_id: string; status_bayar: string }>).forEach(
+            (r) => { map[r.peserta_id] = r.status_bayar; },
+          );
+          setBayarMap(map);
+        }
       }
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
     }
     try {
       const jal = await listJalurInfo(false);
@@ -72,10 +78,12 @@ export default function KelolaPesertaPage() {
   };
 
   useEffect(() => {
+    let alive = true;
     (async () => {
       await load();
-      setLoading(false);
+      if (alive) setLoading(false);
     })();
+    return () => { alive = false; };
   }, []);
 
   const resetForm = () => {
