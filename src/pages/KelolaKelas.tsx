@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Card, Button, Field, TextInput, SelectInput, EmptyState, Loading, ConfirmDialog } from '../components/ui';
+import { Card, Button, Field, TextInput, SelectInput, EmptyState, Loading, ConfirmDialog, Badge } from '../components/ui';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta } from '../lib/time';
 import { JALUR_FALLBACK, jalurLabel } from '../types';
 import type { Batch, Jalur, JalurInfo, Peserta, JadwalSesi } from '../types';
-import { Plus, Users, Calendar, Trash2, UserPlus, UserMinus, ArrowLeft, ArrowRight, Check, BookOpen, CalendarDays } from 'lucide-react';
+import { Plus, Users, UserPlus, UserMinus, ArrowLeft, ArrowRight, Check, BookOpen, CalendarDays } from 'lucide-react';
 import { listJalurInfo } from '../services/modul';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -90,7 +90,7 @@ export default function KelolaKelasPage() {
     link_rapat: '',
     kapasitas_maks: 12,
   });
-  const [moduls, setModuls] = useState<any[]>([]);
+  const [, setModuls] = useState<any[]>([]);
   const [modulsLoading, setModulsLoading] = useState(false);
   const [sesiDraft, setSesiDraft] = useState<SesiDraft[]>([]);
   const [selectedPesertaWizard, setSelectedPesertaWizard] = useState<string[]>([]);

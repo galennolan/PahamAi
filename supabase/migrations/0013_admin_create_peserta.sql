@@ -2,7 +2,8 @@
 -- RPC untuk admin membuat akun peserta dari frontend tanpa service role key
 
 -- 0. Aktifkan pgcrypto untuk crypt() / gen_salt()
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Di Supabase, extension tinggal di schema extensions
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
 
 -- 1. Tambah kolom email_ortu
 ALTER TABLE public.peserta
@@ -27,7 +28,7 @@ CREATE FUNCTION public.admin_create_peserta(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth, pg_temp
+SET search_path = public, auth, extensions, pg_temp
 AS $func$
 DECLARE
   v_user_id uuid;
