@@ -51,10 +51,11 @@ BEGIN
 
   -- Identity row
   INSERT INTO auth.identities (
-    id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+    id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
   ) VALUES (
     gen_random_uuid(),
     v_user_id,
+    v_user_id::text,
     jsonb_build_object('sub', v_user_id, 'email', p_email),
     'email',
     now(), now(), now()
