@@ -80,8 +80,11 @@ export default function KelolaPesertaPage() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      await load();
-      if (alive) setLoading(false);
+      try {
+        await load();
+      } finally {
+        if (alive) setLoading(false);
+      }
     })();
     return () => { alive = false; };
   }, []);
