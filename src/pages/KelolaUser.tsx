@@ -88,7 +88,7 @@ export default function KelolaUserPage() {
           email: u.email ?? '',
           role,
           nama_lengkap: (metadata.nama_lengkap as string) ?? u.email?.split('@')[0] ?? '',
-          status: (u as any).banned_until ? 'inactive' : (u.email_confirmed_at ? 'active' : 'pending'),
+          status: (u as { banned_until?: string | null }).banned_until ? 'inactive' : (u.email_confirmed_at ? 'active' : 'pending'),
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at ?? null,
           no_wa: profile?.no_wa ?? '',
@@ -128,9 +128,6 @@ export default function KelolaUserPage() {
       });
       if (authErr || !authData.user) throw new Error(authErr?.message ?? 'Gagal buat auth user');
       const userId = authData.user.id;
-
-      // Insert ke auth.identities untuk memenuhi NOT NULL provider_id
-      await supabase.rpc('exec_sql', { sql: `insert into auth.identities (id, user_id, provider_id, identity_data) values (gen_random_uuid(), '${userId}', 'email', jsonb_build_object('sub', '${userId}'))` }).then(() => { /* ignore */ });
 
       if (form.role === 'peserta') {
         const { error } = await supabase.from('peserta').insert({

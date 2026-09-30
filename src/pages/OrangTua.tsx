@@ -24,25 +24,33 @@ export default function OrangTuaPage() {
 
   useEffect(() => {
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) {
-        setError('Anda harus masuk terlebih dahulu');
-        setLoading(false);
-        return;
-      }
-
       try {
+        const { data: auth } = await supabase.auth.getUser();
+        if (!auth.user) {
+          setError('Anda harus masuk terlebih dahulu');
+          return;
+        }
+
+        const { data: parentRow } = await supabase
+          .from('parent_user')
+          .select('id')
+          .eq('user_id', auth.user.id)
+          .maybeSingle();
+        const parentId = (parentRow as { id: string } | null)?.id ?? '';
+        if (!parentId) {
+          setAnaks([]);
+          return;
+        }
+
         const { data: links, error: linkErr } = await supabase
           .from('parent_child_link')
           .select('id, child_id')
-          .eq('parent_id', (await supabase.from('parent_user').select('id').eq('user_id', auth.user.id).maybeSingle()).data?.id ?? '');
-
+          .eq('parent_id', parentId);
         if (linkErr) throw linkErr;
 
         const childIds = links?.map((l: { child_id: string }) => l.child_id) ?? [];
         if (childIds.length === 0) {
           setAnaks([]);
-          setLoading(false);
           return;
         }
 
@@ -50,36 +58,34 @@ export default function OrangTuaPage() {
           .from('peserta')
           .select('*')
           .in('id', childIds);
-
         if (pesertaErr) throw pesertaErr;
 
         const mapped: AnakWithLink[] = [];
         for (const p of pesertas) {
           const child = p as Peserta;
-          const { data: jadwal } = await supabase
-            .from('jadwal_sesi')
-            .select('*, modul(*)')
-            .eq('batch_id', child.batch_id ?? '')
-            .order('tanggal_kelas', { ascending: false });
+          const [jadwalRes, absRes, bayarRes] = await Promise.all([
+            supabase
+              .from('jadwal_sesi')
+              .select('*, modul(*)')
+              .eq('batch_id', child.batch_id ?? '')
+              .order('tanggal_kelas', { ascending: false }),
+            supabase
+              .from('absensi')
+              .select('*, sesi_peserta!inner(*)')
+              .eq('sesi_peserta.peserta_id', child.id),
+            supabase.from('pembayaran').select('*').eq('peserta_id', child.id).maybeSingle(),
+          ]);
+          const jadwal = (jadwalRes.data as JadwalSesi[] | null) ?? [];
+          const absensi = (absRes.data as Absensi[] | null) ?? [];
 
-          const { data: absensi } = await supabase
-            .from('absensi')
-            .select('*, sesi_peserta!inner(*)')
-            .in('sesi_peserta.sesi_id', (jadwal as JadwalSesi[] | []).map((j) => j.id));
-
-          const sesiPesertaIds = (absensi as Absensi[] | null)?.map((a) => a.sesi_peserta_id) ?? [];
-
-          const catatanList: (Catatan | null)[] = [];
-          for (const spId of sesiPesertaIds) {
-            const { data: cat } = await supabase.from('catatan_ketik').select('*').eq('sesi_peserta_id', spId).maybeSingle();
-            catatanList.push(cat as Catatan | null);
-          }
-
-          const { data: pembayaran } = await supabase
-            .from('pembayaran')
-            .select('*')
-            .eq('peserta_id', child.id)
-            .maybeSingle();
+          const sesiPesertaIds = absensi.map((a) => a.sesi_peserta_id);
+          const { data: catList } = sesiPesertaIds.length > 0
+            ? await supabase.from('catatan_ketik').select('*').in('sesi_peserta_id', sesiPesertaIds)
+            : { data: [] as Catatan[] };
+          const catBySp = new Map(
+            ((catList as Catatan[] | null) ?? []).map((c) => [c.sesi_peserta_id, c]),
+          );
+          const catatanList = sesiPesertaIds.map((spId) => catBySp.get(spId) ?? null);
 
           mapped.push({
             linkId: links?.find((l: { child_id: string }) => l.child_id === child.id)?.id ?? '',
@@ -88,18 +94,19 @@ export default function OrangTuaPage() {
             nama_panggil: child.nama_panggil,
             jalur: child.jalur,
             batch_id: child.batch_id,
-            jadwal: (jadwal as JadwalSesi[]) ?? [],
-            absensi: (absensi as Absensi[]) ?? [],
+            jadwal,
+            absensi,
             catatan: catatanList,
-            pembayaran: (pembayaran as Pembayaran | null) ?? null,
+            pembayaran: (bayarRes.data as Pembayaran | null) ?? null,
           });
         }
 
         setAnaks(mapped);
       } catch (e: unknown) {
         setError((e as Error).message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 

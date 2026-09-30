@@ -20,9 +20,19 @@ export default function KuisPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('soal_paket').select('*').order('kode_paket');
-      setPaketList((data as SoalPaket[]) ?? []);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from('soal_paket')
+          .select('*')
+          .order('kode_paket', { ascending: true });
+        const list = (data as SoalPaket[]) ?? [];
+        setPaketList(list);
+        if (list.length > 0) setSelected(list[0].kode_paket);
+      } catch (e) {
+        console.error('[Kuis] gagal memuat paket:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -30,15 +40,20 @@ export default function KuisPage() {
     if (!selected) { setSoal([]); setHasil(null); setJawaban({}); return; }
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('soal_butir_view')
-        .select('*')
-        .eq('kode_paket', selected)
-        .order('no_soal');
-      setSoal((data as SoalWithPaket[]) ?? []);
-      setJawaban({});
-      setHasil(null);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from('soal_butir')
+          .select('*, soal_paket(*)')
+          .eq('kode_paket', selected)
+          .order('no_soal', { ascending: true });
+        setSoal((data as SoalWithPaket[]) ?? []);
+        setHasil(null);
+        setJawaban({});
+      } catch (e) {
+        console.error('[Kuis] gagal memuat soal:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [selected]);
 

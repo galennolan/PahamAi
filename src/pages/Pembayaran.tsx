@@ -53,9 +53,15 @@ export default function PembayaranPage() {
 
   useEffect(() => {
     (async () => {
-      await Promise.all([load(), loadPeserta()]);
-      setLoading(false);
+      try {
+        await Promise.all([load(), loadPeserta()]);
+      } catch (e) {
+        console.error('[Pembayaran] gagal memuat data:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pesertaOptions = useMemo(

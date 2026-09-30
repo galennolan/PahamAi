@@ -51,36 +51,48 @@ export default function ProgresPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!user) return;
-    const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
-    const pid = (profil as Peserta | null)?.id ?? null;
-    setPesertaId(pid);
-    if (!pid) { setLoading(false); return; }
+    try {
+      if (!user) return;
+      const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
+      const pid = (profil as Peserta | null)?.id ?? null;
+      setPesertaId(pid);
+      if (!pid) return;
 
-    const [absRes, nilRes, quizRes] = await Promise.all([
-      supabase.from('absensi').select('*, sesi_peserta!inner(sesi_id, peserta_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', pid),
-      supabase.from('penilaian').select('*, sesi_peserta!inner(sesi_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', pid),
-      supabase.from('quiz_attempt').select('kode_paket').eq('id_peserta_fk', pid),
-    ]);
-    setAbsensi((absRes.data as unknown as AbsensiRow[]) ?? []);
-    setNilai((nilRes.data as unknown as NilaiRow[]) ?? []);
-    setKuisCount(new Set(((quizRes.data ?? []) as Array<{ kode_paket: string }>).map((k) => k.kode_paket)).size);
+      const [absRes, nilRes, quizRes, spRes] = await Promise.all([
+        supabase.from('absensi').select('*, sesi_peserta!inner(sesi_id, peserta_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', pid),
+        supabase.from('penilaian').select('*, sesi_peserta!inner(sesi_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', pid),
+        supabase.from('quiz_attempt').select('kode_paket').eq('id_peserta_fk', pid),
+        supabase.from('sesi_peserta').select('id, sesi_id').eq('peserta_id', pid),
+      ]);
+      setAbsensi((absRes.data as unknown as AbsensiRow[]) ?? []);
+      setNilai((nilRes.data as unknown as NilaiRow[]) ?? []);
+      setKuisCount(new Set(((quizRes.data ?? []) as Array<{ kode_paket: string }>).map((k) => k.kode_paket)).size);
 
-    const { data: spList } = await supabase.from('sesi_peserta').select('id, sesi_id').eq('peserta_id', pid);
-    const spIds = ((spList ?? []) as Array<{ id: string; sesi_id: string }>).map((s) => s.id);
-    if (spIds.length > 0) {
-      const { data: catList } = await supabase.from('catatan_ketik').select('*').in('sesi_peserta_id', spIds).order('created_at', { ascending: false });
-      const spMap = new Map(((spList ?? []) as Array<{ id: string; sesi_id: string }>).map((s) => [s.id, s.sesi_id]));
-      const rows: CatatanRow[] = [];
-      for (const c of (catList as Array<{ id: string; sesi_peserta_id: string; catatan_text: string; status_pengumpulan: boolean; created_at: string }> ?? [])) {
-        const sesiId = spMap.get(c.sesi_peserta_id);
-        if (!sesiId) continue;
-        const { data: j } = await supabase.from('jadwal_sesi').select('*, modul(*)').eq('id', sesiId).maybeSingle();
-        if (j) rows.push({ catatan: c, jadwal: j as JadwalSesi & { modul?: Modul | null } });
+      const spList = (spRes.data ?? []) as Array<{ id: string; sesi_id: string }>;
+      const spIds = spList.map((s) => s.id);
+      if (spIds.length > 0) {
+        const [catRes, jadwalRes] = await Promise.all([
+          supabase.from('catatan_ketik').select('*').in('sesi_peserta_id', spIds).order('created_at', { ascending: false }),
+          supabase.from('jadwal_sesi').select('*, modul(*)').in('id', spList.map((s) => s.sesi_id)),
+        ]);
+        const jadwalById = new Map(
+          ((jadwalRes.data ?? []) as Array<JadwalSesi & { id: string; modul?: Modul | null }>).map((j) => [j.id, j]),
+        );
+        const spMap = new Map(spList.map((s) => [s.id, s.sesi_id]));
+        const rows: CatatanRow[] = [];
+        for (const c of (catRes.data as Array<{ id: string; sesi_peserta_id: string; catatan_text: string; status_pengumpulan: boolean; created_at: string }> ?? [])) {
+          const sesiId = spMap.get(c.sesi_peserta_id);
+          if (!sesiId) continue;
+          const j = jadwalById.get(sesiId);
+          if (j) rows.push({ catatan: c, jadwal: j });
+        }
+        setCatatan(rows);
       }
-      setCatatan(rows);
+    } catch (e) {
+      console.error('[Progres] gagal memuat progres:', e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user]);
 
   useEffect(() => { (async () => { setLoading(true); await load(); })(); }, [load]);

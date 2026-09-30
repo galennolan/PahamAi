@@ -23,22 +23,27 @@ export default function JadwalPage() {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const { data: profil } = await supabase
-        .from('peserta')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (profil) {
-        setPeserta(profil as Peserta);
+      try {
+        if (!user) return;
+        const { data: profil } = await supabase
+          .from('peserta')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const p = profil as Peserta | null;
+        setPeserta(p);
+        if (!p?.batch_id) return;
         const { data } = await supabase
           .from('jadwal_sesi')
-          .select('*, modul(*)')
-          .eq('batch_id', (profil as Peserta).batch_id ?? '')
+          .select('*')
+          .eq('batch_id', p.batch_id)
           .order('tanggal_kelas', { ascending: true });
         setJadwal((data as JadwalSesi[]) ?? []);
+      } catch (e) {
+        console.error('[Jadwal] gagal memuat jadwal:', e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 

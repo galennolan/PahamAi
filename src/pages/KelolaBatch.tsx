@@ -126,8 +126,13 @@ export default function KelolaBatchPage() {
 
   useEffect(() => {
     (async () => {
-      await load();
-      setLoading(false);
+      try {
+        await load();
+      } catch (e) {
+        console.error('[KelolaBatch] gagal memuat batch:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -145,13 +150,18 @@ export default function KelolaBatchPage() {
     if (!showForm) return;
     (async () => {
       setModulsLoading(true);
-      const { data } = await supabase
-        .from('modul')
-        .select('*')
-        .eq('jalur', form.jalur)
-        .order('urutan_sesi', { ascending: true });
-      setModuls((data as Modul[]) ?? []);
-      setModulsLoading(false);
+      try {
+        const { data } = await supabase
+          .from('modul')
+          .select('*')
+          .eq('jalur', form.jalur)
+          .order('urutan_sesi', { ascending: true });
+        setModuls((data as Modul[]) ?? []);
+      } catch (e) {
+        console.error('[KelolaBatch] gagal memuat modul:', e);
+      } finally {
+        setModulsLoading(false);
+      }
     })();
   }, [showForm, form.jalur]);
 

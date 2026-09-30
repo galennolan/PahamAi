@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../hooks/useToast';
 import { formatJakarta } from '../lib/time';
 import { JALUR_FALLBACK, jalurLabel } from '../types';
-import type { Batch, Jalur, JalurInfo, Peserta, JadwalSesi } from '../types';
+import type { Batch, Jalur, JalurInfo, Modul, Peserta, JadwalSesi } from '../types';
 import { Plus, Users, UserPlus, UserMinus, ArrowLeft, ArrowRight, Check, BookOpen, CalendarDays } from 'lucide-react';
 import { listJalurInfo } from '../services/modul';
 
@@ -90,7 +90,7 @@ export default function KelolaKelasPage() {
     link_rapat: '',
     kapasitas_maks: 12,
   });
-  const [, setModuls] = useState<any[]>([]);
+  const [, setModuls] = useState<Modul[]>([]);
   const [modulsLoading, setModulsLoading] = useState(false);
   const [sesiDraft, setSesiDraft] = useState<SesiDraft[]>([]);
   const [selectedPesertaWizard, setSelectedPesertaWizard] = useState<string[]>([]);
@@ -106,8 +106,13 @@ export default function KelolaKelasPage() {
 
   useEffect(() => {
     (async () => {
-      await load();
-      setLoading(false);
+      try {
+        await load();
+      } catch (e) {
+        console.error('[KelolaKelas] gagal memuat kelas:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -137,30 +142,35 @@ export default function KelolaKelasPage() {
     if (!showWizard) return;
     (async () => {
       setModulsLoading(true);
-      const { data } = await supabase
-        .from('modul')
-        .select('*')
-        .eq('jalur', form.jalur)
-        .order('urutan_sesi', { ascending: true });
-      const mList = data ?? [];
-      setModuls(mList);
-      setSesiDraft(
-        mList.map((m: any, i: number) => {
-          const tanggal = form.tanggal_mulai ? addDaysISO(form.tanggal_mulai, i * form.interval_hari) : '';
-          return {
-            key: m.id,
-            modul_id: m.id,
-            kode: m.kode,
-            judul: m.judul,
-            tanggal,
-            jam_mulai: form.jam_mulai,
-            jam_akhir: addMinutes(form.jam_mulai, m.durasi_menit || 60),
-            durasi: m.durasi_menit || 60,
-            included: true,
-          };
-        }),
-      );
-      setModulsLoading(false);
+      try {
+        const { data } = await supabase
+          .from('modul')
+          .select('*')
+          .eq('jalur', form.jalur)
+          .order('urutan_sesi', { ascending: true });
+        const list = (data as Modul[]) ?? [];
+        setModuls(list);
+        setSesiDraft(
+          list.map((m, i) => {
+            const tanggal = form.tanggal_mulai ? addDaysISO(form.tanggal_mulai, i * form.interval_hari) : '';
+            return {
+              key: m.id,
+              modul_id: m.id,
+              kode: m.kode,
+              judul: m.judul,
+              tanggal,
+              jam_mulai: form.jam_mulai,
+              jam_akhir: addMinutes(form.jam_mulai, m.durasi_menit || 60),
+              durasi: m.durasi_menit || 60,
+              included: true,
+            };
+          }),
+        );
+      } catch (e) {
+        console.error('[KelolaKelas] gagal memuat modul wizard:', e);
+      } finally {
+        setModulsLoading(false);
+      }
     })();
   }, [showWizard, form.jalur]);
 

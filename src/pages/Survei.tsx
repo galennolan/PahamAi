@@ -16,9 +16,17 @@ export default function SurveiPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('batch').select('*').order('created_at', { ascending: false }).limit(20);
-      setBatches((data as Batch[]) ?? []);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from('batch')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setBatches((data as Batch[]) ?? []);
+      } catch (e) {
+        console.error('[Survei] gagal memuat batch:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

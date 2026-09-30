@@ -13,9 +13,17 @@ export default function PendaftarPage() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('pendaftar').select('*').order('created_at', { ascending: false });
-      if (!error) setPendaftars(data as Pendaftar[]);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from('pendaftar')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setPendaftars((data as Pendaftar[]) ?? []);
+      } catch (e) {
+        console.error('[Pendaftar] gagal memuat pendaftar:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

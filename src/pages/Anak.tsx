@@ -21,7 +21,7 @@ function Table({ children }: { children: React.ReactNode }) {
 }
 
 export default function AnakPage() {
-  const { role, loading: authLoading } = useAuth();
+  const { role, user, loading: authLoading } = useAuth();
   const [anakList, setAnakList] = useState<Peserta[]>([]);
   const [selectedAnak, setSelectedAnak] = useState<Peserta | null>(null);
   const [absensi, setAbsensi] = useState<unknown[]>([]);
@@ -33,34 +33,51 @@ export default function AnakPage() {
   useEffect(() => {
     if (authLoading || role !== 'parent') { setLoading(false); return; }
     (async () => {
-      const { data: links } = await supabase
-        .from('parent_child_link')
-        .select('child_id, parent_user!inner(user_id)')
-        .eq('parent_user.user_id', (await supabase.auth.getUser()).data.user?.id);
-      const childIds = (links as Array<{ child_id: string }> | null ?? []).map((l) => l.child_id);
-      if (childIds.length === 0) { setLoading(false); return; }
-      const { data: pesertaData } = await supabase.from('peserta').select('*').in('id', childIds);
-      setAnakList((pesertaData as Peserta[]) ?? []);
-      if (pesertaData && pesertaData.length > 0) setSelectedAnak(pesertaData[0]);
-      setLoading(false);
+      try {
+        if (!user) return;
+        const { data: links } = await supabase
+          .from('parent_child_link')
+          .select('child_id')
+          .eq('parent_user.user_id', user.id);
+        const childIds = ((links ?? []) as Array<{ child_id: string }>).map((l) => l.child_id);
+        if (childIds.length === 0) return;
+        const { data: pesertaData } = await supabase.from('peserta').select('*').in('id', childIds);
+        const list = (pesertaData as Peserta[]) ?? [];
+        setAnakList(list);
+        if (list.length > 0) setSelectedAnak(list[0]);
+      } catch (e) {
+        console.error('[Anak] gagal memuat daftar anak:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, [authLoading, role]);
+  }, [authLoading, role, user]);
 
   useEffect(() => {
     if (!selectedAnak) return;
     (async () => {
       setLoading(true);
-      const [a, c, n, s] = await Promise.all([
-        supabase.from('absensi').select('*, sesi_peserta!inner(sesi_id, peserta_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', selectedAnak.id),
-        supabase.from('catatan_ketik').select('*, sesi_peserta!inner(sesi_id, peserta_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', selectedAnak.id),
-        supabase.from('penilaian').select('*, sesi_peserta!inner(sesi_id, peserta_id, jadwal_sesi(*, modul(kode, judul)))').eq('sesi_peserta.peserta_id', selectedAnak.id),
-        supabase.from('sertifikat').select('*').eq('id_peserta_fk', selectedAnak.id),
-      ]);
-      setAbsensi(a.data ?? []);
-      setCatatan(c.data ?? []);
-      setNilai(n.data ?? []);
-      setSertifikat(s.data ?? []);
-      setLoading(false);
+      try {
+        const pid = selectedAnak.id;
+        const { data: sp } = await supabase.from('sesi_peserta').select('id').eq('peserta_id', pid);
+        const spIds = ((sp ?? []) as Array<{ id: string }>).map((s) => s.id);
+        const nested = '*, sesi_peserta(*, jadwal_sesi(*, modul(*)))';
+        const kosong = Promise.resolve({ data: [] as unknown[] });
+        const [absRes, catRes, nilRes, serRes] = await Promise.all([
+          spIds.length > 0 ? supabase.from('absensi').select(nested).in('sesi_peserta_id', spIds) : kosong,
+          spIds.length > 0 ? supabase.from('catatan_ketik').select(nested).in('sesi_peserta_id', spIds) : kosong,
+          spIds.length > 0 ? supabase.from('penilaian').select(nested).in('sesi_peserta_id', spIds) : kosong,
+          supabase.from('sertifikat').select('*').eq('id_peserta_fk', pid),
+        ]);
+        setAbsensi(absRes.data ?? []);
+        setCatatan(catRes.data ?? []);
+        setNilai(nilRes.data ?? []);
+        setSertifikat(serRes.data ?? []);
+      } catch (e) {
+        console.error('[Anak] gagal memuat detail anak:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [selectedAnak]);
 

@@ -31,21 +31,29 @@ export default function AbsensiSayaPage() {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const { data: profil } = await supabase
-        .from('peserta')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (profil) {
+      try {
+        if (!user) return;
+        const { data: profil } = await supabase
+          .from('peserta')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const pid = (profil as { id: string } | null)?.id;
+        if (!pid) return;
+        const { data: sp } = await supabase.from('sesi_peserta').select('id').eq('peserta_id', pid);
+        const spIds = ((sp ?? []) as Array<{ id: string }>).map((s) => s.id);
+        if (spIds.length === 0) return;
         const { data } = await supabase
           .from('absensi')
-          .select('*, sesi_peserta!inner(*, jadwal_sesi!inner(*, modul(*)))')
-          .eq('sesi_peserta.peserta_id', (profil as { id: string }).id)
+          .select('*, sesi_peserta(*, jadwal_sesi(*, modul(*)))')
+          .in('sesi_peserta_id', spIds)
           .order('created_at', { ascending: false });
         setRows((data as AbsensiRow[]) ?? []);
+      } catch (e) {
+        console.error('[AbsensiSaya] gagal memuat absensi:', e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 

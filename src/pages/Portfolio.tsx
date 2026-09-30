@@ -31,12 +31,21 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
-      const pid = (profil as { id: string } | null)?.id ?? null;
-      setPesertaId(pid);
-      if (pid) await load(pid);
-      setLoading(false);
+      try {
+        if (!user) return;
+        const { data: profil } = await supabase
+          .from('peserta')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const pid = (profil as { id: string } | null)?.id ?? null;
+        setPesertaId(pid);
+        if (pid) await load(pid);
+      } catch (e) {
+        console.error('[Portfolio] gagal memuat portfolio:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 

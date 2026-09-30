@@ -13,11 +13,27 @@ export default function SertifikatPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
-      if (!profil) { setLoading(false); return; }
-      const { data } = await supabase.from('sertifikat').select('*').eq('id_peserta_fk', profil.id).order('tanggal_terbit', { ascending: false });
-      setSertifikat((data as Sertifikat[]) ?? []);
-      setLoading(false);
+      try {
+        const { data: profil } = await supabase
+          .from('peserta')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!profil) {
+          setSertifikat([]);
+          return;
+        }
+        const { data } = await supabase
+          .from('sertifikat')
+          .select('*')
+          .eq('id_peserta_fk', profil.id)
+          .order('tanggal_terbit', { ascending: false });
+        setSertifikat((data as Sertifikat[]) ?? []);
+      } catch (e) {
+        console.error('[Sertifikat] gagal memuat sertifikat:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 

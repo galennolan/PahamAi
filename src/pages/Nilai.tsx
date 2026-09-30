@@ -30,21 +30,28 @@ export default function NilaiPage() {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const { data: profil } = await supabase
-        .from('peserta')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (profil) {
+      try {
+        if (!user) return;
+        const { data: profil } = await supabase
+          .from('peserta')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const pid = (profil as { id: string } | null)?.id;
+        if (!pid) return;
+        const { data: sp } = await supabase.from('sesi_peserta').select('id').eq('peserta_id', pid);
+        const spIds = ((sp ?? []) as Array<{ id: string }>).map((s) => s.id);
+        if (spIds.length === 0) return;
         const { data } = await supabase
           .from('penilaian')
-          .select('*, sesi_peserta!inner(*, jadwal_sesi!inner(*, modul(*)))')
-          .eq('sesi_peserta.peserta_id', (profil as { id: string }).id)
-          .order('created_at', { ascending: false });
+          .select('*, sesi_peserta(*, jadwal_sesi(*, modul(*)))')
+          .in('sesi_peserta_id', spIds);
         setRows((data as NilaiRow[]) ?? []);
+      } catch (e) {
+        console.error('[Nilai] gagal memuat nilai:', e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 

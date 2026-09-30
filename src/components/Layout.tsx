@@ -56,6 +56,7 @@ const adminGroups: NavGroup[] = [
     items: [
       { to: '/kelola-kelas', label: 'Kelas', icon: <Calendar className="h-4 w-4" /> },
       { to: '/kelola-peserta', label: 'Peserta', icon: <Users className="h-4 w-4" /> },
+      { to: '/kelola-ortu', label: 'Orang Tua', icon: <Users className="h-4 w-4" /> },
       { to: '/kelola-modul', label: 'Modul', icon: <Book className="h-4 w-4" /> },
       { to: '/kelola-soal', label: 'Soal', icon: <ClipboardList className="h-4 w-4" /> },
       { to: '/pembayaran', label: 'Bayar', icon: <DollarSign className="h-4 w-4" /> },

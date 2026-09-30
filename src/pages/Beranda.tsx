@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, BarChart3, Award, User, ArrowRight, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -16,29 +16,26 @@ const QUICK_MENU = [
 ];
 
 export default function BerandaPage() {
-  const { role } = useAuth();
+  const { role, user, loading: authLoading } = useAuth();
   const [peserta, setPeserta] = useState<Peserta | null>(null);
   const [nextSesi, setNextSesi] = useState<JadwalSesi | null>(null);
   const [stats, setStats] = useState({ kehadiran: 0, totalSesi: 0, kuisSelesai: 0, tugasSelesai: 0 });
   const [tagihan, setTagihan] = useState<Pembayaran | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (currentRole: string | null) => {
-    if (currentRole !== 'peserta') {
+  const load = useCallback(async (currentRole: string | null, userId: string | null) => {
+    try {
+    if (currentRole !== 'peserta' || !userId) {
       setLoading(false);
       return;
     }
-    await syncPendingOps();
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
-      setLoading(false);
-      return;
-    }
+    // Antrean offline tidak boleh memblokir dashboard; sinkron ulang di belakang layar.
+    syncPendingOps().catch(() => {});
 
     const { data: profil } = await supabase
       .from('peserta')
       .select('*')
-      .eq('user_id', auth.user.id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (!profil) {
@@ -84,15 +81,24 @@ export default function BerandaPage() {
     }
 
     if (bayarRes.data) setTagihan(bayarRes.data as Pembayaran);
-    setLoading(false);
+    } catch (e) {
+      console.error('[Beranda] gagal memuat dashboard:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Muat satu kali per user. Menunggu auth selesai dulu supaya tidak
+  // load ganda (role null → 'peserta') dan tidak reset loading berulang.
+  const loadedFor = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await load(role);
-    })();
-  }, [load, role]);
+    if (authLoading) return;
+    const key = user?.id ?? null;
+    if (loadedFor.current === key) return;
+    loadedFor.current = key;
+    setLoading(true);
+    void load(role, user?.id ?? null);
+  }, [authLoading, role, user?.id, load]);
 
   if (loading) {
     return (

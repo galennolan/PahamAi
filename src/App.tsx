@@ -28,6 +28,7 @@ const KelolaModulPage = lazy(() => import('./pages/KelolaModul'));
 const OrangTuaPage = lazy(() => import('./pages/OrangTua'));
 const KelolaKelasPage = lazy(() => import('./pages/KelolaKelas'));
 const KelolaPesertaPage = lazy(() => import('./pages/KelolaPeserta'));
+const KelolaOrangTuaPage = lazy(() => import('./pages/KelolaOrangTua'));
 const KelolaUserPage = lazy(() => import('./pages/KelolaUser'));
 const PembayaranPage = lazy(() => import('./pages/Pembayaran'));
 const BelajarPage = lazy(() => import('./pages/Belajar'));
@@ -81,7 +82,8 @@ function App() {
               <Route path="/kelola-batch" element={<Protected allow={['admin', 'instruktur']}><KelolaBatchPage /></Protected>} />
               <Route path="/kelola-kelas" element={<Protected allow={['admin', 'instruktur']}><KelolaKelasPage /></Protected>} />
               <Route path="/kelola-peserta" element={<Protected allow={['admin', 'instruktur']}><KelolaPesertaPage /></Protected>} />
-              <Route path="/kelola-user" element={<Protected allow={['admin']}><KelolaUserPage /></Protected>} />
+              <Route path="/kelola-ortu" element={<Protected allow={['admin']}><KelolaOrangTuaPage /></Protected>} />
+        <Route path="/kelola-user" element={<Protected allow={['admin']}><KelolaUserPage /></Protected>} />
               <Route path="/kelola-soal" element={<Protected allow={['admin']}><KelolaSoalPage /></Protected>} />
               <Route path="/pembayaran" element={<Protected allow={['admin']}><PembayaranPage /></Protected>} />
 

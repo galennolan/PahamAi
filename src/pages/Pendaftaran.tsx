@@ -42,10 +42,14 @@ export default function PendaftaranPage() {
 
   useEffect(() => {
     (async () => {
-      const j = await listJalurs();
-      if (j.length > 0) {
-        setJalurOptions(j);
-        setForm((f) => ({ ...f, jalur: j[0] }));
+      try {
+        const j = await listJalurs();
+        if (j.length > 0) {
+          setJalurOptions(j);
+          setForm((f) => ({ ...f, jalur: j[0] }));
+        }
+      } catch (e) {
+        console.error('[Pendaftaran] gagal memuat jalur:', e);
       }
     })();
     const params = new URLSearchParams(window.location.search);

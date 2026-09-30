@@ -27,13 +27,28 @@ export default function PembayaranSayaPage() {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
-      if (profil) {
-        const { data } = await supabase.from('pembayaran').select('*').eq('peserta_id', (profil as { id: string }).id).order('created_at', { ascending: false });
+      try {
+        if (!user) return;
+        const { data: profil } = await supabase
+          .from('peserta')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!profil) {
+          setRows([]);
+          return;
+        }
+        const { data } = await supabase
+          .from('pembayaran')
+          .select('*')
+          .eq('peserta_id', profil.id)
+          .order('created_at', { ascending: false });
         setRows((data as Pembayaran[]) ?? []);
+      } catch (e) {
+        console.error('[PembayaranSaya] gagal memuat pembayaran:', e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 

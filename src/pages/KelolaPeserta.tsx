@@ -41,40 +41,43 @@ export default function KelolaPesertaPage() {
   const [resettingPw, setResettingPw] = useState<{ peserta: Peserta; show: boolean } | null>(null);
   const [newPw, setNewPw] = useState('');
 
-  const load = async () => {
-    try {
-      const [{ data: b, error: be }, { data: p, error: pe }] = await Promise.all([
-        supabase.from('batch').select('*').order('created_at', { ascending: false }),
-        supabase.from('peserta').select('*').order('created_at', { ascending: false }),
-      ]);
-      if (be) toast(be.message, 'error');
-      if (pe) toast(pe.message, 'error');
-      if (!be) setBatches((b as Batch[]) ?? []);
-      if (!pe) setPesertas((p as Peserta[]) ?? []);
-      if (!pe && p) {
-        const ids = (p as Peserta[]).map((x) => x.id);
-        if (ids.length > 0) {
-          const { data: bayar } = await supabase
-            .from('pembayaran')
-            .select('peserta_id, status_bayar')
-            .in('peserta_id', ids);
+const load = async () => {
+    const errors: string[] = [];
+    setJalurOptions(JALUR_FALLBACK.filter((j) => j.aktif).map((j) => j.kode));
+    listJalurInfo(false)
+      .then((jal) => {
+        const aktif = (jal.length > 0 ? jal : JALUR_FALLBACK).filter((j) => j.aktif);
+        setJalurOptions(aktif.map((j) => j.kode));
+      })
+      .catch(() => {});
+
+    const [{ data: b, error: be }, { data: p, error: pe }] = await Promise.all([
+      supabase.from('batch').select('*').order('created_at', { ascending: false }),
+      supabase.from('peserta').select('*').order('created_at', { ascending: false }),
+    ]);
+    if (be) errors.push(`Batch: ${be.message}`);
+    else setBatches((b as Batch[]) ?? []);
+    if (pe) errors.push(`Peserta: ${pe.message}`);
+    else {
+      const list = (p as Peserta[]) ?? [];
+      setPesertas(list);
+      const ids = list.map((x) => x.id);
+      if (ids.length > 0) {
+        const { data: bayar, error: be2 } = await supabase
+          .from('pembayaran')
+          .select('peserta_id, status_bayar')
+          .in('peserta_id', ids);
+        if (be2) errors.push(`Pembayaran: ${be2.message}`);
+        else if (bayar) {
           const map: Record<string, string> = {};
-          ((bayar ?? []) as Array<{ peserta_id: string; status_bayar: string }>).forEach(
-            (r) => { map[r.peserta_id] = r.status_bayar; },
-          );
+          (bayar as Array<{ peserta_id: string; status_bayar: string }>).forEach((r) => {
+            map[r.peserta_id] = r.status_bayar;
+          });
           setBayarMap(map);
         }
       }
-    } catch (e: unknown) {
-      toast((e as Error).message, 'error');
     }
-    try {
-      const jal = await listJalurInfo(false);
-      const aktif = (jal.length > 0 ? jal : JALUR_FALLBACK).filter((j) => j.aktif);
-      setJalurOptions(aktif.map((j) => j.kode));
-    } catch {
-      setJalurOptions(JALUR_FALLBACK.map((j) => j.kode));
-    }
+    if (errors.length > 0) toast(errors.join(' | '), 'error');
   };
 
   useEffect(() => {
@@ -86,7 +89,10 @@ export default function KelolaPesertaPage() {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resetForm = () => {
@@ -123,7 +129,7 @@ export default function KelolaPesertaPage() {
       toast('Email dan password wajib diisi untuk peserta baru', 'error');
       return;
     }
-    if (!editing && form.password.length < 8) {
+    if (editing ? form.password && form.password.length < 8 : form.password.length < 8) {
       toast('Password minimal 8 karakter', 'error');
       return;
     }
@@ -143,7 +149,17 @@ export default function KelolaPesertaPage() {
           batch_id: form.batch_id || null,
         }).eq('id', editing.id);
         if (error) throw new Error(error.message);
-        toast('Peserta diperbarui', 'success');
+
+        const pwChanged = form.password.length > 0;
+        if (pwChanged) {
+          if (!editing.user_id) throw new Error('Peserta ini tidak terhubung ke akun auth, tidak bisa ganti password');
+          const { error: pwErr } = await supabase.rpc('admin_reset_password', {
+            p_user_id: editing.user_id,
+            p_new_password: form.password,
+          });
+          if (pwErr) throw new Error(`Data tersimpan, tapi gagal ganti password: ${pwErr.message}`);
+        }
+        toast(pwChanged ? 'Peserta & password diperbarui' : 'Peserta diperbarui', 'success');
       } else {
         const { error: rpcErr } = await supabase.rpc('admin_create_peserta', {
           p_email: form.email.trim(),
@@ -281,11 +297,21 @@ export default function KelolaPesertaPage() {
               <Field label="Email" hint={editing ? 'Email login (tidak mengubah akun auth).' : 'Untuk login akun peserta.'}>
                 <TextInput type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required={!editing} />
               </Field>
-              {!editing && (
-                <Field label="Password" hint="Minimal 8 karakter. Dibuat admin.">
-                  <TextInput type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-                </Field>
-              )}
+              <Field
+                label="Password"
+                hint={editing
+                  ? 'Password lama tidak bisa dibaca (tersimpan sebagai hash). Isi untuk mengganti.'
+                  : 'Minimal 8 karakter. Dibuat admin.'}
+              >
+                <TextInput
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required={!editing}
+                  minLength={editing ? 0 : 8}
+                  placeholder={editing ? 'Kosongkan jika tidak diubah' : ''}
+                />
+              </Field>
               <Field label="No. WhatsApp">
                 <TextInput placeholder="0812xxxxxxx" value={form.no_wa} onChange={(e) => setForm({ ...form, no_wa: e.target.value })} />
               </Field>

@@ -57,12 +57,17 @@ export default function KelolaSesiPage() {
   // Load list batch
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('batch').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
-        setBatches(data);
-        if (data.length > 0) setSelectedBatch(data[0].id);
+      try {
+        const { data, error } = await supabase.from('batch').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          setBatches(data);
+          if (data.length > 0) setSelectedBatch(data[0].id);
+        }
+      } catch (e) {
+        console.error('[KelolaSesi] gagal memuat batch:', e);
+      } finally {
+        setLoadingBatch(false);
       }
-      setLoadingBatch(false);
     })();
   }, []);
 
@@ -77,6 +82,7 @@ export default function KelolaSesiPage() {
 
     (async () => {
       setLoadingData(true);
+      try {
       const currBatch = batches.find((b) => b.id === selectedBatch);
 
       // 1. Jadwal & Modul
@@ -172,11 +178,13 @@ export default function KelolaSesiPage() {
       } else {
         setProgressList([]);
       }
-
-      setLoadingData(false);
+      } catch (e) {
+        console.error('[KelolaSesi] gagal memuat data kelas:', e);
+      } finally {
+        setLoadingData(false);
+      }
     })();
   }, [selectedBatch, batches]);
-
   const handleCreateSesi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBatch || !form.modul_id) {

@@ -12,9 +12,18 @@ export default function ProfilPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from('peserta').select('*').eq('user_id', user.id).maybeSingle();
-      setProfil((data as Peserta) ?? null);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from('peserta')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setProfil((data as Peserta) ?? null);
+      } catch (e) {
+        console.error('[Profil] gagal memuat profil:', e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 
