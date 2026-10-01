@@ -211,16 +211,7 @@ export interface Sertifikat {
   created_at: string;
 }
 
-export interface PortfolioItem {
-  id: string;
-  id_peserta_fk: string;
-  kode_sesi: string;
-  item_url: string | null;
-  item_type: 'tldraw' | 'github' | 'google_colab' | 'file' | 'image' | null;
-  tanggal: string | null;
-  deskripsi: string | null;
-  created_at: string;
-}
+
 
 export interface SoalPaket {
   id: string;

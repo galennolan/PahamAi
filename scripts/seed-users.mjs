@@ -25,12 +25,21 @@ const batches = [
   { id: BATCH.B3, kode_batch: 'PAHAI-B3-2601', jalur: 'B3', nama_batch: 'Expert Batch 1 Solo', status: 'terbuka' },
 ];
 
+// Password demo ini BUKAN rahasia — tapi tetap tidak boleh jadi literal di
+// repo. Ambil dari env, default hanya untuk developer lokal.
+const demoPw = (key, fallback) => {
+  const v = process.env[key];
+  if (v) return v;
+  console.warn(`[seed-users] ${key} belum di-set, memakai password demo default. Jangan pakai di produksi.`);
+  return fallback;
+};
+
 const users = [
-  { email: 'admin@paham.ai', password: 'Admin123!', role: 'admin', name: 'Admin Paham AI' },
-  { email: 'tutor@paham.ai', password: 'Tutor123!', role: 'instruktur', name: 'Budi Instruktur' },
-  { email: 'murid@paham.ai', password: 'Murid123!', role: 'peserta', name: 'Budi Santoso', jalur: 'B1', batch: BATCH.B1 },
-  { email: 'murid2@paham.ai', password: 'Murid123!', role: 'peserta', name: 'Siti Rahma', jalur: 'A', batch: BATCH.A },
-  { email: 'ortu@paham.ai', password: 'Ortu1234!', role: 'parent', name: 'Bapak Budi' },
+  { email: 'admin@paham.ai', password: demoPw('SEED_ADMIN_PASSWORD', 'Admin123!'), role: 'admin', name: 'Admin Paham AI' },
+  { email: 'tutor@paham.ai', password: demoPw('SEED_TUTOR_PASSWORD', 'Tutor123!'), role: 'instruktur', name: 'Budi Instruktur' },
+  { email: 'murid@paham.ai', password: demoPw('SEED_MURID_PASSWORD', 'Murid123!'), role: 'peserta', name: 'Budi Santoso', jalur: 'B1', batch: BATCH.B1 },
+  { email: 'murid2@paham.ai', password: demoPw('SEED_MURID_PASSWORD', 'Murid123!'), role: 'peserta', name: 'Siti Rahma', jalur: 'A', batch: BATCH.A },
+  { email: 'ortu@paham.ai', password: demoPw('SEED_ORTU_PASSWORD', 'Ortu1234!'), role: 'parent', name: 'Bapak Budi' },
 ];
 
 async function upsertUser(u) {

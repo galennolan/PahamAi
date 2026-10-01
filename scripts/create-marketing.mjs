@@ -24,7 +24,10 @@ async function main() {
 
   const { data, error } = await sb.auth.admin.createUser({
     email: 'marketing@paham.ai',
-    password: 'Marketing123!',
+    password: process.env.SEED_MARKETING_PASSWORD ?? (() => {
+      console.warn('[create-marketing] SEED_MARKETING_PASSWORD belum di-set, memakai password demo default.');
+      return 'Marketing123!';
+    })(),
     email_confirm: true,
     user_metadata: { role: 'marketing' },
   });
