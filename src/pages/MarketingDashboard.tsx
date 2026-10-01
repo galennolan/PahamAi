@@ -66,6 +66,9 @@ export default function MarketingDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'sources' | 'modules' | 'content' | 'tech'>('overview');
   const [filterProgram, setFilterProgram] = useState('');
+  /** Tabel opsional yang belum ada di database (migration 0050 belum jalan). */
+  const [kontenTakTersedia, setKontenTakTersedia] = useState(false);
+  const [fiturTakTersedia, setFiturTakTersedia] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -85,7 +88,31 @@ export default function MarketingDashboardPage() {
     setModulPromo((modulRes.data ?? []) as ModulPromo[]);
     setMarketingContent((contentRes.data ?? []) as MarketingContent[]);
     setTechFeatures((techRes.data ?? []) as TechFeature[]);
+    // Tabel belum ada = migration 0050 belum dijalankan; tampilkan panduan, bukan kosong misterius.
+    setKontenTakTersedia(!!contentRes.error);
+    setFiturTakTersedia(!!techRes.error);
     setLoading(false);
+  }
+
+  function exportPendaftarCsv() {
+    if (pendaftar.length === 0) {
+      toast('Belum ada data pendaftar untuk diekspor.', 'error');
+      return;
+    }
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const baris = [
+      'nama_lengkap,email,no_wa,minat_program,usia,status,created_at',
+      ...pendaftar.map((p) =>
+        [p.nama_lengkap, p.email, p.no_wa, p.minat_program, p.usia, p.status, p.created_at].map(esc).join(','),
+      ),
+    ];
+    const blob = new Blob([baris.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pendaftar-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(`${pendaftar.length} pendaftar diekspor ke CSV`, 'success');
   }
 
   if (authLoading || loading) return <Loading text="Memuat dashboard marketing..." />;
@@ -123,7 +150,7 @@ export default function MarketingDashboardPage() {
           <p className="mt-1 text-body text-fg-muted">Pantau performa akuisisi, konten promosi, & fitur teknis untuk marketing.</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => toast('Fitur export CSV sedang dalam pengembangan.')}>
+          <Button onClick={exportPendaftarCsv}>
             <Download className="mr-2 h-4 w-4" aria-hidden />
             Export CSV
           </Button>
@@ -296,6 +323,16 @@ export default function MarketingDashboardPage() {
             </Button>
           </div>
 
+          {kontenTakTersedia && (
+            <Card className="border-warning/40 bg-warning/5">
+              <p className="text-sm text-fg">
+                <span className="font-semibold text-warning">Tabel konten belum ada di database.</span>{' '}
+                Jalankan <span className="font-mono">supabase/migrations/0050_pulihkan_objek_yang_hilang.sql</span> di
+                Supabase SQL Editor, lalu muat ulang halaman ini.
+              </p>
+            </Card>
+          )}
+
           <Table>
             <thead>
               <tr className="border-b border-border-2">
@@ -341,6 +378,16 @@ export default function MarketingDashboardPage() {
               Tambah
             </Button>
           </div>
+
+          {fiturTakTersedia && (
+            <Card className="border-warning/40 bg-warning/5">
+              <p className="text-sm text-fg">
+                <span className="font-semibold text-warning">Tabel fitur belum ada di database.</span>{' '}
+                Jalankan <span className="font-mono">supabase/migrations/0050_pulihkan_objek_yang_hilang.sql</span> di
+                Supabase SQL Editor, lalu muat ulang halaman ini.
+              </p>
+            </Card>
+          )}
 
           <div className="space-y-4">
             {techFeatures.map(f => (

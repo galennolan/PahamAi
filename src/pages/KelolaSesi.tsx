@@ -14,6 +14,7 @@ import { Badge, Button, Card, EmptyState, Field, Loading, SelectInput, TextInput
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../lib/supabaseClient';
 import { formatJakarta } from '../lib/time';
+import { programDariKodeModul } from '../constants/program';
 import type { Kelas, JadwalSesi, Modul, Peserta } from '../types';
 
 interface PesertaProgress {
@@ -181,6 +182,66 @@ export default function KelolaSesiPage() {
       }
     })();
   }, [selectedKelas]);
+  const handleAssignAllModul = async () => {
+    if (!selectedKelas) return;
+    const kelasObj = kelasList.find((k) => k.id === selectedKelas);
+    if (!kelasObj) return;
+
+    const kodeKelas = kelasObj.kode || '';
+    const program = programDariKodeModul(kodeKelas);
+    if (!program) {
+      toast(`Tidak bisa menentukan program dari kode kelas "${kodeKelas}"`, 'error');
+      return;
+    }
+
+    const semuaModul = moduls.filter((m) => programDariKodeModul(m.kode) === program);
+    const kodeSudahAda = new Set(jadwals.map((j) => j.kode_sesi_friendly));
+    const modulKurang = semuaModul.filter((m) => !kodeSudahAda.has(m.kode));
+
+    if (modulKurang.length === 0) {
+      toast('Semua modul sudah dijadwalkan', 'success');
+      return;
+    }
+
+    const tanggalMulai = kelasObj.tanggal_mulai ? new Date(kelasObj.tanggal_mulai) : new Date();
+    const jadwalBaru = modulKurang.map((m, i) => {
+      const tgl = new Date(tanggalMulai);
+      tgl.setDate(tgl.getDate() + i * 7);
+      return {
+        modul_id: m.id,
+        kelas_id: selectedKelas,
+        kode_sesi_friendly: m.kode,
+        judul_sesi: m.judul,
+        tanggal_kelas: tgl.toISOString().slice(0, 10),
+        jam_mulai: '09:00',
+        jam_akhir: '10:30',
+        status_sesi: 'belum',
+      };
+    });
+
+    const { data: jadwalInserted, error: jErr } = await supabase
+      .from('jadwal_sesi')
+      .insert(jadwalBaru)
+      .select();
+
+    if (jErr) {
+      toast(jErr.message, 'error');
+      return;
+    }
+
+    if (pesertas.length > 0 && jadwalInserted && jadwalInserted.length > 0) {
+      const spRows = jadwalInserted.flatMap((j) =>
+        pesertas.map((p) => ({ sesi_id: j.id, peserta_id: p.id }))
+      );
+      await supabase.from('sesi_peserta').insert(spRows);
+    }
+
+    toast(`${modulKurang.length} modul ditugaskan ke ${pesertas.length} peserta`, 'success');
+
+    const { data } = await supabase.from('jadwal_sesi').select('*, modul(*)').eq('kelas_id', selectedKelas).order('tanggal_kelas', { ascending: true });
+    setJadwals((data as JadwalSesi[]) ?? []);
+  };
+
   const handleCreateSesi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedKelas || !form.modul_id) {
@@ -332,9 +393,14 @@ export default function KelolaSesiPage() {
             </div>
 
             {activeTab === 'jadwal' && !showForm && (
-              <Button size="sm" onClick={() => setShowForm(true)}>
-                <Plus className="mr-1.5 h-4 w-4" /> Tambah Sesi
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={handleAssignAllModul}>
+                  Tugaskan Semua Modul
+                </Button>
+                <Button size="sm" onClick={() => setShowForm(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Tambah Sesi
+                </Button>
+              </div>
             )}
           </div>
 

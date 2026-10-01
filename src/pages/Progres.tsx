@@ -49,6 +49,8 @@ export default function ProgresPage() {
   const [catatan, setCatatan] = useState<CatatanRow[]>([]);
   const [kuisCount, setKuisCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  /** Tabel penilaian belum ada (migration 0050 belum jalan). */
+  const [nilaiTakTersedia, setNilaiTakTersedia] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +68,7 @@ export default function ProgresPage() {
       ]);
       setAbsensi((absRes.data as unknown as AbsensiRow[]) ?? []);
       setNilai((nilRes.data as unknown as NilaiRow[]) ?? []);
+      setNilaiTakTersedia(!!nilRes.error);
       setKuisCount(new Set(((quizRes.data ?? []) as Array<{ kode_paket: string }>).map((k) => k.kode_paket)).size);
 
       const spList = (spRes.data ?? []) as Array<{ id: string; sesi_id: string }>;
@@ -188,7 +191,15 @@ export default function ProgresPage() {
       )}
 
       {tab === 'nilai' && (
-        nilai.length === 0 ? (
+        nilaiTakTersedia ? (
+          <Card className="border-warning/40 bg-warning/5">
+            <p className="text-sm text-fg">
+              <span className="font-semibold text-warning">Fitur nilai belum aktif.</span>{' '}
+              Minta admin menjalankan <span className="font-mono">supabase/migrations/0050_pulihkan_objek_yang_hilang.sql</span> di
+              Supabase SQL Editor.
+            </p>
+          </Card>
+        ) : nilai.length === 0 ? (
           <EmptyState title="Belum ada nilai" desc="Nilai muncul setelah instruktur menilai tugas/proyek Anda." />
         ) : (
           <Card className="!p-0 overflow-hidden">

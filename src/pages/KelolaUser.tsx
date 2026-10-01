@@ -188,6 +188,15 @@ export default function KelolaUserPage() {
         </Button>
       </div>
 
+      <Card className="border-warning/40 bg-warning/5">
+        <p className="text-sm text-fg">
+          <span className="font-semibold text-warning">Menu ini belum bisa dipakai dari browser.</span>{' '}
+          Daftar/buat/hapus akun login butuh kunci service-role yang tidak boleh dipasang di frontend.
+          Sementara kelola akun lewat Supabase Dashboard → Authentication → Users.
+          Buat/daftar peserta tetap bisa lewat menu Kelola Peserta.
+        </p>
+      </Card>
+
       <div className="flex flex-wrap gap-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" />

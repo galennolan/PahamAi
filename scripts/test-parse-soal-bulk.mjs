@@ -65,13 +65,20 @@ console.log('6. Baris rusak dilaporkan, tidak dilewati diam-diam');
     'Pertanyaan: soal tanpa pilihan\nKunci: A\n\n' +
     'Pertanyaan: kurang satu pilihan\nA. 1\nB. 2\nC. 3\nKunci: A\n\n' +
     'Pertanyaan: kunci ngawur\nA. 1\nB. 2\nC. 3\nD. 4\nKunci: Z\n\n' +
-    'Pertanyaan: pilihan E\nA. 1\nB. 2\nC. 3\nD. 4\nE. 5\nKunci: A\n\n' +
-    'Pertanyaan: kunci ke pilihan kosong\nA. 1\nB. 2\nC. 3\nD. 4\nKunci: D\n\n' +
+    'Pertanyaan: kunci menunjuk pilihan kosong\nA. 1\nB. 2\nC. 3\nKunci: A\n\n' +
     'Pertanyaan: kolom kurang\nA. 1\nB. 2',
   );
   cek('0 soal tersimpan', r.soal.length === 0, r.soal.length);
-  cek('6 masalah tercatat', r.masalah.length === 6, r.masalah.map((m) => m.pesan));
+  cek('5 masalah tercatat', r.masalah.length === 5, r.masalah.map((m) => m.pesan));
   cek('semua masalah punya nomor baris', r.masalah.every((m) => m.baris > 0));
+}
+
+console.log('6b. Pilihan E hanya memberi peringatan, A-D tetap tersimpan');
+{
+  const r = parseSoalBulk('Pertanyaan: q?\nA. 1\nB. 2\nC. 3\nD. 4\nE. 5\nKunci: A');
+  cek('1 soal tersimpan', r.soal.length === 1, r.soal);
+  cek('1 peringatan soal E', r.masalah.length === 1 && r.masalah[0].baris === 6, r.masalah);
+  cek('opsi D tetap ada', r.soal[0]?.pilihan_d === '4', r.soal[0]);
 }
 
 console.log('7. Soal sah tetap tersimpan walau ada soal rusak di antaranya');
@@ -82,21 +89,36 @@ console.log('7. Soal sah tetap tersimpan walau ada soal rusak di antaranya');
     'Pertanyaan: q2\nA. 1\nB. 2\nC. 3\nD. 4\nKunci: B',
   );
   cek('2 soal valid', r.soal.length === 2, r.soal.length);
-  cek('no_soal dirapatkan 1,2', r.soal[0].no_soal === 1 && r.soal[1].no_soal === 2, r.soal.map((s) => s.no_soal));
+  cek('no_soal dirapatkan 1,2 tanpa bolong', r.soal[0].no_soal === 1 && r.soal[1].no_soal === 2, r.soal.map((s) => s.no_soal));
   cek('1 masalah', r.masalah.length === 1, r.masalah);
 }
 
 console.log('8. Round-trip: soal -> teks -> soal');
 {
   const asli = [
-    { pertanyaan: 'q1', pilihan_a: 'a1', pilihan_b: 'b1', pilihan_c: 'c1', pilihan_d: 'd1', kunci: 'c', pembahasan: 'pembahasan q1' },
-    { pertanyaan: 'q2', pilihan_a: 'a2', pilihan_b: 'b2', pilihan_c: 'c2', pilihan_d: 'd2', kunci: 'a', pembahasan: '' },
+    { pertanyaan: 'q1', pilihan_a: 'a1', pilihan_b: 'b1', pilihan_c: 'c1', pilihan_d: 'd1', kunci: 'C', pembahasan: 'pembahasan q1' },
+    { pertanyaan: 'q2', pilihan_a: 'a2', pilihan_b: 'b2', pilihan_c: 'c2', pilihan_d: 'd2', kunci: 'A', pembahasan: '' },
   ];
   const teks = soalKeTeks(asli);
   const r = parseSoalBulk(teks);
   cek('2 soal, 0 masalah', r.soal.length === 2 && r.masalah.length === 0, r);
-  const diharapkan = asli.map((s, i) => ({ ...s, no_soal: i + 1 }));
-  cek('isi identik', JSON.stringify(r.soal) === JSON.stringify(diharapkan), { teks, hasil: r.soal });
+  // Bandingkan per-field: urutan key di JSON.stringify tidak bermakna.
+  const KUNCI = ['no_soal', 'pertanyaan', 'pilihan_a', 'pilihan_b', 'pilihan_c', 'pilihan_d', 'kunci', 'pembahasan'];
+  const identik =
+    r.soal.length === asli.length &&
+    r.soal.every((s, i) => KUNCI.every((k) => s[k] === (i === 0 ? asalNilai(asli[0], k) : asalNilai(asli[1], k))));
+  cek('isi identik', identik, { teks, hasil: r.soal });
+
+  function asalNilai(obj, k) {
+    if (k === 'no_soal') return obj === asli[0] ? 1 : 2;
+    return obj[k];
+  }
+}
+
+console.log('8b. Round-trip menormalkan kunci huruf kecil jadi huruf besar');
+{
+  const r = parseSoalBulk(soalKeTeks([{ pertanyaan: 'q', pilihan_a: 'a', pilihan_b: 'b', pilihan_c: 'c', pilihan_d: 'd', kunci: 'b', pembahasan: '' }]));
+  cek('kunci jadi B', r.soal[0]?.kunci === 'B', r.soal);
 }
 
 console.log('9. Kasus batas');

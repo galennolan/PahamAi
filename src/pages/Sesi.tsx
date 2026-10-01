@@ -481,8 +481,12 @@ const load = useCallback(async () => {
           )}
           {testResult && (
             <div className="mt-4 flex gap-2">
-              <Button variant="secondary" onClick={resetTest} className="flex-1">Coba Lagi</Button>
-              <Button onClick={() => setTestPhase(null)} className="flex-1">Selesai</Button>
+              {testPhase === 'post' && (
+                <Button variant="secondary" onClick={() => navigate('/belajar')} className="flex-1">Selesai & Lanjut</Button>
+              )}
+              {(!testPhase || testPhase !== 'post') && (
+                <Button variant="secondary" onClick={() => setTestPhase('post')} className="flex-1">Review Jawaban</Button>
+              )}
             </div>
           )}
         </Card>

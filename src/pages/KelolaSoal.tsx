@@ -4,9 +4,14 @@ import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge
 import { useToast } from '../hooks/useToast';
 import type { Modul, SoalButir, SoalPaket } from '../types';
 import { PROGRAM, programDariKodeModul, programLabel, type ProgramKode } from '../constants/program';
-
-const BULK_TEMPLATE = `1. Apa kepanjangan AI? | Artificial Intelligence | Automated Interaction | Analytical Integration | Applied Interface | A | Artifical Intelligence adalah...
-2. Manakah yang termasuk contoh AI? | Mesin cuci | Asisten virtual | Lampu kipas | Sepeda motor | B | Asisten virtual adalah contoh AI...`;
+import {
+  parseSoalBulk,
+  soalKeTeks,
+  TEMPLATE_SOAL_BULK,
+  TEMPLATE_SOAL_SATUBARIS,
+  type SoalBulk as ParsedSoal,
+  type MasalahBulk,
+} from '../lib/parse-soal-bulk';
 
 const TIPE_LABELS: Record<string, string> = {
   kuis: 'Kuis Sesi',
@@ -15,17 +20,6 @@ const TIPE_LABELS: Record<string, string> = {
 };
 
 const PROGRAM_URUT: ProgramKode[] = PROGRAM.map((p) => p.kode);
-
-interface ParsedSoal {
-  no_soal: number;
-  pertanyaan: string;
-  pilihan_a: string;
-  pilihan_b: string;
-  pilihan_c: string;
-  pilihan_d: string;
-  kunci: string;
-  pembahasan: string;
-}
 
 interface ButirForm {
   no_soal: number;
@@ -149,6 +143,7 @@ export default function KelolaSoalPage() {
   const [editingKode, setEditingKode] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [parsed, setParsed] = useState<ParsedSoal[]>([]);
+  const [bulkMasalah, setBulkMasalah] = useState<MasalahBulk[]>([]);
 
   /** Butir yang sedang diedit (id) + form-nya; tambah baru pakai showTambah. */
   const [editingButirId, setEditingButirId] = useState<string | null>(null);
@@ -187,31 +182,58 @@ export default function KelolaSoalPage() {
   useEffect(() => { void load(); }, []);
 
   const parseBulk = () => {
-    const lines = bulkText.split('\n').map((l) => l.trim()).filter(Boolean);
-    const result: ParsedSoal[] = [];
-    for (const line of lines) {
-      const match = line.match(/^(\d+)\.\s*(.+)$/);
-      if (!match) continue;
-      const no_soal = parseInt(match[1]);
-      const parts = match[2].split('|').map((p) => p.trim());
-      if (parts.length < 6) {
-        toast(`Baris ${no_soal}: minimal 6 kolom (pertanyaan|A|B|C|D|kunci)`, 'error');
-        return;
-      }
-      const [pertanyaan, a, b, c, d, kunciRaw, ...rest] = parts;
-      const kunci = kunciRaw.toUpperCase();
-      if (!['A', 'B', 'C', 'D'].includes(kunci)) {
-        toast(`Baris ${no_soal}: kunci harus A/B/C/D`, 'error');
-        return;
-      }
-      result.push({ no_soal, pertanyaan, pilihan_a: a, pilihan_b: b, pilihan_c: c, pilihan_d: d, kunci, pembahasan: rest.join(' | ') || '' });
-    }
-    if (result.length === 0) {
-      toast('Tidak ada soal valid. Cek format input.', 'error');
+    if (!bulkText.trim()) {
+      toast('Textarea masih kosong', 'error');
       return;
     }
-    setParsed(result);
-    toast(`${result.length} soal berhasil di-parse`, 'success');
+    const { soal, masalah } = parseSoalBulk(bulkText);
+    setBulkMasalah(masalah);
+    setParsed(soal);
+    if (soal.length === 0) {
+      toast(masalah.length > 0 ? `Tidak ada soal valid. ${masalah.length} baris bermasalah.` : 'Tidak ada soal valid.', 'error');
+      return;
+    }
+    if (masalah.length > 0) {
+      toast(`${soal.length} soal siap, ${masalah.length} baris dilewati karena bermasalah`, 'success');
+      return;
+    }
+    toast(`${soal.length} soal berhasil di-parse`, 'success');
+  };
+
+  /** Isi textarea dengan template siap pakai. */
+  const isiTemplate = (tipe: 'blok' | 'satu') => {
+    const tpl = tipe === 'blok' ? TEMPLATE_SOAL_BULK : TEMPLATE_SOAL_SATUBARIS;
+    setBulkText(tpl);
+    setParsed([]);
+    setBulkMasalah([]);
+    navigator.clipboard?.writeText(tpl).then(
+      () => toast('Template sudah ditempel dan disalin ke clipboard', 'success'),
+      () => toast('Template sudah ditempel di textarea', 'success'),
+    );
+  };
+
+  /** Muat soal yang sudah ada ke textarea supaya bisa diedit ulang. */
+  const muatExistingKeTextarea = (kodePaket: string) => {
+    const butir = butirMap[kodePaket];
+    if (!butir || butir.length === 0) {
+      toast(`Paket ${kodePaket} belum punya soal`, 'error');
+      return;
+    }
+    const teks = soalKeTeks(
+      [...butir].sort((a, b) => a.no_soal - b.no_soal).map((s) => ({
+        pertanyaan: s.pertanyaan,
+        pilihan_a: s.pilihan_a,
+        pilihan_b: s.pilihan_b,
+        pilihan_c: s.pilihan_c,
+        pilihan_d: s.pilihan_d,
+        kunci: s.kunci,
+        pembahasan: s.pembahasan,
+      })),
+    );
+    setBulkText(teks);
+    setParsed([]);
+    setBulkMasalah([]);
+    toast(`${butir.length} soal ${kodePaket} dimuat ke textarea, boleh diedit lalu di-parse ulang`, 'success');
   };
 
   const handleSave = async () => {
@@ -455,9 +477,21 @@ export default function KelolaSoalPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-subhead font-semibold text-fg">Soal ({butirDipilih.length})</h2>
-          {!showTambah && (
-            <Button size="sm" onClick={() => startTambahButir(paketDipilih.kode_paket)}>+ Tambah Soal</Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                muatExistingKeTextarea(paketDipilih.kode_paket);
+                setLihatKode(null);
+              }}
+            >
+              Muat ke Textarea
+            </Button>
+            {!showTambah && (
+              <Button size="sm" onClick={() => startTambahButir(paketDipilih.kode_paket)}>+ Tambah Soal</Button>
+            )}
+          </div>
         </div>
 
         {showTambah && (
@@ -609,18 +643,67 @@ export default function KelolaSoalPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-2 text-subhead font-semibold text-fg">Input Soal Bulk</h2>
-        <p className="mb-3 text-xs text-fg-muted">
-          Format per baris: <code className="rounded bg-surface px-1.5 py-0.5 font-mono">1. Pertanyaan | A | B | C | D | Kunci | Pembahasan</code>
-        </p>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-subhead font-semibold text-fg">Input Soal Bulk</h2>
+            <p className="mt-0.5 text-xs text-fg-muted">
+              Tulis satu soal beberapa baris. Nomor soal dibuat otomatis, jadi tidak perlu diketik.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={() => isiTemplate('blok')}>
+              Isi Template Blok
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => isiTemplate('satu')}>
+              Isi Template 1 Baris
+            </Button>
+          </div>
+        </div>
+
+        <div className="mb-3 rounded-[8px] border border-border-2 bg-bg p-3 font-mono text-xs leading-relaxed">
+          <p className="mb-1 font-sans font-semibold text-fg-muted">Format blok (disarankan)</p>
+          <pre className="overflow-x-auto whitespace-pre text-fg">{TEMPLATE_SOAL_BULK.split('//')[0].trim()}</pre>
+          <p className="mt-2 mb-1 font-sans font-semibold text-fg-muted">Atur label lain juga bisa</p>
+          <p className="font-sans text-fg-muted">
+            Pertanyaan: <span className="font-mono text-fg">Tanya:</span> / <span className="font-mono text-fg">Soal:</span> /{' '}
+            <span className="font-mono text-fg">Q:</span> · Opsi <span className="font-mono text-fg">A.</span>{' '}
+            <span className="font-mono text-fg">A)</span> <span className="font-mono text-fg">A:</span> <span className="font-mono text-fg">[A]</span>{' '}
+            · Kunci <span className="font-mono text-fg">Kunci:</span> <span className="font-mono text-fg">Jawaban:</span> · Pembahasan{' '}
+            <span className="font-mono text-fg">Pembahasan:</span> <span className="font-mono text-fg">Alasan:</span>
+          </p>
+          <p className="mt-2 mb-1 font-sans font-semibold text-fg-muted">Format 1 baris (format lama, tetap jalan)</p>
+          <pre className="overflow-x-auto whitespace-pre text-fg">{TEMPLATE_SOAL_SATUBARIS.split('\n')[0]}</pre>
+        </div>
+
         <TextArea
-          rows={10}
+          rows={12}
           value={bulkText}
-          onChange={(e) => setBulkText(e.target.value)}
-          placeholder={BULK_TEMPLATE}
+          onChange={(e) => { setBulkText(e.target.value); setParsed([]); setBulkMasalah([]); }}
+          placeholder="Tulis soal di sini. Klik 'Isi Template Blok' untuk melihat contoh isian."
           className="font-mono text-sm"
         />
-        <div className="mt-3 flex gap-2">
+
+        {bulkMasalah.length > 0 && (
+          <div className="mt-3 rounded-[8px] border border-warning/40 bg-warning/10 p-3">
+            <p className="text-sm font-semibold text-warning">
+              {bulkMasalah.length} baris bermasalah, {parsed.length} soal tetap bisa disimpan
+            </p>
+            <ul className="mt-1.5 space-y-0.5">
+              {bulkMasalah.slice(0, 8).map((m, i) => (
+                <li key={`${m.baris}-${i}`} className="font-mono text-xs text-fg-muted">
+                  {m.pesan}
+                </li>
+              ))}
+              {bulkMasalah.length > 8 && (
+                <li className="font-mono text-xs text-fg-subtle">
+                  ... dan {bulkMasalah.length - 8} masalah lain
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="secondary" onClick={parseBulk} disabled={saving}>Parse Soal</Button>
           <Button onClick={handleSave} disabled={saving || parsed.length === 0}>
             {saving ? 'Menyimpan...' : `Simpan ${parsed.length} Soal`}
@@ -643,7 +726,10 @@ export default function KelolaSoalPage() {
                   <span className={s.kunci === 'C' ? 'font-bold text-success' : ''}>C. {s.pilihan_c}</span>
                   <span className={s.kunci === 'D' ? 'font-bold text-success' : ''}>D. {s.pilihan_d}</span>
                 </div>
-                {s.pembahasan && <p className="mt-1 text-xs text-fg-subtle">Pembahasan: {s.pembahasan}</p>}
+                <p className="mt-1 font-mono text-xs text-fg-subtle">
+                  Kunci: <span className="font-bold text-success">{s.kunci}</span>
+                  {s.pembahasan ? ` · Pembahasan: ${s.pembahasan}` : ''}
+                </p>
               </div>
             ))}
           </div>

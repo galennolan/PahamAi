@@ -181,9 +181,25 @@ const load = async () => {
     if (!deleting) return;
     setSaving(true);
     try {
-      const { error } = await supabase.rpc('delete_peserta_with_auth', { p_peserta_id: deleting.id });
-      if (error) throw new Error(error.message);
-      toast(`Peserta ${deleting.nama_lengkap} & akun login dihapus`, 'success');
+      // Jalur utama: RPC hapus peserta + akun auth (migration 0025).
+      const { error: rpcErr } = await supabase.rpc('delete_peserta_with_auth', { p_peserta_id: deleting.id });
+      if (!rpcErr) {
+        toast(`Peserta ${deleting.nama_lengkap} & akun login dihapus`, 'success');
+        setDeleting(null);
+        await load();
+        return;
+      }
+      // Fallback bila RPC belum ada di database (404/PGRST202): hapus baris
+      // peserta langsung. FK ke sesi/absensi/nilai/pembayaran ikut cascade,
+      // tapi akun login (auth) tersisa dan harus dihapus manual di dashboard.
+      const hilang = rpcErr.code === 'PGRST202' || /not found|does not exist/i.test(rpcErr.message);
+      if (!hilang) throw new Error(rpcErr.message);
+      const { error: delErr } = await supabase.from('peserta').delete().eq('id', deleting.id);
+      if (delErr) throw new Error(delErr.message);
+      toast(
+        `Data ${deleting.nama_lengkap} dihapus. Akun loginnya masih ada — hapus manual di Supabase Dashboard → Authentication bila perlu.`,
+        'success',
+      );
       setDeleting(null);
       await load();
     } catch (e: unknown) {

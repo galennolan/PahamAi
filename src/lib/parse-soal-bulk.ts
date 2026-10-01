@@ -58,13 +58,13 @@ const HURUF_KUNCI = ['A', 'B', 'C', 'D'] as const;
 const OPSI_SEBELUM = 'ABCD';
 
 /** `Pertanyaan:`, `Soal:`, `Q:`, `Tanya:` — memulai isi pertanyaan. */
-const RE_PERTANYAAN = /^(?:pertanyaan|soal|q|tanya)\s*[:\-]\s*(.+)$/i;
+const RE_PERTANYAAN = /^(?:pertanyaan|soal|q|tanya)\s*[:-]\s*(.+)$/i;
 /** `Soal`, `Soal 3`, `#3`, `---` — memulai butir baru. */
 const RE_SOAL_BARU = /^(?:soal(?:\s*#?\s*\d+)?|#\d+|---+|===+)\s*$/i;
 /** Baris pilihan: `A.`, `A)`, `A:`, `a -`, atau `[A] teks`. */
-const RE_PILIHAN = /^(?:\[([A-Ea-e])\]\s*|([A-Ea-e])\s*[.)\:-]\s*)(.+)$/;
-const RE_KUNCI = /^(?:kunci|jawaban|jwbn|ans)\s*[:\-]?\s*([A-Ea-e])\b/i;
-const RE_PEMBAHASAN = /^(?:pembahasan|alasan|catatan|note)\s*[:\-]\s*(.*)$/i;
+const RE_PILIHAN = /^(?:\[([A-Ea-e])\]\s*|([A-Ea-e])\s*[.):-]\s*)(.+)$/;
+const RE_KUNCI = /^(?:kunci|jawaban|jwbn|ans)\s*[:-]?\s*([A-Ea-e])\b/i;
+const RE_PEMBAHASAN = /^(?:pembahasan|alasan|catatan|note)\s*[:-]\s*(.*)$/i;
 /** Pemisahan kolom satu-baris: `|`, tab, atau `;`. */
 const RE_PEMBATAS = /\s*[|;\t]\s*/;
 
@@ -296,7 +296,7 @@ export const TEMPLATE_SOAL_SATUBARIS = `Apa kepanjangan AI? | Artificial Intelli
 Manakah yang termasuk contoh AI? | Mesin cuci | Kipas angin | Asisten virtual | Sepeda motor | C | Asisten virtual memproses bahasa dan memberi jawaban.`;
 
 /** Soal yang sudah ada → teks bulk format blok, supaya bisa diedit ulang. */
-export function soalKeTeks(butir: Array<Partial<SoalBulk>>): string {
+export function soalKeTeks(butir: Array<Partial<Record<keyof SoalBulk, string | null>>>): string {
   return butir
     .map((s, i) => {
       const baris = [`Soal ${i + 1}`];
