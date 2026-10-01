@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, TextArea, Tabs, SectionHeader } from '../components/ui';
 import { useToast } from '../hooks/useToast';
-import type { Jalur, Modul, SoalButir, SoalPaket } from '../types';
-import { JALUR_LABELS } from '../types';
+import type { Modul, SoalButir, SoalPaket } from '../types';
+import { PROGRAM, programDariKodeModul, programLabel, type ProgramKode } from '../constants/program';
 
 const BULK_TEMPLATE = `1. Apa kepanjangan AI? | Artificial Intelligence | Automated Interaction | Analytical Integration | Applied Interface | A | Artifical Intelligence adalah...
 2. Manakah yang termasuk contoh AI? | Mesin cuci | Asisten virtual | Lampu kipas | Sepeda motor | B | Asisten virtual adalah contoh AI...`;
@@ -14,7 +14,7 @@ const TIPE_LABELS: Record<string, string> = {
   post_test: 'Post-Test',
 };
 
-const JALUR_URUT: Jalur[] = ['A', 'B1', 'B2', 'B3', 'G'];
+const PROGRAM_URUT: ProgramKode[] = PROGRAM.map((p) => p.kode);
 
 interface ParsedSoal {
   no_soal: number;
@@ -27,6 +27,105 @@ interface ParsedSoal {
   pembahasan: string;
 }
 
+interface ButirForm {
+  no_soal: number;
+  pertanyaan: string;
+  pilihan_a: string;
+  pilihan_b: string;
+  pilihan_c: string;
+  pilihan_d: string;
+  kunci: string;
+  pembahasan: string;
+  bobot_skor: number;
+}
+
+const EMPTY_BUTIR: ButirForm = {
+  no_soal: 1,
+  pertanyaan: '',
+  pilihan_a: '',
+  pilihan_b: '',
+  pilihan_c: '',
+  pilihan_d: '',
+  kunci: '',
+  pembahasan: '',
+  bobot_skor: 1,
+};
+
+function butirKeForm(s: SoalButir): ButirForm {
+  return {
+    no_soal: s.no_soal,
+    pertanyaan: s.pertanyaan,
+    pilihan_a: s.pilihan_a ?? '',
+    pilihan_b: s.pilihan_b ?? '',
+    pilihan_c: s.pilihan_c ?? '',
+    pilihan_d: s.pilihan_d ?? '',
+    kunci: s.kunci ?? '',
+    pembahasan: s.pembahasan ?? '',
+    bobot_skor: s.bobot_skor ?? 1,
+  };
+}
+
+/** Isian satu butir soal, dipakai untuk tambah maupun edit. */
+function ButirFormFields({
+  value,
+  onChange,
+  noSoalReadOnly,
+}: {
+  value: ButirForm;
+  onChange: (v: ButirForm) => void;
+  noSoalReadOnly?: boolean;
+}) {
+  const set = (patch: Partial<ButirForm>) => onChange({ ...value, ...patch });
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <Field label="No. Soal">
+          <TextInput
+            type="number"
+            min={1}
+            value={value.no_soal}
+            onChange={(e) => set({ no_soal: parseInt(e.target.value) || 1 })}
+            disabled={noSoalReadOnly}
+          />
+        </Field>
+        <Field label="Kunci Jawaban">
+          <SelectInput value={value.kunci} onChange={(e) => set({ kunci: e.target.value })}>
+            <option value="" className="bg-surface">— Belum ada —</option>
+            {(['A', 'B', 'C', 'D'] as const).map((h) => (
+              <option key={h} value={h} className="bg-surface">{h}</option>
+            ))}
+          </SelectInput>
+        </Field>
+        <Field label="Bobot" hint="Untuk hitung nilai">
+          <TextInput
+            type="number"
+            min={0}
+            value={value.bobot_skor}
+            onChange={(e) => set({ bobot_skor: parseInt(e.target.value) || 0 })}
+          />
+        </Field>
+      </div>
+      <Field label="Pertanyaan">
+        <TextArea rows={3} value={value.pertanyaan} onChange={(e) => set({ pertanyaan: e.target.value })} placeholder="Tulis pertanyaan..." />
+      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {(['a', 'b', 'c', 'd'] as const).map((h) => (
+          <Field key={h} label={`Pilihan ${h.toUpperCase()}`}>
+            <TextInput
+              value={value[`pilihan_${h}` as 'pilihan_a' | 'pilihan_b' | 'pilihan_c' | 'pilihan_d']}
+              onChange={(e) => set({ [`pilihan_${h}`]: e.target.value } as Partial<ButirForm>)}
+              placeholder={`Jawaban ${h.toUpperCase()}`}
+            />
+          </Field>
+        ))}
+      </div>
+      <Field label="Pembahasan" hint="Tampil setelah peserta submit">
+        <TextArea rows={2} value={value.pembahasan} onChange={(e) => set({ pembahasan: e.target.value })} placeholder="Kenapa jawabannya benar..." />
+      </Field>
+    </div>
+  );
+}
+
 export default function KelolaSoalPage() {
   const { push: toast } = useToast();
   const [moduls, setModuls] = useState<Modul[]>([]);
@@ -35,35 +134,48 @@ export default function KelolaSoalPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [tabJalur, setTabJalur] = useState<string>('SEMUA');
+  const [tabProgram, setTabProgram] = useState<string>('SEMUA');
   const [tabTipe, setTabTipe] = useState<string>('SEMUA');
   const [lihatKode, setLihatKode] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     kode_paket: '',
-    jalur: 'A',
+    program: 'B1',
     tipe: 'pre_test',
     sesi_target: '',
     durasi_menit: 15,
   });
+  /** Kode paket yang sedang diedit info-nya; null = mode buat baru. */
+  const [editingKode, setEditingKode] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [parsed, setParsed] = useState<ParsedSoal[]>([]);
+
+  /** Butir yang sedang diedit (id) + form-nya; tambah baru pakai showTambah. */
+  const [editingButirId, setEditingButirId] = useState<string | null>(null);
+  const [butirForm, setButirForm] = useState<ButirForm>(EMPTY_BUTIR);
+  const [showTambah, setShowTambah] = useState(false);
+
+  const modulByKode = useMemo(() => new Map(moduls.map((m) => [m.kode, m])), [moduls]);
+
+  const fetchAll = async () => {
+    const [{ data: m }, { data: p }, { data: b }] = await Promise.all([
+      supabase.from('modul').select('*').order('urutan_sesi'),
+      supabase.from('soal_paket').select('*').order('kode_paket'),
+      supabase.from('soal_butir').select('*').order('kode_paket').order('no_soal'),
+    ]);
+    setModuls((m as Modul[]) ?? []);
+    setPaketList((p as SoalPaket[]) ?? []);
+    const map: Record<string, SoalButir[]> = {};
+    for (const item of (b as SoalButir[]) ?? []) {
+      (map[item.kode_paket] ??= []).push(item);
+    }
+    setButirMap(map);
+  };
 
   const load = async () => {
     setLoading(true);
     try {
-      const [{ data: m }, { data: p }, { data: b }] = await Promise.all([
-        supabase.from('modul').select('*').order('urutan_sesi'),
-        supabase.from('soal_paket').select('*').order('kode_paket'),
-        supabase.from('soal_butir').select('*').order('kode_paket').order('no_soal'),
-      ]);
-      setModuls((m as Modul[]) ?? []);
-      setPaketList((p as SoalPaket[]) ?? []);
-      const map: Record<string, SoalButir[]> = {};
-      for (const item of (b as SoalButir[]) ?? []) {
-        (map[item.kode_paket] ??= []).push(item);
-      }
-      setButirMap(map);
+      await fetchAll();
     } catch (e: unknown) {
       toast((e as Error).message, 'error');
     } finally {
@@ -111,7 +223,7 @@ export default function KelolaSoalPage() {
     try {
       const { error: pErr } = await supabase.from('soal_paket').upsert({
         kode_paket: form.kode_paket,
-        jalur: form.jalur,
+        program: form.program,
         tipe: form.tipe,
         sesi_target: form.sesi_target || null,
         durasi_menit: form.durasi_menit,
@@ -140,30 +252,163 @@ export default function KelolaSoalPage() {
     else { toast(`Paket ${kode} dihapus`, 'success'); setLihatKode(null); load(); }
   };
 
+  // ============ EDIT INFO PAKET ============
+  const startEditPaket = (kode: string) => {
+    const p = paketList.find((x) => x.kode_paket === kode);
+    if (!p) return;
+    setEditingKode(kode);
+    setForm({
+      kode_paket: p.kode_paket,
+      program: p.program ?? programDariKodeModul(p.sesi_target ?? '') ?? 'B1',
+      tipe: p.tipe,
+      sesi_target: p.sesi_target ?? '',
+      durasi_menit: p.durasi_menit,
+    });
+    setLihatKode(null);
+    setEditingButirId(null);
+    setShowTambah(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditPaket = () => {
+    setEditingKode(null);
+    setForm({ kode_paket: '', program: 'B1', tipe: 'pre_test', sesi_target: '', durasi_menit: 15 });
+  };
+
+  /** Simpan info paket saja (tanpa butir) — untuk mode edit maupun buat paket kosong. */
+  const handleSavePaketMeta = async () => {
+    if (!form.kode_paket.trim()) {
+      toast('Kode paket wajib diisi', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('soal_paket').upsert({
+        kode_paket: form.kode_paket.trim(),
+        program: form.program,
+        tipe: form.tipe,
+        sesi_target: form.sesi_target || null,
+        durasi_menit: form.durasi_menit,
+      }, { onConflict: 'kode_paket' });
+      if (error) throw error;
+      toast(editingKode ? `Info ${form.kode_paket} diperbarui` : `Paket ${form.kode_paket} dibuat`, 'success');
+      cancelEditPaket();
+      await fetchAll();
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ============ EDIT / TAMBAH / HAPUS BUTIR ============
+  const startEditButir = (s: SoalButir) => {
+    setShowTambah(false);
+    setEditingButirId(s.id);
+    setButirForm(butirKeForm(s));
+  };
+
+  const handleSaveButir = async (kodePaket: string, id: string) => {
+    if (!butirForm.pertanyaan.trim()) {
+      toast('Pertanyaan wajib diisi', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('soal_butir').update({
+        pertanyaan: butirForm.pertanyaan.trim(),
+        pilihan_a: butirForm.pilihan_a.trim() || null,
+        pilihan_b: butirForm.pilihan_b.trim() || null,
+        pilihan_c: butirForm.pilihan_c.trim() || null,
+        pilihan_d: butirForm.pilihan_d.trim() || null,
+        kunci: butirForm.kunci || null,
+        pembahasan: butirForm.pembahasan.trim() || null,
+        bobot_skor: butirForm.bobot_skor,
+      }).eq('id', id);
+      if (error) throw error;
+      toast(`Soal no. ${butirForm.no_soal} di ${kodePaket} diperbarui`, 'success');
+      setEditingButirId(null);
+      await fetchAll();
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteButir = async (s: SoalButir) => {
+    if (!confirm(`Hapus soal no. ${s.no_soal} dari ${s.kode_paket}?`)) return;
+    const { error } = await supabase.from('soal_butir').delete().eq('id', s.id);
+    if (error) toast(error.message, 'error');
+    else {
+      toast('Soal dihapus', 'success');
+      if (editingButirId === s.id) setEditingButirId(null);
+      await fetchAll();
+    }
+  };
+
+  const startTambahButir = (kodePaket: string) => {
+    const existing = butirMap[kodePaket] ?? [];
+    const nextNo = existing.length > 0 ? Math.max(...existing.map((s) => s.no_soal)) + 1 : 1;
+    setEditingButirId(null);
+    setButirForm({ ...EMPTY_BUTIR, no_soal: nextNo });
+    setShowTambah(true);
+  };
+
+  const handleTambahButir = async (kodePaket: string) => {
+    if (!butirForm.pertanyaan.trim()) {
+      toast('Pertanyaan wajib diisi', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('soal_butir').insert({
+        kode_paket: kodePaket,
+        no_soal: butirForm.no_soal,
+        pertanyaan: butirForm.pertanyaan.trim(),
+        pilihan_a: butirForm.pilihan_a.trim() || null,
+        pilihan_b: butirForm.pilihan_b.trim() || null,
+        pilihan_c: butirForm.pilihan_c.trim() || null,
+        pilihan_d: butirForm.pilihan_d.trim() || null,
+        kunci: butirForm.kunci || null,
+        pembahasan: butirForm.pembahasan.trim() || null,
+        bobot_skor: butirForm.bobot_skor,
+      });
+      if (error) throw error;
+      toast(`Soal no. ${butirForm.no_soal} ditambahkan ke ${kodePaket}`, 'success');
+      setShowTambah(false);
+      await fetchAll();
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const paketDipilih = paketList.find((p) => p.kode_paket === lihatKode) ?? null;
   const butirDipilih = lihatKode ? (butirMap[lihatKode] ?? []) : [];
 
   const paketTersaring = paketList
-    .filter((p) => (tabJalur === 'SEMUA' ? true : p.jalur === tabJalur))
+    .filter((p) => (tabProgram === 'SEMUA' ? true : p.program === tabProgram))
     .filter((p) => (tabTipe === 'SEMUA' ? true : p.tipe === tabTipe));
 
-  // Kelompokkan per jalur agar rapi: A, B1, B2, B3 (+ paket tanpa jalur).
-  const kelompokJalur = JALUR_URUT.map((j) => ({
+  // Kelompokkan per program agar rapi (+ paket tanpa program).
+  const kelompokProgram = PROGRAM_URUT.map((j) => ({
     key: j as string,
-    label: JALUR_LABELS[j],
-    paket: paketTersaring.filter((p) => p.jalur === j),
+    label: programLabel(j),
+    paket: paketTersaring.filter((p) => p.program === j),
   })).filter((g) => g.paket.length > 0);
 
-  const paketTanpaJalur = paketTersaring.filter((p) => !p.jalur || !JALUR_URUT.includes(p.jalur));
-  if (paketTanpaJalur.length > 0) {
-    kelompokJalur.push({ key: 'lainnya', label: 'Tanpa Jalur', paket: paketTanpaJalur });
+  const paketTanpaProgram = paketTersaring.filter((p) => !p.program || !PROGRAM_URUT.includes(p.program as ProgramKode));
+  if (paketTanpaProgram.length > 0) {
+    kelompokProgram.push({ key: 'lainnya', label: 'Tanpa Program', paket: paketTanpaProgram });
   }
 
-  const tabJalurOptions = [
+  const tabProgramOptions = [
     { key: 'SEMUA', label: `Semua (${paketList.length})` },
-    ...JALUR_URUT.filter((j) => paketList.some((p) => p.jalur === j)).map((j) => ({
+    ...PROGRAM_URUT.filter((j) => paketList.some((p) => p.program === j)).map((j) => ({
       key: j as string,
-      label: `${JALUR_LABELS[j]} (${paketList.filter((p) => p.jalur === j).length})`,
+      label: `${programLabel(j)} (${paketList.filter((p) => p.program === j).length})`,
     })),
   ];
 
@@ -178,30 +423,83 @@ export default function KelolaSoalPage() {
 
   // ============ MODE LIHAT: detail satu paket ============
   if (paketDipilih) {
+    const modulTarget = paketDipilih.sesi_target ? modulByKode.get(paketDipilih.sesi_target) : undefined;
     return (
       <div className="space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-headline font-bold text-fg">{paketDipilih.kode_paket}</h1>
             <p className="mt-0.5 text-sm text-fg-muted">
-              {paketDipilih.jalur ? JALUR_LABELS[paketDipilih.jalur] : 'Tanpa jalur'} ·{' '}
+              {paketDipilih.program ? programLabel(paketDipilih.program) : 'Tanpa program'} ·{' '}
               {TIPE_LABELS[paketDipilih.tipe] ?? paketDipilih.tipe} · {paketDipilih.durasi_menit} menit ·{' '}
               {butirDipilih.length} soal
-              {paketDipilih.sesi_target ? ` · Sesi ${paketDipilih.sesi_target}` : ''}
+            </p>
+            <p className="mt-1 text-sm">
+              {modulTarget ? (
+                <span className="text-fg">
+                  Modul: <Badge className="font-mono">{modulTarget.kode}</Badge>{' '}
+                  <span className="text-fg-muted">{modulTarget.judul}</span>
+                </span>
+              ) : paketDipilih.sesi_target ? (
+                <span className="text-warning">Sesi {paketDipilih.sesi_target} — kode modul tidak dikenal, periksa ejaan.</span>
+              ) : (
+                <span className="text-warning">Belum ditautkan ke modul — pre/post-test wajib menunjuk satu modul.</span>
+              )}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => setLihatKode(null)}>Kembali ke daftar</Button>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="secondary" onClick={() => startEditPaket(paketDipilih.kode_paket)}>Edit Info</Button>
+            <Button variant="ghost" onClick={() => { setLihatKode(null); setEditingButirId(null); setShowTambah(false); }}>Kembali</Button>
+          </div>
         </div>
 
-        {butirDipilih.length === 0 ? (
-          <EmptyState title="Paket ini belum punya soal" desc="Tambahkan soal lewat form Input Soal Bulk." />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-subhead font-semibold text-fg">Soal ({butirDipilih.length})</h2>
+          {!showTambah && (
+            <Button size="sm" onClick={() => startTambahButir(paketDipilih.kode_paket)}>+ Tambah Soal</Button>
+          )}
+        </div>
+
+        {showTambah && (
+          <Card className="border-primary/30">
+            <h3 className="mb-3 text-subhead font-semibold text-fg">Tambah Soal ke {paketDipilih.kode_paket}</h3>
+            <ButirFormFields value={butirForm} onChange={setButirForm} />
+            <div className="mt-3 flex gap-2">
+              <Button onClick={() => handleTambahButir(paketDipilih.kode_paket)} disabled={saving} className="flex-1">
+                {saving ? 'Menyimpan...' : 'Tambah Soal'}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowTambah(false)} className="flex-1">Batal</Button>
+            </div>
+          </Card>
+        )}
+
+        {butirDipilih.length === 0 && !showTambah ? (
+          <EmptyState title="Paket ini belum punya soal" desc="Tambahkan soal lewat tombol di atas atau form Input Soal Bulk." />
         ) : (
           <div className="space-y-3">
             {butirDipilih.map((s) => (
               <Card key={s.id} className="p-4">
-                <p className="text-sm font-medium text-fg">
-                  <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 text-sm font-medium text-fg">
+                    <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
+                  </p>
+                  <div className="flex shrink-0 gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => startEditButir(s)}>Edit</Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteButir(s)}>Hapus</Button>
+                  </div>
+                </div>
+                {editingButirId === s.id ? (
+                  <div className="mt-3 border-t border-border-2 pt-3">
+                    <ButirFormFields value={butirForm} onChange={setButirForm} noSoalReadOnly />
+                    <div className="mt-3 flex gap-2">
+                      <Button size="sm" onClick={() => handleSaveButir(paketDipilih.kode_paket, s.id)} disabled={saving} className="flex-1">
+                        {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setEditingButirId(null)} className="flex-1">Batal</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 <ul className="mt-2 grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
                   {(['A', 'B', 'C', 'D'] as const).map((h) => {
                     const val = s[`pilihan_${h.toLowerCase()}` as 'pilihan_a' | 'pilihan_b' | 'pilihan_c' | 'pilihan_d'];
@@ -220,10 +518,17 @@ export default function KelolaSoalPage() {
                     );
                   })}
                 </ul>
+                {s.kunci ? null : (
+                  <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-xs text-fg-muted">
+                    <span className="font-semibold text-warning">Perlu diperbaiki:</span> belum ada kunci jawaban A/B/C/D, jadi nilai soal ini tidak dihitung otomatis.
+                  </p>
+                )}
                 {s.pembahasan && (
                   <p className="mt-2 text-xs text-fg-subtle">
                     <span className="font-semibold text-fg-muted">Pembahasan:</span> {s.pembahasan}
                   </p>
+                )}
+                  </>
                 )}
               </Card>
             ))}
@@ -242,10 +547,23 @@ export default function KelolaSoalPage() {
       </div>
 
       <Card>
-        <h2 className="mb-4 text-subhead font-semibold text-fg">Paket Soal</h2>
+        <h2 className="mb-4 text-subhead font-semibold text-fg">
+          {editingKode ? `Edit Paket ${editingKode}` : 'Paket Soal'}
+        </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Kode Paket" hint="Contoh: PRE-A01, POST-A01">
-            <TextInput value={form.kode_paket} onChange={(e) => setForm({ ...form, kode_paket: e.target.value })} placeholder="PRE-A01" />
+          <Field label="Kode Paket" hint={editingKode ? 'Kode tidak bisa diubah.' : 'Contoh: PRE-A01, POST-A01'}>
+            <TextInput
+              value={form.kode_paket}
+              onChange={(e) => {
+                const kode_paket = e.target.value;
+                // Tebak program dari kode paket (PRE-B201 -> B2); bisa diubah manual.
+                const inti = kode_paket.replace(/^(PRE|POST|KUIS)-/i, '');
+                const tebakan = programDariKodeModul(inti) ?? programDariKodeModul(form.sesi_target);
+                setForm((f) => ({ ...f, kode_paket, ...(tebakan ? { program: tebakan } : {}) }));
+              }}
+              placeholder="PRE-A01"
+              disabled={!!editingKode}
+            />
           </Field>
           <Field label="Tipe">
             <SelectInput value={form.tipe} onChange={(e) => setForm({ ...form, tipe: e.target.value })}>
@@ -254,20 +572,39 @@ export default function KelolaSoalPage() {
               <option value="kuis">Kuis</option>
             </SelectInput>
           </Field>
-          <Field label="Jalur">
-            <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-              {(['A', 'B1', 'B2', 'B3', 'G'] as const).map((j) => <option key={j} value={j}>{JALUR_LABELS[j]}</option>)}
+          <Field label="Program">
+            <SelectInput value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })}>
+              {PROGRAM.map((p) => <option key={p.kode} value={p.kode}>{programLabel(p.kode)}</option>)}
             </SelectInput>
           </Field>
-          <Field label="Sesi Target (kode modul)" hint="Opsional — mis. A01">
-            <TextInput value={form.sesi_target} onChange={(e) => setForm({ ...form, sesi_target: e.target.value })} placeholder="A01" list="modul-list" />
-            <datalist id="modul-list">
-              {moduls.map((m) => <option key={m.id} value={m.kode}>{m.judul}</option>)}
-            </datalist>
+          <Field label="Modul" hint="Pre/post-test dikerjakan sebelum/sesudah modul ini dibaca">
+            <SelectInput
+              value={form.sesi_target}
+              onChange={(e) => {
+                const sesi_target = e.target.value;
+                const tebakan = programDariKodeModul(sesi_target);
+                setForm((f) => ({ ...f, sesi_target, ...(tebakan ? { program: tebakan } : {}) }));
+              }}
+            >
+              <option value="" className="bg-surface">— Tanpa modul —</option>
+              {[...moduls].sort((a, b) => a.kode.localeCompare(b.kode)).map((m) => (
+                <option key={m.id} value={m.kode} className="bg-surface">
+                  {m.kode} — {m.judul}
+                </option>
+              ))}
+            </SelectInput>
           </Field>
           <Field label="Durasi (menit)">
             <TextInput type="number" min={1} value={form.durasi_menit} onChange={(e) => setForm({ ...form, durasi_menit: parseInt(e.target.value) || 15 })} />
           </Field>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button onClick={handleSavePaketMeta} disabled={saving} className="flex-1">
+            {saving ? 'Menyimpan...' : editingKode ? 'Simpan Info Paket' : 'Buat Paket Kosong'}
+          </Button>
+          {editingKode && (
+            <Button variant="secondary" onClick={cancelEditPaket} className="flex-1">Batal Edit</Button>
+          )}
         </div>
       </Card>
 
@@ -314,8 +651,8 @@ export default function KelolaSoalPage() {
       )}
 
       <div className="space-y-3">
-        <SectionHeader title={`Daftar Paket (${paketTersaring.length}/${paketList.length})`} desc="Dikelompokkan per jalur. Klik Lihat untuk membaca soal." />
-        <Tabs options={tabJalurOptions} value={tabJalur} onChange={setTabJalur} label="Filter jalur paket soal" />
+        <SectionHeader title={`Daftar Paket (${paketTersaring.length}/${paketList.length})`} desc="Dikelompokkan per program. Klik Lihat untuk membaca soal." />
+        <Tabs options={tabProgramOptions} value={tabProgram} onChange={setTabProgram} label="Filter program paket soal" />
         <Tabs options={tabTipeOptions} value={tabTipe} onChange={setTabTipe} label="Filter tipe paket soal" />
       </div>
 
@@ -326,7 +663,7 @@ export default function KelolaSoalPage() {
         />
       ) : (
         <div className="space-y-5">
-          {kelompokJalur.map((g) => (
+          {kelompokProgram.map((g) => (
             <div key={g.key} className="space-y-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-subhead font-semibold text-fg">{g.label}</h2>
@@ -335,6 +672,8 @@ export default function KelolaSoalPage() {
               <ul className="space-y-2">
                 {g.paket.map((p) => {
                   const jumlahSoal = (butirMap[p.kode_paket] ?? []).length;
+                  const perluDiperbaiki = (butirMap[p.kode_paket] ?? []).filter((s) => !s.kunci).length;
+                  const modulPaket = p.sesi_target ? modulByKode.get(p.sesi_target) : undefined;
                   return (
                     <li
                       key={p.kode_paket}
@@ -347,10 +686,18 @@ export default function KelolaSoalPage() {
                         <Badge className={`ml-1 text-[10px] ${jumlahSoal === 0 ? 'text-destructive' : ''}`}>
                           {jumlahSoal} soal
                         </Badge>
-                        <p className="mt-0.5 text-xs text-fg-muted">{p.durasi_menit} menit</p>
+                        {perluDiperbaiki > 0 && (
+                          <Badge className="ml-1 border-warning/40 bg-warning/10 text-[10px] text-warning">
+                            {perluDiperbaiki} tanpa kunci
+                          </Badge>
+                        )}
+                        <p className="mt-0.5 text-xs text-fg-muted">
+                          {p.durasi_menit} menit · Modul: {modulPaket ? `${modulPaket.kode} — ${modulPaket.judul}` : (p.sesi_target ?? 'belum ditautkan')}
+                        </p>
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <Button size="sm" variant="secondary" onClick={() => setLihatKode(p.kode_paket)}>Lihat</Button>
+                        <Button size="sm" variant="ghost" onClick={() => startEditPaket(p.kode_paket)}>Edit</Button>
                         <Button size="sm" variant="ghost" onClick={() => handleDeletePaket(p.kode_paket)}>Hapus</Button>
                       </div>
                     </li>

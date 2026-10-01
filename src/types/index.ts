@@ -1,7 +1,5 @@
 export type UserRole = 'admin' | 'instruktur' | 'peserta' | 'parent' | 'marketing';
 
-export type Jalur = 'A' | 'B1' | 'B2' | 'B3' | 'G';
-
 export type SesiStatus = 'belum' | 'berlangsung' | 'selesai' | 'dibatalkan';
 
 export type Kehadiran = 'hadir' | 'izin' | 'alpha' | 'telat';
@@ -22,8 +20,7 @@ export interface Peserta {
   tanggal_lahir: string | null;
   usia: number | null;
   kelas_penempatan: string | null;
-  jalur: Jalur | null;
-  batch_id: string | null;
+  kelas_id: string | null;
   nik: string | null;
   no_wa: string | null;
   email: string | null;
@@ -34,6 +31,8 @@ export interface Peserta {
   consent_privasi: boolean;
   consent_etika: boolean;
   no_wa_ortu: string | null;
+  /** Relasi opsional, hasil join `kelas(*)`. */
+  kelas?: Kelas | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,36 +41,38 @@ export interface Modul {
   id: string;
   kode: string;
   judul: string;
-  jalur: Jalur;
   urutan_sesi: number;
   durasi_menit: number;
   content_md: string | null;
   slide_url: string | null;
-  kategori?: string | null;
+  offline_material_path: string | null;
+  /** Sekarang sumber utama pengelompokan katalog modul. */
+  kategori: ModulKategori | null;
   materi_peserta_md?: string | null;
-  promo_ready: boolean;
-  promo_angle: string | null;
-  target_audience: string | null;
   created_at: string;
 }
 
-export interface Batch {
+export type KelasStatus = 'terbuka' | 'berjalan' | 'selesai' | 'dibatalkan';
+
+export interface Kelas {
   id: string;
-  kode_batch: string;
-  jalur: Jalur;
-  nama_batch: string | null;
-  status: string;
+  kode: string;
+  nama: string;
+  status: KelasStatus;
   tanggal_mulai: string | null;
   tanggal_akhir: string | null;
   kapasitas_maks: number | null;
-  terdaftar: number;
+  instruktur_utama_fk: string | null;
+  asisten_fk: string | null;
+  /** Hasil hitung dari `peserta`; tidak disimpan di database. */
+  terdaftar?: number;
   created_at: string;
 }
 
 export interface JadwalSesi {
   id: string;
   modul_id: string;
-  batch_id: string;
+  kelas_id: string;
   kode_sesi_friendly: string;
   judul_sesi: string;
   tanggal_kelas: string | null;
@@ -82,6 +83,7 @@ export interface JadwalSesi {
   status_sesi: SesiStatus;
   catatan_instruktur: string | null;
   modul?: Modul | null;
+  kelas?: Kelas | null;
   created_at: string;
 }
 
@@ -159,7 +161,7 @@ export interface Pendaftar {
   nama_lengkap: string;
   email: string | null;
   no_wa: string | null;
-  jalur: Jalur | null;
+  minat_program: string | null;
   usia: number | null;
   status: PendaftarStatus;
   catatan_admin: string | null;
@@ -202,7 +204,6 @@ export interface Sertifikat {
   id: string;
   id_peserta_fk: string;
   nomor_seri: string;
-  jalur: Jalur | null;
   level_lulus: string | null;
   tanggal_terbit: string | null;
   file_url: string | null;
@@ -224,7 +225,10 @@ export interface PortfolioItem {
 export interface SoalPaket {
   id: string;
   kode_paket: string;
-  jalur: Jalur | null;
+  /** Diturunkan dari `kode_paket`; disimpan ulang saat migration 0028. */
+  program: string | null;
+  /** Diturunkan dari prefiks `kode_paket` di sisi klien bila kolom `program` kosong. */
+  program_derived?: string | null;
   tipe: 'kuis' | 'pre_test' | 'post_test';
   sesi_target: string | null;
   durasi_menit: number;
@@ -243,6 +247,7 @@ export interface SoalButir {
   kunci: string | null;
   pembahasan: string | null;
   bobot_skor: number;
+  perlu_tinjau?: boolean;
   created_at: string;
 }
 
@@ -272,7 +277,7 @@ export interface LessonPlanSegmen {
 
 export interface Rubrik {
   id: string;
-  jalur: Jalur | null;
+  program: string | null;
   aspek: string;
   level_1: string | null;
   level_2: string | null;
@@ -308,7 +313,7 @@ export interface PlacementRespons {
 
 export interface SurveiRespons {
   id: string;
-  batch_id: string;
+  kelas_id: string;
   id_peserta_fk: string | null;
   id_parent_fk: string | null;
   kelompok: 'peserta' | 'parent';
@@ -318,34 +323,6 @@ export interface SurveiRespons {
   rating_nilai_uang: number | null;
   feedback: string | null;
   created_at: string;
-}
-
-export interface JalurInfo {
-  kode: string;
-  label: string;
-  deskripsi: string | null;
-  urutan: number;
-  aktif: boolean;
-}
-
-/** Fallback statis bila tabel jalur belum termuat / migration 0011 belum jalan. */
-export const JALUR_FALLBACK: JalurInfo[] = [
-  { kode: 'A', label: 'A — Anak', deskripsi: 'Anak 8–14 th · 9 sesi · 60 mnt', urutan: 1, aktif: true },
-  { kode: 'B1', label: 'B1 — Pemula', deskripsi: 'Pemula · 7 sesi · 90 mnt', urutan: 2, aktif: true },
-  { kode: 'B2', label: 'B2 — Menengah', deskripsi: 'Menengah · 11 sesi · 120 mnt', urutan: 3, aktif: true },
-  { kode: 'B3', label: 'B3 — Expert', deskripsi: 'Expert · 11 sesi · 120–150 mnt', urutan: 4, aktif: true },
-  { kode: 'G', label: 'G — GAFB', deskripsi: 'Generative AI for Beginners · 10 sesi · 90 mnt', urutan: 5, aktif: true },
-];
-
-export const JALUR_LABELS: Record<string, string> = Object.fromEntries(
-  JALUR_FALLBACK.map((j) => [j.kode, j.label]),
-);
-
-export function jalurLabel(list: JalurInfo[] | null | undefined, kode: string | null | undefined): string {
-  if (!kode) return '—';
-  const hit = (list ?? []).find((j) => j.kode === kode);
-  if (hit) return hit.label;
-  return JALUR_LABELS[kode] ?? kode;
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -409,14 +386,27 @@ const KODE_TO_KATEGORI: Record<string, ModulKategori> = {
   B310: 'PROJ', B311: 'PROJ',
 };
 
+const KATEGORI_VALID = new Set<string>(KATEGORI_MODUL.map((k) => k.kode));
+
+/**
+ * Kategori efektif sebuah modul.
+ *
+ * `modul.kategori` sudah di-backfill oleh migration 0008 dan dijaga CHECK
+ * constraint-nya, jadi hampir selalu terisi. Pencocokan dari kode dan judul
+ * hanya untuk modul yang lolos backfill manual.
+ */
 export function resolveKategori(modul: Modul): ModulKategori {
-  if (modul.kategori && (KODE_TO_KATEGORI as Record<string, unknown>)[modul.kategori.toUpperCase()] !== undefined)
-    return modul.kategori.toUpperCase() as ModulKategori;
-  const k = KODE_TO_KATEGORI[modul.kode];
-  if (k) return k;
+  if (modul.kategori && KATEGORI_VALID.has(modul.kategori)) return modul.kategori;
+  const dariKode = KODE_TO_KATEGORI[modul.kode];
+  if (dariKode) return dariKode;
   if (/etika|keamanan|bias/i.test(modul.judul)) return 'ETHC';
   if (/prompt/i.test(modul.judul)) return 'PRMP';
   if (/presentasi/i.test(modul.judul)) return 'PRES';
   if (/proyek|capstone/i.test(modul.judul)) return 'PROJ';
+  if (/kode|api|python|sql/i.test(modul.judul)) return 'CODE';
+  if (/otomasi|automasi|agent/i.test(modul.judul)) return 'AUTO';
+  if (/arsitektur|rag|sistem/i.test(modul.judul)) return 'ARCH';
+  if (/produktivitas|produk/i.test(modul.judul)) return 'PROD';
+  if (/tool|aplikasi/i.test(modul.judul)) return 'TOOL';
   return 'FND';
 }

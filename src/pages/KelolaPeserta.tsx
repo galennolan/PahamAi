@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
-import type { Peserta, Batch } from '../types';
-import { JALUR_FALLBACK, jalurLabel } from '../types';
-import { listJalurInfo } from '../services/modul';
+import { useAuth } from '../context/AuthContext';
+import type { Peserta, Kelas } from '../types';
 
 const POSISI_LABELS: Record<string, string> = {
   'baru-kenal-hp': 'Baru Kenal HP',
@@ -21,16 +20,18 @@ const EMPTY_FORM = {
   no_wa_ortu: '',
   email_ortu: '',
   usia: '',
-  jalur: 'A',
   kelas_penempatan: 'baru-kenal-hp',
-  batch_id: '',
+  kelas_id: '',
 };
 
 export default function KelolaPesertaPage() {
   const { push: toast } = useToast();
+  const { role } = useAuth();
+  //_policy `peserta_write_admin` hanya mengizinkan admin. Perubahan & hapus
+  // peserta oleh instruktur ditolak RLS tanpa error, jadi harus dicegah di UI.
+  const isAdmin = role === 'admin';
   const [pesertas, setPesertas] = useState<Peserta[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [jalurOptions, setJalurOptions] = useState<string[]>(['A', 'B1', 'B2', 'B3']);
+  const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,20 +44,13 @@ export default function KelolaPesertaPage() {
 
 const load = async () => {
     const errors: string[] = [];
-    setJalurOptions(JALUR_FALLBACK.filter((j) => j.aktif).map((j) => j.kode));
-    listJalurInfo(false)
-      .then((jal) => {
-        const aktif = (jal.length > 0 ? jal : JALUR_FALLBACK).filter((j) => j.aktif);
-        setJalurOptions(aktif.map((j) => j.kode));
-      })
-      .catch(() => {});
 
-    const [{ data: b, error: be }, { data: p, error: pe }] = await Promise.all([
-      supabase.from('batch').select('*').order('created_at', { ascending: false }),
+    const [{ data: k, error: ke }, { data: p, error: pe }] = await Promise.all([
+      supabase.from('kelas').select('*').order('tanggal_mulai', { ascending: false }),
       supabase.from('peserta').select('*').order('created_at', { ascending: false }),
     ]);
-    if (be) errors.push(`Batch: ${be.message}`);
-    else setBatches((b as Batch[]) ?? []);
+    if (ke) errors.push(`Kelas: ${ke.message}`);
+    else setKelasList((k as Kelas[]) ?? []);
     if (pe) errors.push(`Peserta: ${pe.message}`);
     else {
       const list = (p as Peserta[]) ?? [];
@@ -112,9 +106,8 @@ const load = async () => {
       no_wa_ortu: p.no_wa_ortu ?? '',
       email_ortu: p.email_ortu ?? '',
       usia: p.usia?.toString() ?? '',
-      jalur: p.jalur ?? 'A',
       kelas_penempatan: p.kelas_penempatan ?? 'baru-kenal-hp',
-      batch_id: p.batch_id ?? '',
+      kelas_id: p.kelas_id ?? '',
     });
     setShowForm(true);
   };
@@ -136,7 +129,7 @@ const load = async () => {
     setSaving(true);
     try {
       if (editing) {
-        const { error } = await supabase.from('peserta').update({
+        const { data, error } = await supabase.from('peserta').update({
           nama_lengkap: form.nama_lengkap.trim(),
           nama_panggil: form.nama_panggil.trim() || null,
           email: form.email.trim() || null,
@@ -144,11 +137,11 @@ const load = async () => {
           no_wa_ortu: form.no_wa_ortu.trim() || null,
           email_ortu: form.email_ortu.trim() || null,
           usia: form.usia ? parseInt(form.usia) : null,
-          jalur: form.jalur,
           kelas_penempatan: form.kelas_penempatan,
-          batch_id: form.batch_id || null,
-        }).eq('id', editing.id);
+          kelas_id: form.kelas_id || null,
+        }).eq('id', editing.id).select('id');
         if (error) throw new Error(error.message);
+        if (!data || data.length === 0) throw new Error('Data peserta tidak berubah. Hanya Admin yang bisa mengubah data peserta.');
 
         const pwChanged = form.password.length > 0;
         if (pwChanged) {
@@ -165,12 +158,11 @@ const load = async () => {
           p_email: form.email.trim(),
           p_password: form.password,
           p_nama: form.nama_lengkap.trim(),
-          p_jalur: form.jalur,
           p_no_wa: form.no_wa.trim() || null,
           p_no_wa_ortu: form.no_wa_ortu.trim() || null,
           p_email_ortu: form.email_ortu.trim() || null,
           p_usia: form.usia ? parseInt(form.usia) : null,
-          p_batch_id: form.batch_id || null,
+          p_kelas_id: form.kelas_id || null,
           p_kelas_penempatan: form.kelas_penempatan,
         });
         if (rpcErr) throw new Error(rpcErr.message);
@@ -189,9 +181,9 @@ const load = async () => {
     if (!deleting) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('peserta').delete().eq('id', deleting.id);
+      const { error } = await supabase.rpc('delete_peserta_with_auth', { p_peserta_id: deleting.id });
       if (error) throw new Error(error.message);
-      toast('Peserta dihapus', 'success');
+      toast(`Peserta ${deleting.nama_lengkap} & akun login dihapus`, 'success');
       setDeleting(null);
       await load();
     } catch (e: unknown) {
@@ -201,11 +193,17 @@ const load = async () => {
     }
   };
 
-  const setBatchPeserta = async (id: string, batchId: string) => {
-    const { error } = await supabase.from('peserta').update({ batch_id: batchId || null }).eq('id', id);
+  const setKelasPeserta = async (id: string, kelasId: string) => {
+    const { data, error } = await supabase
+      .from('peserta')
+      .update({ kelas_id: kelasId || null })
+      .eq('id', id)
+      .select('id');
     if (error) toast(error.message, 'error');
-    else {
-      toast('Batch peserta diperbarui', 'success');
+    else if (!data || data.length === 0) {
+      toast('Kelas peserta tidak berubah. Hanya Admin yang bisa memindahkan peserta kelas.', 'error');
+    } else {
+      toast('Kelas peserta diperbarui', 'success');
       await load();
     }
   };
@@ -324,16 +322,9 @@ const load = async () => {
                 <TextInput type="email" placeholder="ortu@email.com" value={form.email_ortu} onChange={(e) => setForm({ ...form, email_ortu: e.target.value })} />
               </Field>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Usia">
                 <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} />
-              </Field>
-              <Field label="Jalur">
-                <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-                  {jalurOptions.map((j) => (
-                    <option key={j} value={j} className="bg-surface">{jalurLabel(undefined, j) ?? j}</option>
-                  ))}
-                </SelectInput>
               </Field>
               <Field label="Penempatan">
                 <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
@@ -344,11 +335,11 @@ const load = async () => {
               </Field>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Batch">
-                <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}>
+              <Field label="Kelas">
+                <SelectInput value={form.kelas_id} onChange={(e) => setForm({ ...form, kelas_id: e.target.value })}>
                   <option value="" className="bg-surface">— Belum —</option>
-                  {batches.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
+                  {kelasList.map((k) => (
+                    <option key={k.id} value={k.id} className="bg-surface">{k.kode} — {k.nama}</option>
                   ))}
                 </SelectInput>
               </Field>
@@ -371,10 +362,10 @@ const load = async () => {
               <thead>
                 <tr className="border-b border-border-2">
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Nama</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Jalur</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Penempatan</th>
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Kontak</th>
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Bayar</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Batch</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Kelas</th>
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Aksi</th>
                 </tr>
               </thead>
@@ -394,7 +385,7 @@ const load = async () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs text-primary-text">{p.jalur ?? '-'}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-primary-text">{p.kelas_penempatan ?? '-'}</td>
                       <td className="px-3 py-2 text-xs text-fg-muted">
                         <div className="flex flex-col">
                           <span>Email: {p.email ?? '-'}</span>
@@ -416,22 +407,30 @@ const load = async () => {
                         </button>
                       </td>
                       <td className="px-3 py-2">
-                        <select
-                          value={p.batch_id ?? ''}
-                          onChange={(e) => setBatchPeserta(p.id, e.target.value)}
-                          className="rounded-[4px] border border-border-2 bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-primary"
-                        >
-                          <option value="" className="bg-surface">— Belum —</option>
-                          {batches.map((b) => (
-                            <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
-                          ))}
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={p.kelas_id ?? ''}
+                            onChange={(e) => setKelasPeserta(p.id, e.target.value)}
+                            className="rounded-[4px] border border-border-2 bg-bg px-2 py-1 text-xs text-fg outline-none focus:border-primary"
+                          >
+                            <option value="" className="bg-surface">— Belum —</option>
+                            {kelasList.map((k) => (
+                              <option key={k.id} value={k.id} className="bg-surface">{k.kode} — {k.nama}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="font-mono text-xs text-fg-subtle">
+                            {p.kelas_id ? kelasList.find((k) => k.id === p.kelas_id)?.nama ?? p.kelas_id : '— Belum —'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex gap-1.5">
                           <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>Edit</Button>
                           <Button size="sm" variant="ghost" onClick={() => { setResettingPw({ peserta: p, show: true }); setNewPw(''); }}>Reset Pw</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setDeleting(p)}>Hapus</Button>
+                          {isAdmin && (
+                            <Button size="sm" variant="ghost" onClick={() => setDeleting(p)}>Hapus</Button>
+                          )}
                         </div>
                       </td>
                     </tr>

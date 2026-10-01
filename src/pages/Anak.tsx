@@ -41,7 +41,7 @@ export default function AnakPage() {
           .eq('parent_user.user_id', user.id);
         const childIds = ((links ?? []) as Array<{ child_id: string }>).map((l) => l.child_id);
         if (childIds.length === 0) return;
-        const { data: pesertaData } = await supabase.from('peserta').select('*').in('id', childIds);
+        const { data: pesertaData } = await supabase.from('peserta').select('*, kelas(*)').in('id', childIds);
         const list = (pesertaData as Peserta[]) ?? [];
         setAnakList(list);
         if (list.length > 0) setSelectedAnak(list[0]);
@@ -119,7 +119,7 @@ export default function AnakPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className="text-subhead font-semibold text-fg">{selectedAnak.nama_panggil ?? selectedAnak.nama_lengkap}</p>
-              <p className="text-sm text-fg-muted">Jalur: <Badge>{selectedAnak.jalur ?? '-'}</Badge></p>
+              <p className="text-sm text-fg-muted">Kelas: <Badge>{selectedAnak.kelas?.nama ?? selectedAnak.kelas_penempatan ?? '-'}</Badge></p>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-[4px] border border-border-2 bg-surface p-3">

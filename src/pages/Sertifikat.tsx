@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Badge, Button } from '../components/ui';
+import { Card, Loading, EmptyState, Button } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { formatJakarta } from '../lib/time';
 import type { Sertifikat } from '../types';
@@ -44,7 +44,7 @@ export default function SertifikatPage() {
       <h1 className="text-headline font-bold text-fg">Sertifikat Saya</h1>
 
       {sertifikat.length === 0 ? (
-        <EmptyState title="Belum ada sertifikat" desc="Lulus kriteria kelulusan & admin akan terbitkan sertifikat PAHAI/[TAHUN]/[JALUR]/[NOMOR]." />
+        <EmptyState title="Belum ada sertifikat" desc="Lulus kriteria kelulusan & admin akan terbitkan sertifikat bernomor resmi." />
       ) : (
         <div className="grid gap-4">
           {sertifikat.map(s => (
@@ -53,7 +53,7 @@ export default function SertifikatPage() {
                 <div>
                   <p className="font-mono text-lg text-primary-text">{s.nomor_seri}</p>
                   <p className="text-sm text-fg-muted mt-1">
-                    Jalur: <Badge>{s.jalur ?? '-'}</Badge> · {s.level_lulus ?? '-'} · {s.tanggal_terbit ? formatJakarta(s.tanggal_terbit) : '-'}
+                    {s.level_lulus ?? '-'} · {s.tanggal_terbit ? formatJakarta(s.tanggal_terbit) : '-'}
                   </p>
                   {s.file_url && <p className="text-xs text-fg-subtle mt-1">{s.file_url}</p>}
                 </div>

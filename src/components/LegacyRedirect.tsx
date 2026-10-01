@@ -6,7 +6,6 @@ const legacyPesertaRoutes: Record<string, string> = {
   '/absensi-saya': '/progres',
   '/catatan': '/progres',
   '/nilai': '/progres',
-  '/kuis': '/progres',
   '/sertifikat': '/karya',
   '/portfolio': '/karya',
   '/pembayaran-saya': '/profil',

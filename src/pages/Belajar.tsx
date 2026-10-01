@@ -5,9 +5,9 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, EmptyState, Badge, ProgressBar, Tabs, Skeleton } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { formatJakarta, todayJakartaISO } from '../lib/time';
-import { listModulByJalur } from '../services/modul';
-import type { Modul, Jalur, JadwalSesi, Peserta } from '../types';
-import { JALUR_LABELS } from '../types';
+import { listModul } from '../services/modul';
+import { getProgresSesi, listSesiAssigned, urutModulDariSesi, type ProgresSesi, type SesiAssigned } from '../services/penugasan';
+import type { Modul, Peserta } from '../types';
 
 type Tab = 'modul' | 'jadwal';
 
@@ -18,19 +18,13 @@ const SESI_STATUS: Record<string, string> = {
   dibatalkan: 'Dibatalkan',
 };
 
-interface SesiProgress {
-  selesai: boolean;
-  absen: string | null;
-  adaCatatan: boolean;
-}
-
 export default function BelajarPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('modul');
   const [peserta, setPeserta] = useState<Peserta | null>(null);
   const [moduls, setModuls] = useState<Modul[]>([]);
-  const [jadwal, setJadwal] = useState<JadwalSesi[]>([]);
-  const [progress, setProgress] = useState<Record<string, SesiProgress>>({});
+  const [jadwal, setJadwal] = useState<SesiAssigned[]>([]);
+  const [progress, setProgress] = useState<Record<string, ProgresSesi>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +34,7 @@ export default function BelajarPage() {
     try {
       const { data: profil } = await supabase
         .from('peserta')
-        .select('*')
+        .select('*, kelas(*)')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -51,37 +45,15 @@ export default function BelajarPage() {
       const p = profil as Peserta;
       setPeserta(p);
 
-      const jalurSaya = (p.jalur ?? 'A') as Jalur;
+      // Katalog modul dipanaskan untuk cache offline (Sesi.tsx membacanya).
+      void listModul().catch(() => []);
 
-      const [modulRes, jadwalRes, spRes] = await Promise.all([
-        listModulByJalur(jalurSaya).catch(() => [] as Modul[]),
-        p.batch_id
-          ? supabase.from('jadwal_sesi').select('*, modul(*)').eq('batch_id', p.batch_id).order('tanggal_kelas', { ascending: true })
-          : Promise.resolve({ data: null as JadwalSesi[] | null }),
-        supabase.from('sesi_peserta').select('id, sesi_id').eq('peserta_id', p.id),
-      ]);
-
-      setModuls(modulRes);
-      setJadwal((jadwalRes.data as JadwalSesi[]) ?? []);
-
-      const spList = (spRes.data ?? []) as Array<{ id: string; sesi_id: string }>;
-      if (spList.length > 0) {
-        const spIds = spList.map((s) => s.id);
-        const [catRes, absRes] = await Promise.all([
-          supabase.from('catatan_ketik').select('sesi_peserta_id').in('sesi_peserta_id', spIds),
-          supabase.from('absensi').select('sesi_peserta_id, status_kehadiran').in('sesi_peserta_id', spIds),
-        ]);
-        const catIds = new Set(((catRes.data ?? []) as Array<{ sesi_peserta_id: string }>).map((c) => c.sesi_peserta_id));
-        const absMap = new Map(
-          ((absRes.data ?? []) as Array<{ sesi_peserta_id: string; status_kehadiran: string }>).map((a) => [a.sesi_peserta_id, a.status_kehadiran])
-        );
-        const map: Record<string, SesiProgress> = {};
-        for (const sp of spList) {
-          const absen = absMap.get(sp.id) ?? null;
-          map[sp.sesi_id] = { selesai: Boolean(catIds.has(sp.id) || absen), absen, adaCatatan: catIds.has(sp.id) };
-        }
-        setProgress(map);
-      }
+      // Modul yang boleh dibuka peserta = modul yang di-assign tutor lewat
+      // `sesi_peserta`, bukan seluruh katalog jalur. Sesi "dibatalkan" diabaikan.
+      const sesiList = await listSesiAssigned(p.id);
+      setJadwal(sesiList);
+      setModuls(urutModulDariSesi(sesiList));
+      setProgress(await getProgresSesi(sesiList.map((s) => s.sesi_peserta_id)));
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -118,10 +90,8 @@ export default function BelajarPage() {
     );
   }
 
-  const doneCount = moduls.filter((m) => {
-    const j = jadwal.find((s) => s.modul_id === m.id);
-    return j ? progress[j.id]?.selesai === true : false;
-  }).length;
+  const sesiByModul = new Map(jadwal.map((s) => [s.modul_id, s]));
+  const doneCount = moduls.filter((m) => progress[sesiByModul.get(m.id)?.sesi_peserta_id ?? '']?.selesai === true).length;
   const pct = moduls.length > 0 ? Math.round((doneCount / moduls.length) * 100) : 0;
   const today = todayJakartaISO();
 
@@ -130,7 +100,7 @@ export default function BelajarPage() {
       <div>
         <h1 className="text-headline font-bold text-fg">Belajar</h1>
         <p className="mt-0.5 text-sm text-fg-muted">
-          Jalur {JALUR_LABELS[peserta.jalur ?? 'A']} · {moduls.length} modul
+          {peserta.kelas?.nama ?? 'Tanpa kelas'} · {moduls.length} modul
         </p>
       </div>
 
@@ -160,17 +130,19 @@ export default function BelajarPage() {
 
       {tab === 'modul' && (
         moduls.length === 0 ? (
-          <EmptyState title="Modul belum tersedia" desc="Modul akan muncul setelah admin memuat konten." />
+          <EmptyState title="Belum ada modul" desc="Modul akan muncul setelah tutor memberi tugas modul ini untuk kelas Anda." />
         ) : (
           <ol className="space-y-2.5">
             {moduls.map((m, i) => {
-              const j = jadwal.find((s) => s.modul_id === m.id);
-              const prog = j ? progress[j.id] : undefined;
+              const j = sesiByModul.get(m.id);
+              const prog = j ? progress[j.sesi_peserta_id] : undefined;
               const isDone = prog?.selesai === true;
-              const unlocked = !j || isDone || (i === 0 || moduls.slice(0, i).some((prev) => {
-                const pj = jadwal.find((s) => s.modul_id === prev.id);
-                return pj ? progress[pj.id]?.selesai === true : false;
-              }));
+              // Urut: sebuah modul terbuka hanya setelah semua modul yang
+              // ditugaskan sebelumnya selesai. Sama dengan aturan di Sesi.tsx.
+              const unlocked = i === 0 || moduls.slice(0, i).every((prev) => {
+                const pj = sesiByModul.get(prev.id);
+                return pj ? progress[pj.sesi_peserta_id]?.selesai === true : false;
+              });
 
               return (
                 <li key={m.id}>
@@ -221,12 +193,12 @@ export default function BelajarPage() {
 
       {tab === 'jadwal' && (
         jadwal.length === 0 ? (
-          <EmptyState title="Belum ada jadwal" desc="Admin belum membuat jadwal sesi untuk batch Anda." />
+          <EmptyState title="Belum ada jadwal" desc="Tutor belum menjadwalkan sesi untuk kelas Anda." />
         ) : (
           <ul className="space-y-2.5">
             {jadwal.map((s) => {
               const isPast = (s.tanggal_kelas ?? '') < today;
-              const prog = progress[s.id];
+              const prog = progress[s.sesi_peserta_id];
               return (
                 <li key={s.id}>
                   <Card className={!isPast ? 'border-primary/25' : ''}>
@@ -273,9 +245,11 @@ export default function BelajarPage() {
           </ul>
         )
       )}
-      <p className="mt-8 text-center text-xs text-fg-subtle">
-        Jalur {JALUR_LABELS[peserta.jalur ?? 'A']}
-      </p>
+      {peserta.kelas?.nama && (
+        <p className="mt-8 text-center text-xs text-fg-subtle">
+          {peserta.kelas.nama}
+        </p>
+      )}
     </div>
   );
 }

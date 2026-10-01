@@ -3,13 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Button, Field, SelectInput } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
-import type { Batch } from '../types';
+import type { Kelas } from '../types';
 
 export default function SurveiPage() {
   const { user } = useAuth();
   const { push: toast } = useToast();
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [form, setForm] = useState({ batch_id: '', nps: '', materi: '', instruktur: '', nilai: '', feedback: '' });
+  const [kelasList, setKelasList] = useState<Kelas[]>([]);
+  const [form, setForm] = useState({ kelas_id: '', nps: '', materi: '', instruktur: '', nilai: '', feedback: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -18,12 +18,12 @@ export default function SurveiPage() {
     (async () => {
       try {
         const { data } = await supabase
-          .from('batch')
+          .from('kelas')
           .select('*')
           .order('created_at', { ascending: false });
-        setBatches((data as Batch[]) ?? []);
+        setKelasList((data as Kelas[]) ?? []);
       } catch (e) {
-        console.error('[Survei] gagal memuat batch:', e);
+        console.error('[Survei] gagal memuat kelas:', e);
       } finally {
         setLoading(false);
       }
@@ -36,7 +36,7 @@ export default function SurveiPage() {
     try {
       const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user?.id).maybeSingle();
       const payload = {
-        batch_id: form.batch_id,
+        kelas_id: form.kelas_id,
         id_peserta_fk: (profil as { id: string } | null)?.id ?? null,
         kelompok: 'peserta',
         nps: form.nps ? parseInt(form.nps) : null,
@@ -67,11 +67,11 @@ export default function SurveiPage() {
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Field label="Batch">
-            <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })} required>
-              <option value="" className="bg-surface">— Pilih batch —</option>
-              {batches.map((b) => (
-                <option key={b.id} value={b.id} className="bg-surface">{b.nama_batch ?? b.jalur}</option>
+          <Field label="Kelas">
+            <SelectInput value={form.kelas_id} onChange={(e) => setForm({ ...form, kelas_id: e.target.value })} required>
+              <option value="" className="bg-surface">— Pilih kelas —</option>
+              {kelasList.map((k) => (
+                <option key={k.id} value={k.id} className="bg-surface">{k.kode} — {k.nama}</option>
               ))}
             </SelectInput>
           </Field>

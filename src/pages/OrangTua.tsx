@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Badge } from '../components/ui';
+import { Card, Loading, EmptyState } from '../components/ui';
 import { formatJakarta } from '../lib/time';
 import type { Peserta, JadwalSesi, Absensi, Catatan, Pembayaran } from '../types';
 
@@ -9,8 +9,8 @@ interface AnakWithLink {
   childId: string;
   nama_lengkap: string;
   nama_panggil: string | null;
-  jalur: string | null;
-  batch_id: string | null;
+  kelas_id: string | null;
+  kelas_nama: string | null;
   jadwal: JadwalSesi[];
   absensi: Absensi[];
   catatan: (Catatan | null)[];
@@ -56,7 +56,7 @@ export default function OrangTuaPage() {
 
         const { data: pesertas, error: pesertaErr } = await supabase
           .from('peserta')
-          .select('*')
+          .select('*, kelas(*)')
           .in('id', childIds);
         if (pesertaErr) throw pesertaErr;
 
@@ -67,7 +67,7 @@ export default function OrangTuaPage() {
             supabase
               .from('jadwal_sesi')
               .select('*, modul(*)')
-              .eq('batch_id', child.batch_id ?? '')
+              .eq('kelas_id', child.kelas_id ?? '')
               .order('tanggal_kelas', { ascending: false }),
             supabase
               .from('absensi')
@@ -92,8 +92,8 @@ export default function OrangTuaPage() {
             childId: child.id,
             nama_lengkap: child.nama_lengkap,
             nama_panggil: child.nama_panggil,
-            jalur: child.jalur,
-            batch_id: child.batch_id,
+            kelas_id: child.kelas_id,
+            kelas_nama: child.kelas?.nama ?? null,
             jadwal,
             absensi,
             catatan: catatanList,
@@ -139,7 +139,6 @@ export default function OrangTuaPage() {
       <div className="grid gap-6">
         {anaks.map((anak) => {
           const stats = kehadiranStats(anak);
-          const jalurLabel = { A: 'Anak (8-14)', B1: 'Pemula', B2: 'Menengah', B3: 'Expert' }[anak.jalur ?? 'A'] ?? 'Tidak diketahui';
           return (
             <Card key={anak.childId}>
               <div className="mb-4 flex items-center justify-between">
@@ -147,9 +146,8 @@ export default function OrangTuaPage() {
                   <h2 className="text-subhead font-bold text-fg">
                     {anak.nama_panggil ?? anak.nama_lengkap}
                   </h2>
-                  <p className="text-sm text-fg-muted">Jalur: {jalurLabel}</p>
+                  <p className="text-sm text-fg-muted">Kelas: {anak.kelas_nama ?? '—'}</p>
                 </div>
-                <Badge className="font-mono text-primary-text">{anak.jalur ?? '-'}</Badge>
               </div>
 
               {isLocked(anak) && (

@@ -14,7 +14,7 @@ import { Badge, Button, Card, EmptyState, Field, Loading, SelectInput, TextInput
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../lib/supabaseClient';
 import { formatJakarta } from '../lib/time';
-import type { Batch, JadwalSesi, Modul, Peserta } from '../types';
+import type { Kelas, JadwalSesi, Modul, Peserta } from '../types';
 
 interface PesertaProgress {
   peserta: Peserta;
@@ -29,8 +29,8 @@ interface PesertaProgress {
 
 export default function KelolaSesiPage() {
   const { push: toast } = useToast();
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
+  const [kelasList, setKelasList] = useState<Kelas[]>([]);
+  const [selectedKelas, setSelectedKelas] = useState<string | null>(null);
   const [jadwals, setJadwals] = useState<JadwalSesi[]>([]);
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [pesertas, setPesertas] = useState<Peserta[]>([]);
@@ -39,7 +39,7 @@ export default function KelolaSesiPage() {
   const [expandedPeserta, setExpandedPeserta] = useState<string | null>(null);
   const [searchPeserta, setSearchPeserta] = useState('');
 
-  const [loadingBatch, setLoadingBatch] = useState(true);
+  const [loadingKelas, setLoadingKelas] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -54,26 +54,26 @@ export default function KelolaSesiPage() {
     lokasi: '',
   });
 
-  // Load list batch
+  // Load list kelas
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await supabase.from('batch').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('kelas').select('*').order('tanggal_mulai', { ascending: false });
         if (!error && data) {
-          setBatches(data);
-          if (data.length > 0) setSelectedBatch(data[0].id);
+          setKelasList(data);
+          if (data.length > 0) setSelectedKelas(data[0].id);
         }
       } catch (e) {
-        console.error('[KelolaSesi] gagal memuat batch:', e);
+        console.error('[KelolaSesi] gagal memuat kelas:', e);
       } finally {
-        setLoadingBatch(false);
+        setLoadingKelas(false);
       }
     })();
   }, []);
 
-  // Load detail saat batch berubah
+  // Load detail saat kelas berubah
   useEffect(() => {
-    if (!selectedBatch) {
+    if (!selectedKelas) {
       setJadwals([]);
       setPesertas([]);
       setProgressList([]);
@@ -83,15 +83,11 @@ export default function KelolaSesiPage() {
     (async () => {
       setLoadingData(true);
       try {
-      const currBatch = batches.find((b) => b.id === selectedBatch);
-
       // 1. Jadwal & Modul
       const [jadwalRes, modulRes, pesertaRes] = await Promise.all([
-        supabase.from('jadwal_sesi').select('*, modul(*)').eq('batch_id', selectedBatch).order('tanggal_kelas', { ascending: true }),
-        currBatch
-          ? supabase.from('modul').select('*').eq('jalur', currBatch.jalur).order('urutan_sesi', { ascending: true })
-          : Promise.resolve({ data: [] as Modul[], error: null }),
-        supabase.from('peserta').select('*').eq('batch_id', selectedBatch).order('nama_lengkap', { ascending: true }),
+        supabase.from('jadwal_sesi').select('*, modul(*)').eq('kelas_id', selectedKelas).order('tanggal_kelas', { ascending: true }),
+        supabase.from('modul').select('*').order('urutan_sesi', { ascending: true }).order('kode', { ascending: true }),
+        supabase.from('peserta').select('*').eq('kelas_id', selectedKelas).order('nama_lengkap', { ascending: true }),
       ]);
 
       const jList = (jadwalRes.data as JadwalSesi[]) ?? [];
@@ -184,10 +180,10 @@ export default function KelolaSesiPage() {
         setLoadingData(false);
       }
     })();
-  }, [selectedBatch, batches]);
+  }, [selectedKelas]);
   const handleCreateSesi = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatch || !form.modul_id) {
+    if (!selectedKelas || !form.modul_id) {
       toast('Pilih modul dan kelas dulu', 'error');
       return;
     }
@@ -196,7 +192,7 @@ export default function KelolaSesiPage() {
       .from('jadwal_sesi')
       .insert({
         ...form,
-        batch_id: selectedBatch,
+        kelas_id: selectedKelas,
       })
       .select()
       .single();
@@ -206,7 +202,7 @@ export default function KelolaSesiPage() {
       return;
     }
 
-    // Auto assign semua peserta batch ke sesi baru ini
+    // Auto assign semua peserta kelas ke sesi baru ini
     if (pesertas.length > 0) {
       const spRows = pesertas.map((p) => ({
         sesi_id: newSesi.id,
@@ -229,7 +225,7 @@ export default function KelolaSesiPage() {
     });
 
     // Reload
-    const { data } = await supabase.from('jadwal_sesi').select('*, modul(*)').eq('batch_id', selectedBatch).order('tanggal_kelas', { ascending: true });
+    const { data } = await supabase.from('jadwal_sesi').select('*, modul(*)').eq('kelas_id', selectedKelas).order('tanggal_kelas', { ascending: true });
     setJadwals((data as JadwalSesi[]) ?? []);
   };
 
@@ -244,9 +240,9 @@ export default function KelolaSesiPage() {
     );
   }, [progressList, searchPeserta]);
 
-  if (loadingBatch) return <Loading text="Memuat kelas..." />;
+  if (loadingKelas) return <Loading text="Memuat kelas..." />;
 
-  const currBatchObj = batches.find((b) => b.id === selectedBatch);
+  const currKelasObj = kelasList.find((b) => b.id === selectedKelas);
 
   return (
     <div className="space-y-6">
@@ -256,30 +252,30 @@ export default function KelolaSesiPage() {
           <p className="text-sm text-fg-muted">Pantau capaian belajar peserta per modul dan atur jadwal kelas.</p>
         </div>
 
-        {/* Pilih Batch */}
+        {/* Pilih Kelas */}
         <div className="flex items-center gap-2">
           <SelectInput
-            value={selectedBatch ?? ''}
-            onChange={(e) => setSelectedBatch(e.target.value)}
+            value={selectedKelas ?? ''}
+            onChange={(e) => setSelectedKelas(e.target.value)}
             disabled={loadingData}
             className="!min-w-[240px]"
           >
-            {batches.length === 0 && <option value="">Belum ada kelas</option>}
-            {batches.map((b) => (
+            {kelasList.length === 0 && <option value="">Belum ada kelas</option>}
+            {kelasList.map((b) => (
               <option key={b.id} value={b.id} className="bg-surface">
-                {b.kode_batch} — {b.nama_batch ?? b.jalur}
+                {b.kode} — {b.nama}
               </option>
             ))}
           </SelectInput>
         </div>
       </div>
 
-      {batches.length === 0 ? (
+      {kelasList.length === 0 ? (
         <EmptyState
           title="Belum ada kelas"
           desc="Buat kelas baru — info kelas, peserta, dan sesi dibuat sekali jalan."
           action={
-            <Link to="/kelola-batch">
+            <Link to="/kelola-kelas">
               <Button>
                 Buat Kelas <ArrowUpRight className="ml-1.5 h-4 w-4" />
               </Button>
@@ -288,10 +284,10 @@ export default function KelolaSesiPage() {
         />
       ) : (
         <>
-          {moduls.length === 0 && currBatchObj && (
+          {moduls.length === 0 && currKelasObj && (
             <div className="rounded-[8px] border border-primary/25 bg-primary/5 p-3">
               <p className="text-sm text-fg">
-                Belum ada modul di jalur {currBatchObj.jalur}. Buat dulu di{' '}
+                Belum ada modul di katalog. Buat dulu di{' '}
                 <Link to="/kelola-modul" className="text-primary-text underline">Kelola Modul</Link>{' '}
                 sebelum menambah sesi manual.
               </p>
@@ -351,7 +347,7 @@ export default function KelolaSesiPage() {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-fg-muted">
-                      Kelas <span className="font-semibold text-fg">{currBatchObj?.nama_batch ?? currBatchObj?.kode_batch}</span> · Jalur {currBatchObj?.jalur}
+                      Kelas <span className="font-semibold text-fg">{currKelasObj?.nama ?? currKelasObj?.kode}</span>
                     </p>
                     <TextInput
                       placeholder="Cari peserta..."
@@ -384,7 +380,9 @@ export default function KelolaSesiPage() {
                                   {row.peserta.nama_panggil && (
                                     <span className="text-xs text-fg-subtle">({row.peserta.nama_panggil})</span>
                                   )}
-                                  <Badge className="text-[10px]">{row.peserta.jalur ?? '—'}</Badge>
+                                  {row.peserta.kelas_penempatan && (
+                                    <Badge className="text-[10px]">{row.peserta.kelas_penempatan}</Badge>
+                                  )}
                                 </div>
                                 <p className="mt-0.5 text-xs text-fg-subtle">
                                   {row.peserta.email ?? row.peserta.no_wa ?? 'Tanpa kontak'} · Capaian: {row.lastSesi ? `Terakhir sampai ${row.lastSesi}` : 'Belum mulai'}

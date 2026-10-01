@@ -17,6 +17,14 @@ const BATCH = {
   B3: '44444444-4444-4444-4444-444444444444',
 };
 
+// Baris batch harus ada sebelum peserta menunjuk batch_id.
+const batches = [
+  { id: BATCH.A, kode_batch: 'PAHAI-A-2601', jalur: 'A', nama_batch: 'Anak Batch 1 Solo', status: 'berjalan' },
+  { id: BATCH.B1, kode_batch: 'PAHAI-B1-2601', jalur: 'B1', nama_batch: 'Menengah Batch 1 Solo', status: 'berjalan' },
+  { id: BATCH.B2, kode_batch: 'PAHAI-B2-2601', jalur: 'B2', nama_batch: 'Menengah Batch 1 Solo', status: 'berjalan' },
+  { id: BATCH.B3, kode_batch: 'PAHAI-B3-2601', jalur: 'B3', nama_batch: 'Expert Batch 1 Solo', status: 'terbuka' },
+];
+
 const users = [
   { email: 'admin@paham.ai', password: 'Admin123!', role: 'admin', name: 'Admin Paham AI' },
   { email: 'tutor@paham.ai', password: 'Tutor123!', role: 'instruktur', name: 'Budi Instruktur' },
@@ -54,6 +62,14 @@ async function upsertUser(u) {
 
 async function main() {
   const authIds = {};
+
+  for (const b of batches) {
+    const { data: exist } = await sb.from('batch').select('id').eq('id', b.id).maybeSingle();
+    if (exist) continue;
+    const { error } = await sb.from('batch').insert({ ...b, kapasitas_maks: 20 });
+    if (error) console.error(`✗ batch ${b.kode_batch}: ${error.message}`);
+    else console.log(`✓ batch ${b.kode_batch}`);
+  }
 
   for (const u of users) {
     const id = await upsertUser(u);

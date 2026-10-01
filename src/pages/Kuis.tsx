@@ -1,122 +1,138 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, SelectInput } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, SelectInput, SectionHeader } from '../components/ui';
+import { HasilKuisPanel, OpsiSoal, opsiSoal, submitKuis } from '../components/KuisPanel';
+import type { HasilKuis } from '../components/KuisPanel';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import type { SoalPaket, SoalButir } from '../types';
+import { programDariKodeModul } from '../constants/program';
 
-type SoalWithPaket = SoalButir & { soal_paket?: SoalPaket };
+/** Kode program dari seluruh modul yang ditugaskan ke peserta. */
+async function programPeserta(pesertaId: string | null): Promise<Set<string> | null> {
+  if (!pesertaId) return null;
+
+  const { data, error } = await supabase
+    .from('sesi_peserta')
+    .select('sesi:jadwal_sesi(modul(kode))')
+    .eq('peserta_id', pesertaId);
+  if (error) throw new Error(error.message);
+
+  const set = new Set<string>();
+  for (const row of (data ?? []) as unknown as { sesi: { modul: { kode: string } | null } | null }[]) {
+    const kode = row.sesi?.modul?.kode;
+    if (!kode) continue;
+    const p = programDariKodeModul(kode);
+    if (p) set.add(p);
+  }
+  return set.size > 0 ? set : null;
+}
 
 export default function KuisPage() {
   const { user } = useAuth();
   const { push: toast } = useToast();
   const [paketList, setPaketList] = useState<SoalPaket[]>([]);
   const [selected, setSelected] = useState<string>('');
-  const [soal, setSoal] = useState<SoalWithPaket[]>([]);
+  const [soal, setSoal] = useState<SoalButir[]>([]);
   const [jawaban, setJawaban] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [hasil, setHasil] = useState<{ skor: number; benar: number; total: number } | null>(null);
+  const [hasil, setHasil] = useState<HasilKuis | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('soal_paket')
-          .select('*')
-          .order('kode_paket', { ascending: true });
-        const list = (data as SoalPaket[]) ?? [];
+        const [{ data, error }, { data: profil }] = await Promise.all([
+          supabase.from('soal_paket').select('*').order('kode_paket', { ascending: true }),
+          user
+            ? supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        if (error) throw error;
+        const all = (data as SoalPaket[]) ?? [];
+
+        // Program peserta diturunkan dari modul yang ditugaskan lewat
+        // `sesi_peserta`; paket tanpa program tetap ditampilkan.
+        const programSaya = await programPeserta((profil as { id?: string } | null)?.id ?? null);
+        const list = programSaya
+          ? all.filter((p) => !p.program || programSaya.has(p.program))
+          : all;
         setPaketList(list);
         if (list.length > 0) setSelected(list[0].kode_paket);
-      } catch (e) {
-        console.error('[Kuis] gagal memuat paket:', e);
+      } catch (e: unknown) {
+        toast((e as Error).message, 'error');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user, toast]);
 
   useEffect(() => {
     if (!selected) { setSoal([]); setHasil(null); setJawaban({}); return; }
     (async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
-          .from('soal_butir')
-          .select('*, soal_paket(*)')
+        // View aman: tidak memuat kunci jawaban maupun pembahasan
+        const { data, error } = await supabase
+          .from('soal_butir_view')
+          .select('*')
           .eq('kode_paket', selected)
           .order('no_soal', { ascending: true });
-        setSoal((data as SoalWithPaket[]) ?? []);
+        if (error) throw error;
+        setSoal((data as SoalButir[]) ?? []);
         setHasil(null);
         setJawaban({});
-      } catch (e) {
-        console.error('[Kuis] gagal memuat soal:', e);
+      } catch (e: unknown) {
+        setSoal([]);
+        toast((e as Error).message, 'error');
       } finally {
         setLoading(false);
       }
     })();
-  }, [selected]);
+  }, [selected, toast]);
+
+  const semuaTerisi = soal.length > 0
+    && soal.every((s) => opsiSoal(s).length === 0 || Boolean(jawaban[s.no_soal]));
 
   const handleSubmit = async () => {
     if (!user || !selected) return;
+    const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
+    if (!profil) {
+      toast('Profil peserta tidak ditemukan. Hubungi admin.', 'error');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // Ambil kunci dari tabel penuh (hanya staff yang bisa, tapi untuk demo kita hitung client-side)
-      const { data: full } = await supabase.from('soal_butir').select('*').eq('kode_paket', selected);
-      const kunciMap = new Map((full as SoalButir[] ?? []).map(s => [s.no_soal, s.kunci]));
-
-      let benar = 0;
-      let totalSkor = 0;
-      const totalBobot = soal.reduce((a, s) => a + s.bobot_skor, 0);
-
-      for (const s of soal) {
-        const jwb = jawaban[s.no_soal];
-        const kunci = kunciMap.get(s.no_soal);
-        const isBenar = jwb === kunci;
-        if (isBenar) benar++;
-        const poin = (jwb ? s.bobot_skor : 0);
-        totalSkor += poin;
+      const result = await submitKuis(profil.id, selected, soal, jawaban);
+      setHasil(result);
+      if (result.skor === null) {
+        toast('Jawaban tersimpan, menunggu penilaian instruktur', 'success');
+      } else {
+        toast(`Skor ${result.skor}/100 · KKM ${result.kkm} · ${result.lulus ? 'lulus' : 'belum lulus'}`, result.lulus ? 'success' : 'error');
       }
-
-      const skor = totalBobot > 0 ? Math.round((totalSkor / totalBobot) * 100) : 0;
-      setHasil({ skor, benar, total: soal.length });
-
-      // Simpan attempt
-      const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
-      if (profil) {
-        const rows = soal.map(s => ({
-          id_peserta_fk: profil.id,
-          kode_paket: selected,
-          no_soal: s.no_soal,
-          attempt_no: 1,
-          jawaban: jawaban[s.no_soal] ?? null,
-          benar: jawaban[s.no_soal] === kunciMap.get(s.no_soal),
-          skor: s.bobot_skor,
-        }));
-        await supabase.from('quiz_attempt').upsert(rows, { onConflict: 'id_peserta_fk,kode_paket,no_soal,attempt_no' });
-      }
-
-      toast(`Skor: ${skor}/100`, skor >= 70 ? 'success' : 'error');
     } catch (e: unknown) {
       toast((e as Error).message, 'error');
     }
     setSubmitting(false);
   };
 
-  if (loading) return <Loading text="Memuat kuis..." />;
+  if (loading && paketList.length === 0) return <Loading text="Memuat kuis..." />;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-bold text-fg">Kuis & Ujian</h1>
+      <div>
+        <h1 className="text-headline font-bold text-fg">Kuis & Ujian</h1>
+        <p className="text-sm text-fg-muted">Latihan mandiri. Nilai dihitung otomatis dan Attempt kamu tersimpan.</p>
+      </div>
 
       <Card>
         <Field label="Pilih Paket Soal">
-          <SelectInput value={selected} onChange={(e) => setSelected(e.target.value)}>
+          <SelectInput value={selected} onChange={(e) => { setSelected(e.target.value); setHasil(null); }} disabled={submitting}>
             <option value="">— Pilih paket —</option>
             {paketList.map(p => (
               <option key={p.kode_paket} value={p.kode_paket}>
-                {p.kode_paket} ({p.tipe} · {p.jalur})
-              </option>
+                {p.kode_paket} ({p.tipe} · {p.program ?? 'umum'})       </option>
             ))}
           </SelectInput>
         </Field>
@@ -124,70 +140,44 @@ export default function KuisPage() {
 
       {!selected && <EmptyState title="Pilih paket soal" desc="Pilih kuis atau pre/post-test yang ingin dikerjakan." />}
 
-      {selected && soal.length > 0 && !hasil && (
+      {selected && !hasil && (
         <>
-          <Card>
-            <p className="font-mono text-sm text-fg-muted">{soal.length} soal · Jawab semua, lalu submit</p>
-          </Card>
-          {soal.map(s => (
-            <Card key={s.id}>
-              <p className="mb-3 font-medium text-fg">
-                <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
-              </p>
-              <div className="space-y-2">
-                {(['A', 'B', 'C', 'D'] as const).map(pil => {
-                  const val = s[`pilihan_${pil.toLowerCase()}` as 'pilihan_a'];
-                  if (!val) return null;
-                  return (
-                    <label key={pil} className="flex items-start gap-3 cursor-pointer p-2 rounded-[4px] hover:bg-surface transition">
-                      <input
-                        type="radio"
-                        name={`soal-${s.no_soal}`}
-                        value={pil}
-                        checked={jawaban[s.no_soal] === pil}
-                        onChange={() => setJawaban({ ...jawaban, [s.no_soal]: pil })}
-                        className="mt-1 accent-[primary]"
-                      />
-                      <span className="text-body text-fg"><span className="font-mono text-fg-muted mr-2">{pil}.</span>{val}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </Card>
-          ))}
-          <Card>
-            <Button onClick={handleSubmit} disabled={submitting} className="w-full">
-              {submitting ? 'Memproses...' : 'Submit Jawaban'}
-            </Button>
-          </Card>
+          {loading ? (
+            <Card><p className="text-sm text-fg-muted">Memuat soal...</p></Card>
+          ) : soal.length === 0 ? (
+            <EmptyState title="Belum ada soal" desc={`Paket ${selected} belum memiliki butir soal.`} />
+          ) : (
+            <>
+              <Card>
+                <p className="font-mono text-sm text-fg-muted">{soal.length} soal · Jawab semua, lalu submit</p>
+              </Card>
+              {soal.map(s => (
+                <Card key={s.id}>
+                  <p className="mb-3 font-medium text-fg">
+                    <span className="font-mono text-primary-text">{s.no_soal}.</span> {s.pertanyaan}
+                  </p>
+                  <OpsiSoal soal={s} value={jawaban[s.no_soal]} onPick={(v) => setJawaban({ ...jawaban, [s.no_soal]: v })} />
+                </Card>
+              ))}
+              <Card>
+                <Button onClick={handleSubmit} disabled={submitting || !semuaTerisi} className="w-full">
+                  {submitting ? 'Memproses...' : 'Submit Jawaban'}
+                </Button>
+              </Card>
+            </>
+          )}
         </>
       )}
 
       {hasil && (
         <Card>
-          <h2 className="text-subhead font-semibold text-fg mb-4">Hasil Kuis</h2>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-3xl font-bold text-primary-text font-display">{hasil.skor}</p>
-              <p className="text-caption text-fg-muted">Skor</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-success font-display">{hasil.benar}</p>
-              <p className="text-caption text-fg-muted">Benar</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-fg font-display">{hasil.total}</p>
-              <p className="text-caption text-fg-muted">Total</p>
-            </div>
-          </div>
-          <p className="mt-4 text-center text-body text-fg-muted">
-            {hasil.skor >= 70 ? 'Selamat, Anda lulus (KKM 70)!' : 'Belum mencapai KKM 70. Coba lagi atau pelajari ulang modul.'}
-          </p>
+          <SectionHeader title="Hasil Kuis" />
+          <HasilKuisPanel result={hasil} soalList={soal} jawaban={jawaban} />
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" onClick={() => { setHasil(null); setJawaban({}); }} className="flex-1">
               Ulangi
             </Button>
-            <Button variant="ghost" onClick={() => setSelected('')} className="flex-1">
+            <Button variant="ghost" onClick={() => { setSelected(''); setSoal([]); setHasil(null); }} className="flex-1">
               Pilih Paket Lain
             </Button>
           </div>

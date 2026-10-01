@@ -5,21 +5,22 @@ import { Card, Loading, EmptyState, Badge, Table, Button } from '../components/u
 import { useAuth } from '../context/AuthContext';
 import { formatJakartaDateTime } from '../lib/time';
 import { useToast } from '../hooks/useToast';
+import { PROGRAM, programDariKodeModul, programLabel } from '../constants/program';
 
 type PendaftarWithSource = {
   id: string;
   nama_lengkap: string;
   email: string | null;
   no_wa: string | null;
-  jalur: string | null;
+  minat_program: string | null;
   usia: number | null;
   status: string;
-  source: string | null;
-  source_detail: string | null;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  referrer_code: string | null;
+  source?: string | null;
+  source_detail?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  referrer_code?: string | null;
   created_at: string;
 };
 
@@ -27,13 +28,9 @@ type ModulPromo = {
   id: string;
   kode: string;
   judul: string;
-  jalur: string;
+  kategori: string | null;
   durasi_menit: number;
   content_md: string | null;
-  promo_ready: boolean;
-  promo_angle: string | null;
-  target_audience: string | null;
-  difficulty: 'mudah' | 'sedang' | 'sulit';
 };
 
 type MarketingContent = {
@@ -68,6 +65,7 @@ export default function MarketingDashboardPage() {
   const [techFeatures, setTechFeatures] = useState<TechFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'sources' | 'modules' | 'content' | 'tech'>('overview');
+  const [filterProgram, setFilterProgram] = useState('');
 
   useEffect(() => {
     if (authLoading) return;
@@ -79,7 +77,7 @@ export default function MarketingDashboardPage() {
     setLoading(true);
     const [pendaftarRes, modulRes, contentRes, techRes] = await Promise.all([
       supabase.from('pendaftar').select('*').order('created_at', { ascending: false }),
-      supabase.from('modul').select('*').order('jalur, urutan_sesi'),
+      supabase.from('modul').select('*').order('urutan_sesi', { ascending: true }).order('kode', { ascending: true }),
       supabase.from('marketing_content').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('tech_features').select('*').order('category'),
     ]);
@@ -100,12 +98,14 @@ export default function MarketingDashboardPage() {
     acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  const byJalur = pendaftar.reduce((acc, p) => {
-    const j = p.jalur || 'unknown';
+  const byProgram = pendaftar.reduce((acc, p) => {
+    const j = p.minat_program || 'unknown';
     acc[j] = (acc[j] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  const readyToPromo = modulPromo.filter(m => m.promo_ready).length;
+  const modulTampil = filterProgram
+    ? modulPromo.filter((m) => programDariKodeModul(m.kode) === filterProgram)
+    : modulPromo;
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart2 },
@@ -141,8 +141,8 @@ export default function MarketingDashboardPage() {
           <p className="text-3xl font-bold text-accent font-display mt-1">{Object.keys(bySource).length}</p>
         </Card>
         <Card>
-          <p className="text-caption text-fg-muted">Modul Siap Promo</p>
-          <p className="text-3xl font-bold text-success font-display mt-1">{readyToPromo}/{modulPromo.length}</p>
+          <p className="text-caption text-fg-muted">Total Modul</p>
+          <p className="text-3xl font-bold text-success font-display mt-1">{modulPromo.length}</p>
         </Card>
         <Card>
           <p className="text-caption text-fg-muted">Konten Siap Publikasi</p>
@@ -191,11 +191,11 @@ export default function MarketingDashboardPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-4 text-subhead font-semibold text-fg">Distribusi per Jalur</h2>
+            <h2 className="mb-4 text-subhead font-semibold text-fg">Distribusi Minat Program</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(byJalur).map(([jalur, count]) => (
-                <Card key={jalur} className="text-center">
-                  <p className="text-caption text-fg-muted">{jalur === 'A' ? 'Anak' : jalur}</p>
+              {Object.entries(byProgram).map(([program, count]) => (
+                <Card key={program} className="text-center">
+                  <p className="text-caption text-fg-muted">{programLabel(program)}</p>
                   <p className="text-2xl font-bold text-fg font-display mt-1">{count}</p>
                 </Card>
               ))}
@@ -211,7 +211,7 @@ export default function MarketingDashboardPage() {
             <thead>
               <tr className="border-b border-border-2">
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Nama</th>
-                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Jalur</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Minat</th>
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Sumber</th>
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Detail</th>
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">UTM</th>
@@ -223,7 +223,7 @@ export default function MarketingDashboardPage() {
               {pendaftar.map(p => (
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface">
                   <td className="px-4 py-3 text-fg font-medium">{p.nama_lengkap}</td>
-                  <td className="px-4 py-3"><Badge>{p.jalur ?? '-'}</Badge></td>
+                  <td className="px-4 py-3"><Badge>{p.minat_program ? programLabel(p.minat_program) : '-'}</Badge></td>
                   <td className="px-4 py-3 text-fg font-mono text-sm">{p.source ?? p.utm_source ?? 'organic'}</td>
                   <td className="px-4 py-3 text-fg-muted text-sm">{p.source_detail ?? '-'}</td>
                   <td className="px-4 py-3 font-mono text-xs text-fg-subtle">
@@ -243,15 +243,14 @@ export default function MarketingDashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-subhead font-semibold text-fg">Modul yang Siap Dipromosikan</h2>
             <select
-              value={''}
-              onChange={(e) => console.log(e.target.value)}
+              value={filterProgram}
+              onChange={(e) => setFilterProgram(e.target.value)}
               className="rounded-[4px] border border-border-2 bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-primary"
             >
-              <option value="">Semua Jalur</option>
-              <option value="A">A — Anak</option>
-              <option value="B1">B1 — Pemula</option>
-              <option value="B2">B2 — Menengah</option>
-              <option value="B3">B3 — Expert</option>
+              <option value="">Semua Program</option>
+              {PROGRAM.map((p) => (
+                <option key={p.kode} value={p.kode}>{programLabel(p.kode)}</option>
+              ))}
             </select>
           </div>
 
@@ -260,28 +259,20 @@ export default function MarketingDashboardPage() {
               <tr className="border-b border-border-2">
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Kode</th>
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Judul</th>
-                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Jalur</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Kategori</th>
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Durasi</th>
-                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Siap Promo</th>
-                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Sudut Promo</th>
-                <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Target</th>
                 <th className="px-4 py-3 text-left text-xs text-fg-muted uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {modulPromo.map(m => (
+              {modulTampil.map(m => (
                 <tr key={m.id} className="border-b border-border last:border-0 hover:bg-surface">
                   <td className="px-4 py-3 font-mono text-sm text-primary-text">{m.kode}</td>
                   <td className="px-4 py-3 text-fg">{m.judul}</td>
-                  <td className="px-4 py-3"><Badge>{m.jalur}</Badge></td>
+                  <td className="px-4 py-3"><Badge>{programDariKodeModul(m.kode) ?? '-'}</Badge></td>
+                  <td className="px-4 py-3"><Badge className="font-mono">{m.kategori ?? '-'}</Badge></td>
                   <td className="px-4 py-3 font-mono text-sm text-fg-muted">{m.durasi_menit} mnt</td>
-                  <td className="px-4 py-3">
-                    <Badge className={m.promo_ready ? 'border-green-500/30 text-green-400' : 'border-yellow-500/30 text-yellow-400'}>
-                      {m.promo_ready ? 'Siap' : 'Draft'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-fg-muted text-sm max-w-xs truncate">{m.promo_angle ?? 'Belum diisi'}</td>
-                  <td className="px-4 py-3 text-fg-muted text-sm max-w-xs truncate">{m.target_audience ?? '-'}</td>
                   <td className="px-4 py-3">
                     <Button size="sm" variant="ghost" onClick={() => toast(`Form edit ${m.kode} sedang dalam pengembangan.`)}>
                       <Edit2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />

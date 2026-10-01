@@ -5,7 +5,7 @@ import { formatJakarta } from '../lib/time';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { Check, ExternalLink } from 'lucide-react';
-import type { Catatan, JadwalSesi, Modul, SesiPeserta } from '../types';
+import type { Catatan, JadwalSesi, Modul } from '../types';
 
 interface SesiCatatanItem {
   sesiPesertaId: string;
@@ -29,7 +29,7 @@ export default function CatatanPage() {
       try {
         const { data: profil } = await supabase
           .from('peserta')
-          .select('id, batch_id')
+          .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -39,21 +39,24 @@ export default function CatatanPage() {
           return;
         }
 
-        // Ambil sesi_peserta
+        // Hanya sesi yang ditugaskan ke peserta ini lewat `sesi_peserta`.
         const { data: spList } = await supabase
           .from('sesi_peserta')
-          .select('*')
+          .select('id, sesi:jadwal_sesi(*, modul(*))')
           .eq('peserta_id', profil.id);
 
-        const sesiPesertaMap = new Map((spList ?? []).map((sp: SesiPeserta) => [sp.sesi_id, sp.id]));
-        const spIds = (spList ?? []).map((sp: SesiPeserta) => sp.id);
+        const ditugaskan = ((spList ?? []) as unknown as {
+          id: string;
+          sesi: JadwalSesi | null;
+        }[])
+          .filter((r): r is { id: string; sesi: JadwalSesi } => r.sesi !== null)
+          .sort(
+            (a, b) =>
+              (a.sesi.tanggal_kelas ?? '').localeCompare(b.sesi.tanggal_kelas ?? '') ||
+              (a.sesi.modul?.urutan_sesi ?? 0) - (b.sesi.modul?.urutan_sesi ?? 0)
+          );
 
-        // Ambil semua jadwal sesi batch peserta
-        const { data: jadwalList } = await supabase
-          .from('jadwal_sesi')
-          .select('*, modul(*)')
-          .eq('batch_id', profil.batch_id ?? '')
-          .order('tanggal_kelas', { ascending: true });
+        const spIds = ditugaskan.map((r) => r.id);
 
         // Ambil catatan
         const { data: catatanList } = await supabase
@@ -66,9 +69,7 @@ export default function CatatanPage() {
         const list: SesiCatatanItem[] = [];
         const formMap: Record<string, { text: string; url: string }> = {};
 
-        for (const j of (jadwalList ?? []) as JadwalSesi[]) {
-          const spId = sesiPesertaMap.get(j.id);
-          if (!spId) continue; // Hanya sesi yang di-assign ke peserta
+        for (const { id: spId, sesi: j } of ditugaskan) {
           const cat = catatanMap.get(spId) ?? null;
           list.push({
             sesiPesertaId: spId,
@@ -133,7 +134,7 @@ export default function CatatanPage() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="Belum ada sesi terjadwal" desc="Admin perlu mendaftarkan Anda ke sesi batch terlebih dahulu." />
+        <EmptyState title="Belum ada sesi terjadwal" desc="Admin perlu menugaskan Anda ke sesi terlebih dahulu." />
       ) : (
         <div className="space-y-6">
           {items.map((item, idx) => {

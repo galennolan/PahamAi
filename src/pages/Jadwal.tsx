@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { formatJakarta, todayJakartaISO } from '../lib/time';
-import type { JadwalSesi, Peserta } from '../types';
-import { JALUR_LABELS } from '../types';
+import { listSesiAssigned, type SesiAssigned } from '../services/penugasan';
+import type { Peserta } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
   belum: 'Belum',
@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function JadwalPage() {
   const { user } = useAuth();
   const [peserta, setPeserta] = useState<Peserta | null>(null);
-  const [jadwal, setJadwal] = useState<JadwalSesi[]>([]);
+  const [jadwal, setJadwal] = useState<SesiAssigned[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'semua' | 'belum' | 'selesai'>('semua');
 
@@ -27,18 +27,13 @@ export default function JadwalPage() {
         if (!user) return;
         const { data: profil } = await supabase
           .from('peserta')
-          .select('*')
+          .select('*, kelas(*)')
           .eq('user_id', user.id)
           .maybeSingle();
         const p = profil as Peserta | null;
         setPeserta(p);
-        if (!p?.batch_id) return;
-        const { data } = await supabase
-          .from('jadwal_sesi')
-          .select('*')
-          .eq('batch_id', p.batch_id)
-          .order('tanggal_kelas', { ascending: true });
-        setJadwal((data as JadwalSesi[]) ?? []);
+        if (!p) return;
+        setJadwal(await listSesiAssigned(p.id));
       } catch (e) {
         console.error('[Jadwal] gagal memuat jadwal:', e);
       } finally {
@@ -49,7 +44,7 @@ export default function JadwalPage() {
 
   if (loading) return <Loading text="Memuat jadwal..." />;
   if (!peserta) return <EmptyState title="Belum terdaftar" desc="Hubungi Admin untuk didaftarkan sebagai peserta." />;
-  if (!peserta.batch_id) return <EmptyState title="Belum ada batch" desc="Admin belum mengassign Anda ke batch. Hubungi instruktur." />;
+  if (!peserta.kelas_id) return <EmptyState title="Belum ada kelas" desc="Admin belum memasukkan Anda ke kelas. Hubungi instruktur." />;
 
   const today = todayJakartaISO();
   const upcoming = jadwal.filter((s) => (s.tanggal_kelas ?? '') >= today && s.status_sesi !== 'dibatalkan');
@@ -61,7 +56,7 @@ export default function JadwalPage() {
       <div>
         <h1 className="text-headline font-bold text-fg">Jadwal Sesi</h1>
         <p className="mt-1 text-sm text-fg-muted">
-          Jalur: <Badge className="mx-1">{JALUR_LABELS[peserta.jalur ?? 'A']}</Badge> · Total {jadwal.length} sesi
+          Kelas: <Badge className="mx-1">{peserta.kelas?.nama ?? '—'}</Badge> · Total {jadwal.length} sesi
         </p>
       </div>
 

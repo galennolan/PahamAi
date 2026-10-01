@@ -47,7 +47,7 @@ export default function PembayaranPage() {
   };
 
   const loadPeserta = async () => {
-    const { data } = await supabase.from('peserta').select('*').order('nama_lengkap', { ascending: true });
+      const { data } = await supabase.from('peserta').select('*, kelas(*)').order('nama_lengkap', { ascending: true });
     setAllPeserta((data as Peserta[]) ?? []);
   };
 
@@ -70,7 +70,7 @@ export default function PembayaranPage() {
         value: p.id,
         label: p.nama_lengkap,
         sublabel: [p.email, p.no_wa].filter(Boolean).join(' · ') || 'Tanpa kontak',
-        badge: p.jalur ?? undefined,
+        badge: p.kelas?.kode ?? p.kelas_penempatan ?? undefined,
       })),
     [allPeserta]
   );

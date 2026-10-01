@@ -65,7 +65,7 @@ export default function KelolaOrangTuaPage() {
       if (ortuErr) throw ortuErr;
 
       const [{ data: p }, { data: link }] = await Promise.all([
-        supabase.from('peserta').select('*').order('nama_lengkap'),
+        supabase.from('peserta').select('*, kelas(*)').order('nama_lengkap'),
         supabase.from('parent_child_link').select('parent_id, child_id'),
       ]);
       const pesertaList = (p as Peserta[]) ?? [];
@@ -319,7 +319,7 @@ export default function KelolaOrangTuaPage() {
                       >
                         <span className="min-w-0 truncate text-xs text-fg">
                           {a.nama_lengkap}
-                          <span className="ml-1.5 text-fg-subtle">{a.jalur ?? '-'}</span>
+                          <span className="ml-1.5 text-fg-subtle">{a.kelas?.kode ?? '-'}</span>
                         </span>
                         <Button
                           size="sm"
@@ -375,7 +375,7 @@ export default function KelolaOrangTuaPage() {
               <option value="">— pilih peserta —</option>
               {pesertas.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nama_lengkap} {p.jalur ? `(${p.jalur})` : ''}
+                  {p.nama_lengkap} {p.kelas?.kode ? `(${p.kelas.kode})` : ''}
                 </option>
               ))}
             </SelectInput>

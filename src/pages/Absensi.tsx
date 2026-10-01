@@ -28,11 +28,10 @@ interface AbsensiItem {
   };
 }
 
-interface BatchRow {
+interface KelasRow {
   id: string;
-  kode_batch: string;
-  nama_batch: string | null;
-  jalur: string | null;
+  kode: string;
+  nama: string | null;
   status: string | null;
   tanggal_mulai: string | null;
   tanggal_akhir: string | null;
@@ -52,37 +51,38 @@ const kosongkan = (): Ringkasan => ({ hadir: 0, telat: 0, izin: 0, alpha: 0 });
 export default function AbsensiPage() {
   const { push: toast } = useToast();
 
-  const [batchList, setBatchList] = useState<BatchRow[]>([]);
-  const [selectedBatch, setSelectedBatch] = useState('');
+  const [kelasList, setKelasList] = useState<KelasRow[]>([]);
+  const [selectedKelas, setSelectedKelas] = useState('');
   const [sesiList, setSesiList] = useState<JadwalSesi[]>([]);
   const [selectedSesi, setSelectedSesi] = useState('');
   const [absensis, setAbsensis] = useState<AbsensiItem[]>([]);
 
-  const [loadingBatch, setLoadingBatch] = useState(true);
+  const [loadingKelas, setLoadingKelas] = useState(true);
   const [loadingSesi, setLoadingSesi] = useState(false);
   const [loadingAbsensi, setLoadingAbsensi] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadedSesi, setLoadedSesi] = useState('');
+  const [absensiKelasMap, setAbsensiKelasMap] = useState<Map<string, AbsensiItem[]>>(new Map());
 
   useEffect(() => {
     (async () => {
       try {
         const { data, error } = await supabase
-          .from('batch')
-          .select('id, kode_batch, nama_batch, jalur, status, tanggal_mulai, tanggal_akhir')
-          .order('kode_batch', { ascending: true });
+          .from('kelas')
+          .select('id, kode, nama, status, tanggal_mulai, tanggal_akhir')
+          .order('kode', { ascending: true });
         if (error) throw error;
-        setBatchList((data ?? []) as BatchRow[]);
+        setKelasList((data ?? []) as KelasRow[]);
       } catch (e) {
         toast((e as Error).message, 'error');
       } finally {
-        setLoadingBatch(false);
+        setLoadingKelas(false);
       }
     })();
   }, [toast]);
 
   useEffect(() => {
-    if (!selectedBatch) {
+    if (!selectedKelas) {
       setSesiList([]);
       setSelectedSesi('');
       return;
@@ -92,21 +92,41 @@ export default function AbsensiPage() {
       setSelectedSesi('');
       setAbsensis([]);
       setLoadedSesi('');
+      setAbsensiKelasMap(new Map());
       try {
-        const { data, error } = await supabase
+        const { data: sesiData, error: sesiErr } = await supabase
           .from('jadwal_sesi')
-          .select('*, modul(*), absensi(status_kehadiran)')
-          .eq('batch_id', selectedBatch)
+          .select('*, modul(*)')
+          .eq('kelas_id', selectedKelas)
           .order('tanggal_kelas', { ascending: true });
-        if (error) throw error;
-        setSesiList((data ?? []) as JadwalSesi[]);
+        if (sesiErr) throw sesiErr;
+        const sessions = (sesiData ?? []) as JadwalSesi[];
+        setSesiList(sessions);
+
+        if (sessions.length > 0) {
+          const sesiIds = sessions.map((s) => s.id);
+          const { data: absData, error: absErr } = await supabase
+            .from('absensi')
+            .select('*, sesi_peserta!inner(sesi_id, peserta(nama_panggil, nama_lengkap))')
+            .in('sesi_peserta.sesi_id', sesiIds);
+          if (absErr) throw absErr;
+          const absMap = new Map<string, AbsensiItem[]>();
+          for (const a of (absData ?? []) as Array<AbsensiItem & { sesi_peserta: { sesi_id: string } }>) {
+            const sid = a.sesi_peserta.sesi_id;
+            if (!absMap.has(sid)) absMap.set(sid, []);
+            absMap.get(sid)!.push(a);
+          }
+          setAbsensiKelasMap(absMap);
+        } else {
+          setAbsensiKelasMap(new Map());
+        }
       } catch (e) {
         toast((e as Error).message, 'error');
       } finally {
         setLoadingSesi(false);
       }
     })();
-  }, [selectedBatch, toast]);
+  }, [selectedKelas, toast]);
 
   useEffect(() => {
     if (!selectedSesi) {
@@ -158,22 +178,22 @@ export default function AbsensiPage() {
     return r;
   }, [absensis]);
 
-  const ringkasanBatch = useMemo<Ringkasan>(() => {
+  const ringkasanKelas = useMemo<Ringkasan>(() => {
     const r = kosongkan();
     for (const s of sesiList) {
-      const nilai = (s as unknown as { absensi?: AbsensiItem[] }).absensi;
-      if (!Array.isArray(nilai)) continue;
-      for (const a of nilai) {
+      const arr = absensiKelasMap.get(s.id);
+      if (!Array.isArray(arr)) continue;
+      for (const a of arr) {
         if (a.status_kehadiran in r) r[a.status_kehadiran] += 1;
       }
     }
     return r;
-  }, [sesiList]);
+  }, [sesiList, absensiKelasMap]);
 
   const sesiTerpilih = sesiList.find((s) => s.id === selectedSesi) ?? null;
-  const batchTerpilih = batchList.find((b) => b.id === selectedBatch) ?? null;
+  const kelasTerpilih = kelasList.find((b) => b.id === selectedKelas) ?? null;
 
-  if (loadingBatch) return <Loading text="Memuat daftar kelas..." />;
+  if (loadingKelas) return <Loading text="Memuat daftar kelas..." />;
 
   return (
     <div className="space-y-6">
@@ -185,40 +205,39 @@ export default function AbsensiPage() {
       </div>
 
       <Card>
-        <Field label="Pilih Kelas / Batch" className="max-w-md">
-          <SelectInput value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)}>
+        <Field label="Pilih Kelas" className="max-w-md">
+          <SelectInput value={selectedKelas} onChange={(e) => setSelectedKelas(e.target.value)}>
             <option value="">— pilih kelas —</option>
-            {batchList.map((b) => (
+            {kelasList.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.kode_batch}
-                {b.nama_batch ? ` — ${b.nama_batch}` : ''}
+                {b.kode}
+                {b.nama ? ` — ${b.nama}` : ''}
                 {b.status ? ` (${b.status})` : ''}
               </option>
             ))}
           </SelectInput>
         </Field>
 
-        {batchTerpilih && (
+        {kelasTerpilih && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <Badge>{batchTerpilih.kode_batch}</Badge>
-            {batchTerpilih.jalur && <Badge>Jalur {batchTerpilih.jalur}</Badge>}
-            {batchTerpilih.tanggal_mulai && <Badge>Mulai {batchTerpilih.tanggal_mulai}</Badge>}
-            {batchTerpilih.tanggal_akhir && <Badge>Selesai {batchTerpilih.tanggal_akhir}</Badge>}
+            <Badge>{kelasTerpilih.kode}</Badge>
+            {kelasTerpilih.tanggal_mulai && <Badge>Mulai {kelasTerpilih.tanggal_mulai}</Badge>}
+            {kelasTerpilih.tanggal_akhir && <Badge>Selesai {kelasTerpilih.tanggal_akhir}</Badge>}
           </div>
         )}
       </Card>
 
-      {!selectedBatch && (
+      {!selectedKelas && (
         <EmptyState
           title="Pilih kelas terlebih dahulu"
-          desc="Absensi dihitung per sesi, jadi mulailah dari pilih batch/kelas."
+          desc="Absensi dihitung per sesi, jadi mulailah dari pilih kelas."
         />
       )}
 
-      {selectedBatch && (
+      {selectedKelas && (
         <>
           <SectionHeader
-            title={`Sesi di ${batchTerpilih?.kode_batch ?? 'kelas ini'}`}
+            title={`Sesi di ${kelasTerpilih?.kode ?? 'kelas ini'}`}
             desc={`${sesiList.length} sesi terdaftar. Pilih satu sesi untuk mengelola absensi.`}
           />
 
@@ -293,7 +312,7 @@ export default function AbsensiPage() {
           {!loadingAbsensi && absensis.length === 0 && (
             <EmptyState
               title="Belum ada peserta di sesi ini"
-              desc="Absensi muncul setelah peserta terdaftar ke sesi pada batch ini."
+              desc="Absensi muncul setelah peserta terdaftar ke sesi pada kelas ini."
             />
           )}
 
@@ -342,10 +361,10 @@ export default function AbsensiPage() {
             </div>
           )}
 
-          {ringkasanBatch.hadir + ringkasanBatch.telat + ringkasanBatch.izin + ringkasanBatch.alpha > 0 && (
+          {ringkasanKelas.hadir + ringkasanKelas.telat + ringkasanKelas.izin + ringkasanKelas.alpha > 0 && (
             <p className="mt-3 text-xs text-fg-muted">
-              Rekap sesi yang sudah dimuat: {ringkasanBatch.hadir} hadir, {ringkasanBatch.telat} telat,{' '}
-              {ringkasanBatch.izin} izin, {ringkasanBatch.alpha} alpha.
+              Rekap sesi yang sudah dimuat: {ringkasanKelas.hadir} hadir, {ringkasanKelas.telat} telat,{' '}
+              {ringkasanKelas.izin} izin, {ringkasanKelas.alpha} alpha.
             </p>
           )}
         </Card>

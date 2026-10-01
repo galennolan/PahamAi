@@ -37,7 +37,7 @@ begin
   for r in (
     select conname, conrelid::regclass as tbl
     from pg_constraint
-    where contype = 'c' and conrelid in ('public.modul','public.batch','public.peserta','public.pendaftar','public.soal_paket','public.rubrik','public.sertifikat')
+    where contype = 'c' and conrelid in ('public.modul'::regclass,'public.batch'::regclass,'public.peserta'::regclass,'public.pendaftar'::regclass,'public.soal_paket'::regclass,'public.rubrik'::regclass,'public.sertifikat'::regclass)
       and pg_get_constraintdef(oid) like '%jalur%'
   ) loop
     execute format('alter table %s drop constraint %I', r.tbl, r.conname);

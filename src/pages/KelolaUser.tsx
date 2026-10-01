@@ -21,9 +21,8 @@ const EMPTY_FORM = {
   no_wa: '',
   no_wa_ortu: '',
   usia: '',
-  jalur: 'A',
   kelas_penempatan: 'baru-kenal-hp',
-  batch_id: '',
+  kelas_id: '',
 };
 
 interface UserRow {
@@ -37,13 +36,10 @@ interface UserRow {
   no_wa?: string;
   no_wa_ortu?: string;
   usia?: number;
-  jalur?: string;
   kelas_penempatan?: string;
-  batch_id?: string;
-  batch_nama?: string;
+  kelas_id?: string;
+  kelas_nama?: string;
 }
-
-const JALUR_OPTIONS = ['A', 'B1', 'B2', 'B3', 'G'];
 
 const POSISI_LABELS: Record<string, string> = {
   'baru-kenal-hp': 'Baru Kenal HP',
@@ -62,6 +58,7 @@ export default function KelolaUserPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('semua');
+  const [kelasList, setKelasList] = useState<Array<{ id: string; kode: string; nama: string }>>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,19 +66,20 @@ export default function KelolaUserPage() {
       const { data: authUsers, error: authErr } = await supabase.auth.admin.listUsers();
       if (authErr) throw authErr;
 
-      const [{ data: peserta }, { data: batches }] = await Promise.all([
+      const [{ data: peserta }, { data: kelasRows }] = await Promise.all([
         supabase.from('peserta').select('*'),
-        supabase.from('batch').select('id, kode_batch, nama_batch'),
+        supabase.from('kelas').select('id, kode, nama'),
       ]);
+      setKelasList((kelasRows ?? []) as Array<{ id: string; kode: string; nama: string }>);
 
       const pesertaMap = new Map((peserta ?? []).map((p) => [p.user_id, p]));
-      const batchMap = new Map((batches ?? []).map((b) => [b.id, b]));
+      const kelasMap = new Map((kelasRows ?? []).map((b) => [b.id, b]));
 
       const merged: UserRow[] = (authUsers.users ?? []).map((u) => {
         const metadata = u.user_metadata ?? {};
         const role = (metadata.role as UserRole) ?? 'peserta';
         const profile = pesertaMap.get(u.id);
-        const batch = profile?.batch_id ? batchMap.get(profile.batch_id) : null;
+        const kelas = profile?.kelas_id ? kelasMap.get(profile.kelas_id) : null;
 
         return {
           id: u.id,
@@ -94,10 +92,9 @@ export default function KelolaUserPage() {
           no_wa: profile?.no_wa ?? '',
           no_wa_ortu: profile?.no_wa_ortu ?? '',
           usia: profile?.usia ?? undefined,
-          jalur: profile?.jalur ?? '',
           kelas_penempatan: profile?.kelas_penempatan ?? '',
-          batch_id: profile?.batch_id ?? '',
-          batch_nama: batch?.nama_batch ?? batch?.kode_batch ?? '-',
+          kelas_id: profile?.kelas_id ?? '',
+          kelas_nama: kelas ? `${kelas.kode} — ${kelas.nama}` : '-',
         };
       });
 
@@ -137,9 +134,8 @@ export default function KelolaUserPage() {
           no_wa: form.no_wa || null,
           no_wa_ortu: form.no_wa_ortu || null,
           usia: form.usia ? parseInt(form.usia) : null,
-          jalur: form.jalur,
           kelas_penempatan: form.kelas_penempatan,
-          batch_id: form.batch_id || null,
+          kelas_id: form.kelas_id || null,
         });
         if (error) throw new Error(error.message);
       } else if (form.role === 'instruktur' || form.role === 'marketing') {
@@ -242,14 +238,7 @@ export default function KelolaUserPage() {
                     <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} />
                   </Field>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <Field label="Jalur">
-                    <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
-                      {JALUR_OPTIONS.map((j) => (
-                        <option key={j} value={j}>{j}</option>
-                      ))}
-                    </SelectInput>
-                  </Field>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Penempatan">
                     <SelectInput value={form.kelas_penempatan} onChange={(e) => setForm({ ...form, kelas_penempatan: e.target.value })}>
                       {Object.entries(POSISI_LABELS).map(([k, v]) => (
@@ -257,9 +246,12 @@ export default function KelolaUserPage() {
                       ))}
                     </SelectInput>
                   </Field>
-                  <Field label="Batch">
-                    <SelectInput value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}>
+                  <Field label="Kelas">
+                    <SelectInput value={form.kelas_id} onChange={(e) => setForm({ ...form, kelas_id: e.target.value })}>
                       <option value="">— Belum —</option>
+                      {kelasList.map((k) => (
+                        <option key={k.id} value={k.id}>{k.kode} — {k.nama}</option>
+                      ))}
                     </SelectInput>
                   </Field>
                 </div>
@@ -289,8 +281,8 @@ export default function KelolaUserPage() {
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Email</th>
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Role</th>
                   <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Status</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Jalur</th>
-                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Batch</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Penempatan</th>
+                  <th className="px-3 py-2 text-left font-mono text-overline uppercase text-fg-muted">Kelas</th>
                   <th className="px-3 py-2 text-right font-mono text-overline uppercase text-fg-muted">Aksi</th>
                 </tr>
               </thead>
@@ -307,11 +299,11 @@ export default function KelolaUserPage() {
                         {u.status}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-primary-text">{u.jalur || '-'}</td>
-                    <td className="px-3 py-2 text-xs text-fg-muted">{u.batch_nama || '-'}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-primary-text">{u.kelas_penempatan || '-'}</td>
+                    <td className="px-3 py-2 text-xs text-fg-muted">{u.kelas_nama || '-'}</td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditing(u); setForm({ ...EMPTY_FORM, email: u.email, nama_lengkap: u.nama_lengkap, role: u.role as UserRole, jalur: u.jalur ?? 'A', kelas_penempatan: u.kelas_penempatan ?? 'baru-kenal-hp' }); setShowForm(true); }}>
+                        <Button size="sm" variant="ghost" onClick={() => { setEditing(u); setForm({ ...EMPTY_FORM, email: u.email, nama_lengkap: u.nama_lengkap, role: u.role as UserRole, kelas_penempatan: u.kelas_penempatan ?? 'baru-kenal-hp', kelas_id: u.kelas_id ?? '' }); setShowForm(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setDeleting(u)}>

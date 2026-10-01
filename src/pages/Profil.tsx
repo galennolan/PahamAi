@@ -15,7 +15,7 @@ export default function ProfilPage() {
       try {
         const { data } = await supabase
           .from('peserta')
-          .select('*')
+          .select('*, kelas(*)')
           .eq('user_id', user.id)
           .maybeSingle();
         setProfil((data as Peserta) ?? null);
@@ -35,7 +35,7 @@ export default function ProfilPage() {
       <h1 className="text-headline font-bold text-fg">Profil Saya</h1>
       <Card>
         <p className="text-subhead font-semibold text-fg">{profil.nama_panggil ?? profil.nama_lengkap}</p>
-        <p className="text-sm text-fg-muted mt-1">Jalur: <Badge>{profil.jalur ?? '-'}</Badge></p>
+        <p className="text-sm text-fg-muted mt-1">Kelas: <Badge>{profil.kelas?.nama ?? profil.kelas_penempatan ?? '-'}</Badge></p>
         <p className="text-sm text-fg-muted mt-1">Email: {user?.email}</p>
         <p className="text-sm text-fg-muted mt-1">WA: {profil.no_wa ?? '-'}</p>
       </Card>

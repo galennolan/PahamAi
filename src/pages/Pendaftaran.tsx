@@ -3,9 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Button, Field, TextInput, SelectInput } from '../components/ui';
 import { useToast } from '../hooks/useToast';
-import { listJalurs } from '../services/modul';
-import type { Jalur } from '../types';
-import { JALUR_LABELS } from '../types';
+import { PROGRAM } from '../constants/program';
 
 const POSISI_LABELS: Record<string, string> = {
   'baru-kenal-hp': 'Baru Kenal HP',
@@ -19,14 +17,14 @@ export default function PendaftaranPage() {
   const { push: toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [jalurOptions, setJalurOptions] = useState<Jalur[]>(['A', 'B1', 'B2', 'B3']);
+  const jalurOptions = PROGRAM;
   const [form, setForm] = useState({
     nama_lengkap: '',
     nama_panggil: '',
     email: '',
     no_wa: '',
     usia: '',
-    jalur: 'B1',
+    minat_program: 'B1',
     kelas_penempatan: 'baru-kenal-hp',
     consent_privasi: false,
     consent_etika: false,
@@ -41,17 +39,6 @@ export default function PendaftaranPage() {
   });
 
   useEffect(() => {
-    (async () => {
-      try {
-        const j = await listJalurs();
-        if (j.length > 0) {
-          setJalurOptions(j);
-          setForm((f) => ({ ...f, jalur: j[0] }));
-        }
-      } catch (e) {
-        console.error('[Pendaftaran] gagal memuat jalur:', e);
-      }
-    })();
     const params = new URLSearchParams(window.location.search);
     const utm: Record<string, string> = {};
     for (const k of UTM_KEYS) {
@@ -75,7 +62,15 @@ export default function PendaftaranPage() {
         setSaving(false);
         return;
       }
-      const { error } = await supabase.from('pendaftar').insert(form);
+      const { error } = await supabase.from('pendaftar').insert({
+        nama_lengkap: form.nama_lengkap,
+        email: form.email,
+        no_wa: form.no_wa,
+        usia: form.usia ? parseInt(form.usia) : null,
+        minat_program: form.minat_program,
+        consent_privasi: form.consent_privasi,
+        consent_etika: form.consent_etika,
+      });
       if (error) throw error;
       toast('Pendaftaran berhasil! Admin akan menghubungi Anda.', 'success');
       navigate('/masuk');
@@ -112,10 +107,10 @@ export default function PendaftaranPage() {
               <Field label="Usia">
                 <TextInput type="number" min={6} value={form.usia} onChange={(e) => setForm({ ...form, usia: e.target.value })} required />
               </Field>
-              <Field label="Jalur">
-                <SelectInput value={form.jalur} onChange={(e) => setForm({ ...form, jalur: e.target.value })}>
+              <Field label="Program Minat">
+                <SelectInput value={form.minat_program} onChange={(e) => setForm({ ...form, minat_program: e.target.value })}>
                   {jalurOptions.map((j) => (
-                    <option key={j} value={j} className="bg-surface">{JALUR_LABELS[j] ?? j}</option>
+                    <option key={j.kode} value={j.kode} className="bg-surface">{j.label}</option>
                   ))}
                 </SelectInput>
               </Field>

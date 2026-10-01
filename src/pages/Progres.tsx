@@ -145,7 +145,7 @@ export default function ProgresPage() {
               <span className="font-mono">{hadir}/{absensi.length}</span>
             </div>
             <ProgressBar value={persenHadir} className="mt-2" />
-            <p className="mt-1.5 text-xs text-fg-subtle">Syarat kelulusan: 75–85% tergantung jalur</p>
+            <p className="mt-1.5 text-xs text-fg-subtle">Syarat kelulusan: 75–85% tergantung program</p>
           </Card>
           <Card>
             <div className="flex items-center justify-between">

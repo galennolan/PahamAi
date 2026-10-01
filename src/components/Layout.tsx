@@ -75,8 +75,9 @@ const instrukturLinks: NavItem[] = [
   { to: '/app', label: 'Beranda', icon: <Home className="h-4 w-4" />, end: true },
   { to: '/kelola-sesi', label: 'Sesi', icon: <ClipboardList className="h-4 w-4" /> },
   { to: '/kelola-peserta', label: 'Peserta', icon: <Users className="h-4 w-4" /> },
+  { to: '/kelola-modul', label: 'Modul', icon: <BookOpen className="h-4 w-4" /> },
+  { to: '/kelola-soal', label: 'Soal', icon: <ClipboardList className="h-4 w-4" /> },
   { to: '/absensi', label: 'Absensi', icon: <CheckCircle2 className="h-4 w-4" /> },
-  { to: '/kelola-batch', label: 'Batch', icon: <Calendar className="h-4 w-4" /> },
   { to: '/modul', label: 'Baca Modul', icon: <BookOpen className="h-4 w-4" /> },
 ];
 

@@ -1,26 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock, Check, ArrowRight } from 'lucide-react';
-import { listJalurs, listModulByJalur } from '../services/modul';
+import { listModulByProgram, listProgramTerpakai } from '../services/modul';
 import { Card, Loading, EmptyState } from '../components/ui';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import type { Modul, Jalur } from '../types';
-import { JALUR_LABELS } from '../types';
-
-const JALUR_DESC: Record<string, string> = {
-  A: 'Anak 8–14 th · 9 sesi · 60 mnt',
-  B1: 'Pemula · 7 sesi · 90 mnt',
-  B2: 'Menengah · 11 sesi · 120 mnt',
-  B3: 'Expert · 11 sesi · 120–150 mnt',
-  G: 'GAFB · 10 sesi · 90 mnt',
-};
+import type { Modul } from '../types';
+import { PROGRAM, programLabel, type ProgramKode } from '../constants/program';
 
 export default function ModulPage() {
   const { user, role } = useAuth();
   const isStaff = role === 'admin' || role === 'instruktur';
-  const [jalur, setJalur] = useState<Jalur>('A');
-  const [allJalur, setAllJalur] = useState<Jalur[]>([]);
+  const [program, setProgram] = useState<ProgramKode>('B1');
+  const [allProgram, setAllProgram] = useState<ProgramKode[]>([]);
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -28,10 +20,10 @@ export default function ModulPage() {
 
   useEffect(() => {
     (async () => {
-      const j = await listJalurs();
-      if (j.length === 0) return;
-      setAllJalur(j);
-      setJalur((prev) => (j.includes(prev) ? prev : j[0]));
+      const progs = await listProgramTerpakai();
+      if (progs.length === 0) return;
+      setAllProgram(progs as ProgramKode[]);
+      setProgram((prev) => (progs.includes(prev) ? prev : (progs[0] as ProgramKode)));
     })();
   }, []);
 
@@ -41,7 +33,7 @@ export default function ModulPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await listModulByJalur(jalur);
+        const data = await listModulByProgram(program);
         if (cancelled) return;
         setModuls(data);
 
@@ -110,27 +102,28 @@ export default function ModulPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [jalur, user, isStaff]);
+  }, [program, user, isStaff]);
 
   const doneCount = moduls.filter((m) => done.has(m.kode)).length;
   const pct = moduls.length > 0 ? Math.round((doneCount / moduls.length) * 100) : 0;
+  const programDef = PROGRAM.find((p) => p.kode === program);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-headline font-bold text-fg">Modul Paham AI</h1>
-          <p className="mt-1 font-mono text-sm text-fg-muted">{JALUR_DESC[jalur] ?? jalur}</p>
+          <p className="mt-1 font-mono text-sm text-fg-muted">{programDef?.deskripsi ?? program}</p>
         </div>
-        <div className="flex items-center gap-2" role="tablist" aria-label="Pilih jalur">
-          {allJalur.map((j) => (
+        <div className="flex items-center gap-2" role="tablist" aria-label="Pilih program">
+          {allProgram.map((j) => (
             <button
               key={j}
               role="tab"
-              aria-selected={jalur === j}
-              onClick={() => setJalur(j)}
+              aria-selected={program === j}
+              onClick={() => setProgram(j)}
               className={`rounded-[4px] border px-3 py-2 font-mono text-sm transition ${
-                jalur === j
+                program === j
                   ? 'border-primary bg-primary/10 text-primary-text'
                   : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
               }`}
@@ -145,7 +138,7 @@ export default function ModulPage() {
       {!loading && moduls.length > 0 && (
         <Card>
           <div className="flex items-center justify-between font-mono text-xs text-fg-muted">
-            <span>{JALUR_LABELS[jalur] ?? jalur}</span>
+            <span>{programLabel(program)}</span>
             <span>{doneCount}/{moduls.length} sesi ({pct}%)</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">

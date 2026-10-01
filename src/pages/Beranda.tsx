@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, EmptyState, Badge, ProgressBar, Stat, Skeleton } from '../components/ui';
 import { formatJakarta, formatJakartaDateTime, todayJakartaISO } from '../lib/time';
 import { syncPendingOps } from '../services/api';
+import { listSesiAssigned, type SesiAssigned } from '../services/penugasan';
 import { useAuth } from '../context/AuthContext';
 import type { Peserta, JadwalSesi, Pembayaran } from '../types';
 
@@ -33,8 +34,8 @@ export default function BerandaPage() {
     syncPendingOps().catch(() => {});
 
     const { data: profil } = await supabase
-      .from('peserta')
-      .select('*')
+        .from('peserta')
+        .select('*, kelas(*)')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -45,39 +46,35 @@ export default function BerandaPage() {
     const p = profil as Peserta;
     setPeserta(p);
 
-    const [jadwalRes, spRes, bayarRes, kuisRes, portRes] = await Promise.all([
-      p.batch_id
-        ? supabase.from('jadwal_sesi').select('*, modul(*)').eq('batch_id', p.batch_id).order('tanggal_kelas', { ascending: true })
-        : Promise.resolve({ data: null as JadwalSesi[] | null }),
-      supabase.from('sesi_peserta').select('id, sesi_id').eq('peserta_id', p.id),
+    const [sesiRes, bayarRes, kuisRes, portRes] = await Promise.all([
+      listSesiAssigned(p.id),
       supabase.from('pembayaran').select('*').eq('peserta_id', p.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('quiz_attempt').select('kode_paket').eq('id_peserta_fk', p.id),
       supabase.from('portfolio_item').select('id').eq('id_peserta_fk', p.id),
     ]);
 
-    const jadwalList = (jadwalRes.data as JadwalSesi[]) ?? [];
+    // Hanya sesi yang di-assign tutor yang boleh dibuka peserta.
+    const sesiList = sesiRes as SesiAssigned[];
     const today = todayJakartaISO();
-    setNextSesi(jadwalList.find((s) => (s.tanggal_kelas ?? '') >= today) ?? jadwalList[jadwalList.length - 1] ?? null);
+    setNextSesi(sesiList.find((s) => (s.tanggal_kelas ?? '') >= today) ?? sesiList[sesiList.length - 1] ?? null);
 
-    const spList = (spRes.data ?? []) as Array<{ id: string; sesi_id: string }>;
-    if (spList.length > 0) {
-      const spIds = spList.map((s) => s.id);
+    if (sesiList.length > 0) {
       const [catRes, absRes] = await Promise.all([
-        supabase.from('catatan_ketik').select('sesi_peserta_id').in('sesi_peserta_id', spIds),
-        supabase.from('absensi').select('sesi_peserta_id, status_kehadiran').in('sesi_peserta_id', spIds),
+        supabase.from('catatan_ketik').select('id').in('sesi_peserta_id', sesiList.map((s) => s.sesi_peserta_id)),
+        supabase.from('absensi').select('status_kehadiran').in('sesi_peserta_id', sesiList.map((s) => s.sesi_peserta_id)),
       ]);
       const hadir = ((absRes.data ?? []) as Array<{ status_kehadiran: string }>).filter(
         (a) => a.status_kehadiran === 'hadir' || a.status_kehadiran === 'telat'
       ).length;
       const catatan = ((catRes.data ?? []) as Array<unknown>).length;
       setStats({
-        kehadiran: spList.length > 0 ? Math.round((hadir / Math.max(spList.length, 1)) * 100) : 0,
-        totalSesi: jadwalList.length,
+        kehadiran: Math.round((hadir / sesiList.length) * 100),
+        totalSesi: sesiList.length,
         kuisSelesai: new Set(((kuisRes.data ?? []) as Array<{ kode_paket: string }>).map((k) => k.kode_paket)).size,
-        tugasSelesai: ((catRes.data ?? []) as Array<unknown>).length + catatan * 0 + ((portRes.data ?? []) as Array<unknown>).length,
+        tugasSelesai: catatan + ((portRes.data ?? []) as Array<unknown>).length,
       });
     } else {
-      setStats((s) => ({ ...s, totalSesi: jadwalList.length }));
+      setStats((s) => ({ ...s, totalSesi: 0 }));
     }
 
     if (bayarRes.data) setTagihan(bayarRes.data as Pembayaran);
@@ -183,7 +180,7 @@ export default function BerandaPage() {
           Halo, {peserta.nama_panggil ?? peserta.nama_lengkap}!
         </h1>
         <p className="mt-0.5 text-sm text-fg-muted">
-          Jalur <Badge className="mx-1">{peserta.jalur ?? '-'}</Badge> · Sejak {formatJakartaDateTime(peserta.created_at)}
+          <Badge className="mx-1">{peserta.kelas?.nama ?? peserta.kelas_penempatan ?? '-'}</Badge> · Sejak {formatJakartaDateTime(peserta.created_at)}
         </p>
       </div>
 
@@ -221,7 +218,7 @@ export default function BerandaPage() {
       ) : (
         <EmptyState
           title="Belum ada sesi terjadwal"
-          desc="Jadwal akan muncul setelah admin membuat sesi untuk batch Anda."
+          desc="Jadwal akan muncul setelah admin menugaskan Anda ke sesi."
           action={<Link to="/belajar" className="inline-block rounded-[8px] border border-primary px-4 py-2 text-sm text-primary-text">Lihat Modul</Link>}
         />
       )}
@@ -259,7 +256,7 @@ export default function BerandaPage() {
             <Link to="/belajar" className="inline-flex items-center gap-1 text-primary-text">Lihat semua <ChevronRight className="h-3 w-3" /></Link>
           </div>
           <ProgressBar value={stats.kehadiran} className="mt-2" />
-          <p className="mt-1.5 text-xs text-fg-subtle">{stats.totalSesi} sesi di batch Anda</p>
+          <p className="mt-1.5 text-xs text-fg-subtle">{stats.totalSesi} sesi ditugaskan untuk Anda</p>
         </Card>
       )}
     </div>

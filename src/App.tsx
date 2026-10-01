@@ -23,6 +23,7 @@ const LandingPage = lazy(() => import('./pages/Landing'));
 const PendaftaranPage = lazy(() => import('./pages/Pendaftaran'));
 const BerandaPage = lazy(() => import('./pages/Beranda'));
 const SesiPage = lazy(() => import('./pages/Sesi'));
+const KuisPage = lazy(() => import('./pages/Kuis'));
 const AbsensiPage = lazy(() => import('./pages/Absensi'));
 const KelolaModulPage = lazy(() => import('./pages/KelolaModul'));
 const OrangTuaPage = lazy(() => import('./pages/OrangTua'));
@@ -38,7 +39,6 @@ const ProgresPage = lazy(() => import('./pages/Progres'));
 const KaryaPage = lazy(() => import('./pages/Karya'));
 const ProfilPage = lazy(() => import('./pages/Profil'));
 const MarketingDashboardPage = lazy(() => import('./pages/MarketingDashboard'));
-const KelolaBatchPage = lazy(() => import('./pages/KelolaBatch'));
 const KelolaSesiPage = lazy(() => import('./pages/KelolaSesi'));
 const KelolaSoalPage = lazy(() => import('./pages/KelolaSoal'));
 
@@ -77,21 +77,22 @@ function App() {
               <Route path="/marketing" element={<Protected allow={['marketing', 'admin']}><MarketingDashboardPage /></Protected>} />
 
               <Route path="/absensi" element={<Protected allow={['admin', 'instruktur']}><AbsensiPage /></Protected>} />
-              <Route path="/kelola-modul" element={<Protected allow={['admin']}><KelolaModulPage /></Protected>} />
+              <Route path="/kelola-modul" element={<Protected allow={['admin', 'instruktur']}><KelolaModulPage /></Protected>} />
               <Route path="/kelola-sesi" element={<Protected allow={['admin', 'instruktur']}><KelolaSesiPage /></Protected>} />
-              <Route path="/kelola-batch" element={<Protected allow={['admin', 'instruktur']}><KelolaBatchPage /></Protected>} />
               <Route path="/kelola-kelas" element={<Protected allow={['admin', 'instruktur']}><KelolaKelasPage /></Protected>} />
               <Route path="/kelola-peserta" element={<Protected allow={['admin', 'instruktur']}><KelolaPesertaPage /></Protected>} />
               <Route path="/kelola-ortu" element={<Protected allow={['admin']}><KelolaOrangTuaPage /></Protected>} />
         <Route path="/kelola-user" element={<Protected allow={['admin']}><KelolaUserPage /></Protected>} />
-              <Route path="/kelola-soal" element={<Protected allow={['admin']}><KelolaSoalPage /></Protected>} />
+              <Route path="/kelola-soal" element={<Protected allow={['admin', 'instruktur']}><KelolaSoalPage /></Protected>} />
               <Route path="/pembayaran" element={<Protected allow={['admin']}><PembayaranPage /></Protected>} />
 
-              <Route path="/modul" element={<Protected><LegacyRedirect path="/modul" /></Protected>} />
+              {/* /kelola-batch dihapus, digantikan /kelola-kelas */}
+              <Route path="/kelola-batch" element={<Protected allow={['admin', 'instruktur']}><Navigate to="/kelola-kelas" replace /></Protected>} />
+
               <Route path="/jadwal" element={<Protected allow={['peserta']}><LegacyRedirect path="/jadwal" /></Protected>} />
               <Route path="/absensi-saya" element={<Protected allow={['peserta']}><LegacyRedirect path="/absensi-saya" /></Protected>} />
               <Route path="/nilai" element={<Protected allow={['peserta']}><LegacyRedirect path="/nilai" /></Protected>} />
-              <Route path="/kuis" element={<Protected allow={['peserta']}><LegacyRedirect path="/kuis" /></Protected>} />
+              <Route path="/kuis" element={<Protected allow={['peserta']}><KuisPage /></Protected>} />
               <Route path="/sertifikat" element={<Protected allow={['peserta']}><LegacyRedirect path="/sertifikat" /></Protected>} />
               <Route path="/portfolio" element={<Protected allow={['peserta']}><LegacyRedirect path="/portfolio" /></Protected>} />
               <Route path="/pembayaran-saya" element={<Protected allow={['peserta']}><LegacyRedirect path="/pembayaran-saya" /></Protected>} />
