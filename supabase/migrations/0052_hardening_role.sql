@@ -29,13 +29,24 @@ as $$
 $$;
 
 -- 1b. Policy marketing: pakai user_roles, bukan metadata JWT.
-drop policy if exists "marketing_campaign_write" on public.marketing_campaign;
-drop policy if exists "mc_write_marketing" on public.marketing_campaign;
+-- Namanya `marketing_content` (tabel `marketing_campaign` tidak pernah ada;
+-- policy mc_write_marketing dari 0007/0050 menempel di marketing_content).
+-- Tabelnya belum tentu ada di semua database, jadi dibuat kondisional.
+do $$
+begin
+  if to_regclass('public.marketing_content') is null then
+    raise notice 'marketing_content belum ada, policy marketing dilewati';
+    return;
+  end if;
 
-create policy "marketing_campaign_write" on public.marketing_campaign
-  for all to authenticated
-  using (public.is_admin() or public.has_role('marketing'))
-  with check (public.is_admin() or public.has_role('marketing'));
+  execute 'drop policy if exists "mc_write_marketing" on public.marketing_content';
+  execute $q$
+    create policy "mc_write_marketing" on public.marketing_content
+      for all to authenticated
+      using (public.is_admin() or public.has_role('marketing'))
+      with check (public.is_admin() or public.has_role('marketing'))
+  $q$;
+end $$;
 
 -- Helper role generic supaya policy tidak perlu copy-paste query user_roles.
 create or replace function public.has_role(p_role text)
@@ -121,6 +132,8 @@ alter function public.my_own_sesi_peserta_ids() set search_path = '';
 -- keputusan operasional kelas. Ganti `for all` menjadi insert/update saja
 -- untuk role non-admin.
 drop policy if exists "soal_paket_write_staff" on public.soal_paket;
+drop policy if exists "soal_paket_update_staff" on public.soal_paket;
+drop policy if exists "soal_paket_delete_admin" on public.soal_paket;
 create policy "soal_paket_write_staff" on public.soal_paket
   for insert to authenticated with check (public.is_staff());
 create policy "soal_paket_update_staff" on public.soal_paket
@@ -129,6 +142,8 @@ create policy "soal_paket_delete_admin" on public.soal_paket
   for delete to authenticated using (public.is_admin());
 
 drop policy if exists "soal_butir_write_staff" on public.soal_butir;
+drop policy if exists "soal_butir_update_staff" on public.soal_butir;
+drop policy if exists "soal_butir_delete_admin" on public.soal_butir;
 create policy "soal_butir_write_staff" on public.soal_butir
   for insert to authenticated with check (public.is_staff());
 create policy "soal_butir_update_staff" on public.soal_butir
@@ -149,6 +164,16 @@ create policy "pendaftar_public_insert" on public.pendaftar
 -- Halaman pendaftaran mencoba cek duplikat lewat select, tapi policy select
 -- hanya mengizinkan admin — jadi pengecekan itu selalu gagal. Kasih policy
 -- select terbatas supaya dedupe benar-benar bekerja.
-create policy "pendaftar_public_dedupe_check" on public.pendaftar
-  for select to anon, authenticated
-  using (status = 'pending');
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+     where schemaname = 'public' and tablename = 'pendaftar' and policyname = 'pendaftar_public_dedupe_check'
+  ) then
+    execute $q$
+      create policy "pendaftar_public_dedupe_check" on public.pendaftar
+        for select to anon, authenticated
+        using (status = 'pending')
+    $q$;
+  end if;
+end $$;
