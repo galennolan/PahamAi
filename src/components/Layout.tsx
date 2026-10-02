@@ -82,10 +82,8 @@ const instrukturLinks: NavItem[] = [
 ];
 
 const marketingLinks: NavItem[] = [
-  { to: '/marketing', label: 'Dashboard', icon: <BarChart2 className="h-4 w-4" /> },
-  { to: '/kelola-sesi', label: 'Sesi', icon: <ClipboardList className="h-4 w-4" /> },
-  { to: '/kelola-peserta', label: 'Peserta', icon: <Users className="h-4 w-4" /> },
-  { to: '/absensi', label: 'Absensi', icon: <CheckCircle2 className="h-4 w-4" /> },
+  { to: '/app', label: 'Beranda', icon: <Home className="h-4 w-4" />, end: true },
+  { to: '/marketing', label: 'Marketing', icon: <BarChart2 className="h-4 w-4" /> },
 ];
 
 const parentLinks: NavItem[] = [

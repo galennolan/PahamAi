@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, TextArea, Tabs, SectionHeader } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, TextArea, Tabs, SectionHeader, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import type { Modul, SoalButir, SoalPaket } from '../types';
 import { PROGRAM, programDariKodeModul, programLabel, type ProgramKode } from '../constants/program';
@@ -131,6 +131,16 @@ export default function KelolaSoalPage() {
   const [tabProgram, setTabProgram] = useState<string>('SEMUA');
   const [tabTipe, setTabTipe] = useState<string>('SEMUA');
   const [lihatKode, setLihatKode] = useState<string | null>(null);
+  /** Pencarian bebas: cocokkan kode paket, kode modul target, atau judul modul. */
+  const [cariPaket, setCariPaket] = useState('');
+  /** Form buat-paket + bulk dilipat secara default supaya daftar langsung terlihat. */
+  const [showBuat, setShowBuat] = useState(false);
+  /** Target hapus yang menunggu konfirmasi dialog (pengganti confirm() bawaan). */
+  const [hapusTarget, setHapusTarget] = useState<
+    | null
+    | { jenis: 'paket'; kode: string }
+    | { jenis: 'butir'; id: string; no: number; kode: string }
+  >(null);
 
   const [form, setForm] = useState({
     kode_paket: '',
@@ -233,6 +243,7 @@ export default function KelolaSoalPage() {
     setBulkText(teks);
     setParsed([]);
     setBulkMasalah([]);
+    setShowBuat(true);
     toast(`${butir.length} soal ${kodePaket} dimuat ke textarea, boleh diedit lalu di-parse ulang`, 'success');
   };
 
@@ -267,11 +278,29 @@ export default function KelolaSoalPage() {
     }
   };
 
-  const handleDeletePaket = async (kode: string) => {
-    if (!confirm(`Hapus paket ${kode} dan semua soalnya?`)) return;
-    const { error } = await supabase.from('soal_paket').delete().eq('kode_paket', kode);
-    if (error) toast(error.message, 'error');
-    else { toast(`Paket ${kode} dihapus`, 'success'); setLihatKode(null); load(); }
+  /** Eksekusi hapus setelah dikonfirmasi lewat dialog (bukan confirm() bawaan). */
+  const jalankanHapus = async () => {
+    if (!hapusTarget) return;
+    setSaving(true);
+    try {
+      if (hapusTarget.jenis === 'paket') {
+        const { error } = await supabase.from('soal_paket').delete().eq('kode_paket', hapusTarget.kode);
+        if (error) throw error;
+        toast(`Paket ${hapusTarget.kode} dihapus`, 'success');
+        setLihatKode(null);
+      } else {
+        const { error } = await supabase.from('soal_butir').delete().eq('id', hapusTarget.id);
+        if (error) throw error;
+        toast(`Soal no. ${hapusTarget.no} dari ${hapusTarget.kode} dihapus`, 'success');
+        if (editingButirId === hapusTarget.id) setEditingButirId(null);
+      }
+      setHapusTarget(null);
+      await fetchAll();
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ============ EDIT INFO PAKET ============
@@ -358,15 +387,8 @@ export default function KelolaSoalPage() {
     }
   };
 
-  const handleDeleteButir = async (s: SoalButir) => {
-    if (!confirm(`Hapus soal no. ${s.no_soal} dari ${s.kode_paket}?`)) return;
-    const { error } = await supabase.from('soal_butir').delete().eq('id', s.id);
-    if (error) toast(error.message, 'error');
-    else {
-      toast('Soal dihapus', 'success');
-      if (editingButirId === s.id) setEditingButirId(null);
-      await fetchAll();
-    }
+  const mintaHapusButir = (s: SoalButir) => {
+    setHapusTarget({ jenis: 'butir', id: s.id, no: s.no_soal, kode: s.kode_paket });
   };
 
   const startTambahButir = (kodePaket: string) => {
@@ -410,9 +432,19 @@ export default function KelolaSoalPage() {
   const paketDipilih = paketList.find((p) => p.kode_paket === lihatKode) ?? null;
   const butirDipilih = lihatKode ? (butirMap[lihatKode] ?? []) : [];
 
+  const q = cariPaket.trim().toLowerCase();
   const paketTersaring = paketList
     .filter((p) => (tabProgram === 'SEMUA' ? true : p.program === tabProgram))
-    .filter((p) => (tabTipe === 'SEMUA' ? true : p.tipe === tabTipe));
+    .filter((p) => (tabTipe === 'SEMUA' ? true : p.tipe === tabTipe))
+    .filter((p) => {
+      if (!q) return true;
+      const judulModul = p.sesi_target ? (modulByKode.get(p.sesi_target)?.judul ?? '') : '';
+      return (
+        p.kode_paket.toLowerCase().includes(q) ||
+        (p.sesi_target ?? '').toLowerCase().includes(q) ||
+        judulModul.toLowerCase().includes(q)
+      );
+    });
 
   // Kelompokkan per program agar rapi (+ paket tanpa program).
   const kelompokProgram = PROGRAM_URUT.map((j) => ({
@@ -519,7 +551,7 @@ export default function KelolaSoalPage() {
                   </p>
                   <div className="flex shrink-0 gap-1">
                     <Button size="sm" variant="ghost" onClick={() => startEditButir(s)}>Edit</Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteButir(s)}>Hapus</Button>
+                    <Button size="sm" variant="ghost" onClick={() => mintaHapusButir(s)}>Hapus</Button>
                   </div>
                 </div>
                 {editingButirId === s.id ? (
@@ -568,18 +600,47 @@ export default function KelolaSoalPage() {
             ))}
           </div>
         )}
+
+        {hapusTarget && (
+          <ConfirmDialog
+            title={`Hapus soal no. ${hapusTarget.jenis === 'butir' ? hapusTarget.no : ''}?`}
+            message={
+              hapusTarget.jenis === 'butir'
+                ? `Soal no. ${hapusTarget.no} dari ${hapusTarget.kode} akan dihapus permanen.`
+                : `Paket ${hapusTarget.kode} akan dihapus permanen.`
+            }
+            confirmLabel="Hapus"
+            busy={saving}
+            onCancel={() => setHapusTarget(null)}
+            onConfirm={jalankanHapus}
+          />
+        )}
       </div>
     );
   }
 
   // ============ MODE KELOLA ============
+  const formBuatTerbuka = showBuat || editingKode !== null;
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-headline font-bold text-fg">Kelola Soal Bulk</h1>
-        <p className="mt-0.5 text-sm text-fg-muted">Input soal pilihan ganda secara massal untuk pre-test / post-test</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-headline font-bold text-fg">Kelola Soal</h1>
+          <p className="mt-0.5 text-sm text-fg-muted">Buat paket, input bulk, dan edit soal pre-test / post-test / kuis</p>
+        </div>
+        <Button
+          variant={formBuatTerbuka ? 'secondary' : 'primary'}
+          onClick={() => {
+            if (editingKode) cancelEditPaket();
+            setShowBuat((v) => !v);
+          }}
+        >
+          {formBuatTerbuka ? 'Tutup Form' : '+ Paket Baru'}
+        </Button>
       </div>
 
+      {formBuatTerbuka && (
+      <>
       <Card>
         <h2 className="mb-4 text-subhead font-semibold text-fg">
           {editingKode ? `Edit Paket ${editingKode}` : 'Paket Soal'}
@@ -735,9 +796,18 @@ export default function KelolaSoalPage() {
           </div>
         </Card>
       )}
+      </>
+      )}
 
       <div className="space-y-3">
         <SectionHeader title={`Daftar Paket (${paketTersaring.length}/${paketList.length})`} desc="Dikelompokkan per program. Klik Lihat untuk membaca soal." />
+        <TextInput
+          value={cariPaket}
+          onChange={(e) => setCariPaket(e.target.value)}
+          placeholder="Cari kode paket, kode modul, atau judul modul..."
+          aria-label="Cari paket soal"
+          className="max-w-md"
+        />
         <Tabs options={tabProgramOptions} value={tabProgram} onChange={setTabProgram} label="Filter program paket soal" />
         <Tabs options={tabTipeOptions} value={tabTipe} onChange={setTabTipe} label="Filter tipe paket soal" />
       </div>
@@ -784,7 +854,7 @@ export default function KelolaSoalPage() {
                       <div className="flex shrink-0 gap-1">
                         <Button size="sm" variant="secondary" onClick={() => setLihatKode(p.kode_paket)}>Lihat</Button>
                         <Button size="sm" variant="ghost" onClick={() => startEditPaket(p.kode_paket)}>Edit</Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDeletePaket(p.kode_paket)}>Hapus</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setHapusTarget({ jenis: 'paket', kode: p.kode_paket })}>Hapus</Button>
                       </div>
                     </li>
                   );
@@ -793,6 +863,21 @@ export default function KelolaSoalPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {hapusTarget && (
+        <ConfirmDialog
+          title={hapusTarget.jenis === 'paket' ? `Hapus ${hapusTarget.kode}?` : `Hapus soal no. ${hapusTarget.no}?`}
+          message={
+            hapusTarget.jenis === 'paket'
+              ? `Paket ${hapusTarget.kode} akan dihapus permanen.`
+              : `Soal no. ${hapusTarget.no} dari ${hapusTarget.kode} akan dihapus permanen.`
+          }
+          confirmLabel="Hapus"
+          busy={saving}
+          onCancel={() => setHapusTarget(null)}
+          onConfirm={jalankanHapus}
+        />
       )}
     </div>
   );
