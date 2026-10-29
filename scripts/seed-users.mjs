@@ -10,19 +10,19 @@ if (!url || !key) {
 }
 const sb = createClient(url, key);
 
-const BATCH = {
+const KELAS = {
   A: '11111111-1111-1111-1111-111111111111',
   B1: '22222222-2222-2222-2222-222222222222',
   B2: '33333333-3333-3333-3333-333333333333',
   B3: '44444444-4444-4444-4444-444444444444',
 };
 
-// Baris batch harus ada sebelum peserta menunjuk batch_id.
-const batches = [
-  { id: BATCH.A, kode_batch: 'PAHAI-A-2601', jalur: 'A', nama_batch: 'Anak Batch 1 Solo', status: 'berjalan' },
-  { id: BATCH.B1, kode_batch: 'PAHAI-B1-2601', jalur: 'B1', nama_batch: 'Menengah Batch 1 Solo', status: 'berjalan' },
-  { id: BATCH.B2, kode_batch: 'PAHAI-B2-2601', jalur: 'B2', nama_batch: 'Menengah Batch 1 Solo', status: 'berjalan' },
-  { id: BATCH.B3, kode_batch: 'PAHAI-B3-2601', jalur: 'B3', nama_batch: 'Expert Batch 1 Solo', status: 'terbuka' },
+// Baris kelas harus ada sebelum peserta menunjuk kelas_id.
+const classes = [
+  { id: KELAS.A, kode: 'PAHAI-A-2601', nama: 'Anak Batch 1 Solo', status: 'berjalan' },
+  { id: KELAS.B1, kode: 'PAHAI-B1-2601', nama: 'Menengah Batch 1 Solo', status: 'berjalan' },
+  { id: KELAS.B2, kode: 'PAHAI-B2-2601', nama: 'Menengah Batch 1 Solo', status: 'berjalan' },
+  { id: KELAS.B3, kode: 'PAHAI-B3-2601', nama: 'Expert Batch 1 Solo', status: 'terbuka' },
 ];
 
 // Password demo ini BUKAN rahasia — tapi tetap tidak boleh jadi literal di
@@ -37,9 +37,10 @@ const demoPw = (key, fallback) => {
 const users = [
   { email: 'admin@paham.ai', password: demoPw('SEED_ADMIN_PASSWORD', 'Admin123!'), role: 'admin', name: 'Admin Paham AI' },
   { email: 'tutor@paham.ai', password: demoPw('SEED_TUTOR_PASSWORD', 'Tutor123!'), role: 'instruktur', name: 'Budi Instruktur' },
-  { email: 'murid@paham.ai', password: demoPw('SEED_MURID_PASSWORD', 'Murid123!'), role: 'peserta', name: 'Budi Santoso', jalur: 'B1', batch: BATCH.B1 },
-  { email: 'murid2@paham.ai', password: demoPw('SEED_MURID_PASSWORD', 'Murid123!'), role: 'peserta', name: 'Siti Rahma', jalur: 'A', batch: BATCH.A },
+  { email: 'murid@paham.ai', password: demoPw('SEED_MURID_PASSWORD', 'Murid123!'), role: 'peserta', name: 'Budi Santoso', kelasId: KELAS.B1 },
+  { email: 'murid2@paham.ai', password: demoPw('SEED_MURID_PASSWORD', 'Murid123!'), role: 'peserta', name: 'Siti Rahma', kelasId: KELAS.A },
   { email: 'ortu@paham.ai', password: demoPw('SEED_ORTU_PASSWORD', 'Ortu1234!'), role: 'parent', name: 'Bapak Budi' },
+  { email: 'marketing@paham.ai', password: demoPw('SEED_MARKETING_PASSWORD', 'Marketing123!'), role: 'marketing', name: 'Marketing Paham AI' },
 ];
 
 async function upsertUser(u) {
@@ -72,17 +73,24 @@ async function upsertUser(u) {
 async function main() {
   const authIds = {};
 
-  for (const b of batches) {
-    const { data: exist } = await sb.from('batch').select('id').eq('id', b.id).maybeSingle();
+  for (const c of classes) {
+    const { data: exist } = await sb.from('kelas').select('id').eq('id', c.id).maybeSingle();
     if (exist) continue;
-    const { error } = await sb.from('batch').insert({ ...b, kapasitas_maks: 20 });
-    if (error) console.error(`✗ batch ${b.kode_batch}: ${error.message}`);
-    else console.log(`✓ batch ${b.kode_batch}`);
+    const { error } = await sb.from('kelas').insert({ ...c, kapasitas_maks: 20 });
+    if (error) console.error(`✗ kelas ${c.kode}: ${error.message}`);
+    else console.log(`✓ kelas ${c.kode}`);
   }
 
   for (const u of users) {
     const id = await upsertUser(u);
-    if (id) authIds[u.email] = id;
+    if (id) {
+      authIds[u.email] = id;
+      // Sinkronkan ke public.user_roles jika belum ada
+      const { data: roleExist } = await sb.from('user_roles').select('id').eq('user_id', id).maybeSingle();
+      if (!roleExist) {
+        await sb.from('user_roles').insert({ user_id: id, role: u.role });
+      }
+    }
   }
 
   // Peserta rows
@@ -91,8 +99,8 @@ async function main() {
     if (!userId) continue;
     const { data: exist } = await sb.from('peserta').select('id').eq('user_id', userId).maybeSingle();
     if (exist) {
-      await sb.from('peserta').update({ batch_id: u.batch, jalur: u.jalur }).eq('id', exist.id);
-      console.log(`↻ peserta ${u.name} (update batch)`);
+      await sb.from('peserta').update({ kelas_id: u.kelasId }).eq('id', exist.id);
+      console.log(`↻ peserta ${u.name} (update kelas)`);
       continue;
     }
     const { error } = await sb.from('peserta').insert({
@@ -100,9 +108,8 @@ async function main() {
       nama_lengkap: u.name,
       nama_panggil: u.name.split(' ')[0],
       email: u.email,
-      jalur: u.jalur,
-      batch_id: u.batch,
-      usia: u.jalur === 'A' ? 10 : 28,
+      kelas_id: u.kelasId,
+      usia: u.kelasId === KELAS.A ? 10 : 28,
       consent_privasi: true,
       consent_etika: true,
       byod: true,

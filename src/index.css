@@ -128,23 +128,154 @@
     transform: rotate(90deg);
   }
 
-  .prose-md h1 { @apply text-subhead font-bold text-[rgb(var(--fg))] mt-6 mb-3; }
-  .prose-md h2 { @apply text-lg font-semibold text-[rgb(var(--fg))] mt-6 mb-2; }
-  .prose-md h3 { @apply text-base font-semibold text-[rgb(var(--fg))] mt-5 mb-2; }
-  .prose-md p { @apply text-body leading-relaxed mb-3; }
-  .prose-md ul { @apply list-disc pl-6 mb-3 space-y-1; }
-  .prose-md ol { @apply list-decimal pl-6 mb-3 space-y-1; }
-  .prose-md li { @apply text-body; }
-  .prose-md table { @apply w-full text-sm my-4 border-collapse; }
-  .prose-md th, .prose-md td { @apply border border-[rgb(var(--border-2))] px-3 py-2 text-left; }
-  .prose-md th { @apply bg-[rgb(var(--surface-2))] font-semibold; }
-  .prose-md tr:nth-child(even) td { @apply bg-[rgb(var(--surface))]/50; }
-  .prose-md code { @apply bg-[rgb(var(--bg))] px-1.5 py-0.5 rounded text-sm font-mono text-[rgb(var(--primary-text))]; }
-  .prose-md pre { @apply bg-[rgb(var(--bg))] border border-[rgb(var(--border-2))] rounded-[6px] p-4 overflow-x-auto my-4; }
-  .prose-md pre code { @apply bg-transparent p-0 text-[rgb(var(--fg))]; }
-  .prose-md blockquote { @apply pl-4 italic text-[rgb(var(--fg-muted))] my-4; border-left: 4px solid rgb(var(--primary)); }
-  .prose-md a { @apply text-[rgb(var(--primary-text))] underline; }
-  .prose-md strong { @apply text-[rgb(var(--fg))] font-semibold; }
+  /* =========================================================
+     PROSE / MODUL READING TYPOGRAPHY (Reading Comfort Upgrade)
+     ========================================================= */
+  .prose-md {
+    @apply text-fg leading-[1.8] text-[15.5px] sm:text-[16.5px];
+  }
+
+  .prose-md h1 {
+    @apply text-2xl sm:text-3xl font-extrabold text-fg mt-8 mb-4 tracking-tight pb-3 border-b border-border-2;
+  }
+
+  .prose-md h2 {
+    @apply text-xl sm:text-2xl font-bold text-fg mt-8 mb-3.5 tracking-tight pt-2 border-b border-border-2/60 pb-2 flex items-center gap-2;
+  }
+
+  .prose-md h3 {
+    @apply text-lg sm:text-xl font-semibold text-primary-text mt-6 mb-2.5 tracking-tight;
+  }
+
+  .prose-md h4 {
+    @apply text-base font-semibold text-fg-muted mt-5 mb-2;
+  }
+
+  .prose-md p {
+    @apply leading-[1.85] mb-4 text-fg/90;
+  }
+
+  .prose-md ul {
+    @apply list-disc pl-6 mb-4 space-y-2 text-fg/90;
+  }
+
+  .prose-md ol {
+    @apply list-decimal pl-6 mb-4 space-y-2 text-fg/90;
+  }
+
+  .prose-md li {
+    @apply leading-[1.75];
+  }
+
+  .prose-md li > p {
+    @apply mb-1 inline;
+  }
+
+  /* Heading Anchors for TOC Quick Jump */
+  .heading-anchor {
+    scroll-margin-top: 5rem;
+    position: relative;
+  }
+
+  .heading-anchor .anchor-link {
+    @apply ml-2 text-fg-subtle text-sm opacity-0 transition group-hover:opacity-100 hover:text-primary-text no-underline;
+  }
+
+  /* Tables */
+  .prose-md table {
+    @apply w-full text-sm my-6 border-collapse rounded-xl overflow-hidden border border-border-2 bg-surface/40 shadow-sm;
+  }
+
+  .prose-md th {
+    @apply bg-surface-2/90 font-semibold text-fg px-4 py-3 text-left border-b border-border-2;
+  }
+
+  .prose-md td {
+    @apply border-b border-border-2/60 px-4 py-3 text-fg/85;
+  }
+
+  .prose-md tr:nth-child(even) td {
+    @apply bg-surface/60;
+  }
+
+  .prose-md tr:hover td {
+    @apply bg-surface-2/40 text-fg;
+  }
+
+  /* Code & Syntax */
+  .prose-md code {
+    @apply bg-surface-2/80 text-primary-text px-2 py-0.5 rounded font-mono text-[13.5px] border border-border-2/50 font-medium;
+  }
+
+  .prose-md pre {
+    @apply bg-[rgb(var(--bg))] border border-border-2 rounded-xl p-4 sm:p-5 overflow-x-auto my-5 shadow-sm;
+  }
+
+  .prose-md pre code {
+    @apply bg-transparent border-none p-0 text-fg leading-relaxed block font-mono text-[14px];
+  }
+
+  /* Blockquote default */
+  .prose-md blockquote {
+    @apply pl-4 pr-3 py-2 italic text-fg-muted my-5 rounded-r-lg border-l-4 border-primary bg-primary/5;
+  }
+
+  .prose-md a {
+    @apply text-primary-text hover:text-primary-hover underline underline-offset-4 font-medium transition;
+  }
+
+  .prose-md strong {
+    @apply text-fg font-bold;
+  }
+
+  /* Rich Callout Alerts (Notion & GitHub Style) */
+  .callout {
+    @apply my-6 rounded-xl border p-4 sm:p-5 shadow-sm transition;
+  }
+
+  .callout-header {
+    @apply flex items-center gap-2 font-bold text-sm mb-2;
+  }
+
+  .callout-icon {
+    @apply text-base select-none;
+  }
+
+  .callout-body {
+    @apply text-sm leading-relaxed;
+  }
+
+  .callout-body > p:last-child {
+    @apply mb-0;
+  }
+
+  .callout-note {
+    @apply border-sky-500/30 bg-sky-500/10 text-sky-200;
+  }
+  .callout-note .callout-header {
+    @apply text-sky-300;
+  }
+
+  .callout-tip {
+    @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-200;
+  }
+  .callout-tip .callout-header {
+    @apply text-emerald-300;
+  }
+
+  .callout-important {
+    @apply border-primary/30 bg-primary/10 text-amber-200;
+  }
+  .callout-important .callout-header {
+    @apply text-primary-text;
+  }
+
+  .callout-warning {
+    @apply border-rose-500/30 bg-rose-500/10 text-rose-200;
+  }
+  .callout-warning .callout-header {
+    @apply text-rose-300;
+  }
 
   #app { @apply pb-[env(safe-area-inset-bottom,0px)]; }
   .tab-bar {
