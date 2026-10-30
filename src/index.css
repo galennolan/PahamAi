@@ -228,6 +228,24 @@
     @apply text-fg font-bold;
   }
 
+  /* Images in Modul Prose */
+  .prose-md figure,
+  .prose-md .modul-image-figure {
+    @apply my-6 block text-center;
+  }
+
+  .prose-md img,
+  .prose-md .modul-img {
+    @apply rounded-xl border border-border-2 shadow-md max-w-full h-auto mx-auto my-3 transition duration-200 hover:shadow-lg;
+    max-height: 480px;
+    object-fit: contain;
+    background-color: rgb(var(--surface-2));
+  }
+
+  .prose-md figcaption {
+    @apply mt-2 text-xs text-fg-subtle italic text-center font-normal;
+  }
+
   /* Rich Callout Alerts (Notion & GitHub Style) */
   .callout {
     @apply my-6 rounded-xl border p-4 sm:p-5 shadow-sm transition;

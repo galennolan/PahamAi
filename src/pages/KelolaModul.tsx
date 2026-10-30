@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, Tabs, Stat } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, Tabs } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import type { Modul, ModulKategori } from '../types';
 import { KATEGORI_MODUL, resolveKategori } from '../types';
@@ -22,9 +22,8 @@ import {
   Clock,
   Sparkles,
   BookOpen,
+  Image as ImageIcon,
 } from 'lucide-react';
-
-type FilterKategori = ModulKategori | 'SEMUA';
 
 const EMPTY_FORM = {
   id: '',
@@ -42,7 +41,6 @@ export default function KelolaModulPage() {
   const { push: toast } = useToast();
   const [program, setProgram] = useState<ProgramKode>('B1');
   const [programOptions, setProgramOptions] = useState<ProgramKode[]>([]);
-  const [filterKategori, setFilterKategori] = useState<FilterKategori>('SEMUA');
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +54,11 @@ export default function KelolaModulPage() {
   // Preview Modal states
   const [viewing, setViewing] = useState<Modul | null>(null);
   const [viewingTab, setViewingTab] = useState<'peserta' | 'instruktur'>('peserta');
+
+  // Online Image Insertion Modal
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imgModalUrl, setImgModalUrl] = useState('');
+  const [imgModalCaption, setImgModalCaption] = useState('');
 
   const loadProgram = useCallback(async () => {
     const progs = await listProgramTerpakai();
@@ -107,30 +110,9 @@ export default function KelolaModulPage() {
     };
   }, [load, toast]);
 
-  const kategoriCounts = useMemo(() => {
-    const counts = new Map<ModulKategori, number>();
-    for (const m of moduls) {
-      const k = resolveKategori(m);
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    }
-    return counts;
+  const sortedModuls = useMemo(() => {
+    return [...moduls].sort((a, b) => a.urutan_sesi - b.urutan_sesi || a.kode.localeCompare(b.kode));
   }, [moduls]);
-
-  const grouped = useMemo(() => {
-    const buckets = new Map<ModulKategori, Modul[]>();
-    for (const m of moduls) {
-      const k = resolveKategori(m);
-      const list = buckets.get(k);
-      if (list) list.push(m);
-      else buckets.set(k, [m]);
-    }
-    for (const list of buckets.values()) {
-      list.sort((a, b) => a.urutan_sesi - b.urutan_sesi || a.kode.localeCompare(b.kode));
-    }
-    return KATEGORI_MODUL.map((k) => ({ def: k, items: buckets.get(k.kode) ?? [] }))
-      .filter((g) => (filterKategori === 'SEMUA' ? true : g.def.kode === filterKategori))
-      .filter((g) => g.items.length > 0 || filterKategori !== 'SEMUA');
-  }, [moduls, filterKategori]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,7 +213,7 @@ export default function KelolaModulPage() {
             </Badge>
           </div>
           <p className="mt-1 text-sm text-fg-muted">
-            Program {programLabel(program)} · Terbagi ke {KATEGORI_MODUL.length} kategori silabus standar
+            Program {programLabel(program)} · Kurikulum Pembelajaran Terstruktur
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -256,57 +238,6 @@ export default function KelolaModulPage() {
         onChange={(v) => setProgram(v as ProgramKode)}
         options={programOptions.map((kode) => ({ key: kode, label: programLabel(kode) }))}
       />
-
-      {/* Category Filter Chips */}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter kategori">
-        <button
-          type="button"
-          onClick={() => setFilterKategori('SEMUA')}
-          aria-pressed={filterKategori === 'SEMUA'}
-          className={`inline-flex min-h-[40px] items-center gap-2 rounded-[8px] border px-3.5 py-1.5 text-sm font-medium transition ${
-            filterKategori === 'SEMUA'
-              ? 'border-primary bg-primary/15 text-primary-text shadow-sm'
-              : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
-          }`}
-        >
-          Semua kategori
-          <span className="font-mono text-xs opacity-75">{moduls.length}</span>
-        </button>
-        {KATEGORI_MODUL.map((k) => (
-          <button
-            key={k.kode}
-            type="button"
-            onClick={() => setFilterKategori(k.kode)}
-            aria-pressed={filterKategori === k.kode}
-            className={`inline-flex min-h-[40px] items-center gap-2 rounded-[8px] border px-3.5 py-1.5 text-sm font-medium transition ${
-              filterKategori === k.kode
-                ? `${k.warnaBadge} border-current shadow-sm`
-                : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
-            }`}
-          >
-            <span>{k.label}</span>
-            <span className="font-mono text-xs opacity-75">{kategoriCounts.get(k.kode) ?? 0}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Category Stats Grid */}
-      {moduls.length > 0 && (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
-          {KATEGORI_MODUL.filter((k) => (kategoriCounts.get(k.kode) ?? 0) > 0).map((k) => {
-            const c = kategoriCounts.get(k.kode) ?? 0;
-            const total = moduls.length;
-            return (
-              <Stat
-                key={k.kode}
-                value={`${c}/${total}`}
-                label={k.label}
-                accent="text-fg"
-              />
-            );
-          })}
-        </div>
-      )}
 
       {/* Form Create / Edit Modul */}
       {showForm && (
@@ -532,6 +463,19 @@ export default function KelolaModulPage() {
                 >
                   ### H3
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImgModalUrl('');
+                    setImgModalCaption('');
+                    setShowImageModal(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-2.5 py-1 text-primary-text font-semibold hover:bg-primary/20 transition"
+                  title="Sisipkan gambar online via URL http/https .jpg"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  + Gambar Online (.jpg)
+                </button>
               </div>
 
               {/* Editor Workspace */}
@@ -634,121 +578,99 @@ export default function KelolaModulPage() {
         />
       )}
 
-      {!showForm && moduls.length > 0 && grouped.length === 0 && (
-        <EmptyState
-          title="Kategori kosong"
-          desc="Tidak ada modul pada kategori ini untuk program yang dipilih."
-          action={
-            <Button variant="secondary" onClick={() => setFilterKategori('SEMUA')}>
-              Tampilkan semua kategori
-            </Button>
-          }
-        />
-      )}
+      {/* Modul List Cards (Clean Sequential View) */}
+      {!showForm && sortedModuls.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-2/70 pb-2.5">
+            <span className="font-mono text-xs font-semibold text-fg-subtle uppercase tracking-wider">
+              Daftar Sesi Pembelajaran ({sortedModuls.length} Modul)
+            </span>
+            <span className="font-mono text-xs text-fg-muted">
+              Total Waktu: {sortedModuls.reduce((a, m) => a + m.durasi_menit, 0)} menit
+            </span>
+          </div>
 
-      {/* Modul List Cards */}
-      {!showForm && grouped.length > 0 && (
-        <div className="space-y-6">
-          {grouped.map((g) => (
-            <section key={g.def.kode} className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
-                <div className="flex items-center gap-2.5">
-                  <Badge className={`font-mono font-bold ${g.def.warnaBadge}`}>{g.def.kode}</Badge>
-                  <h2 className="text-subhead font-bold text-fg">{g.def.label}</h2>
-                </div>
-                <span className="font-mono text-xs text-fg-subtle">
-                  {g.items.length} modul · {g.items.reduce((a, m) => a + m.durasi_menit, 0)} menit total
-                </span>
-              </div>
+          <ul className="space-y-3">
+            {sortedModuls.map((m) => {
+              const hasPeserta = !!m.materi_peserta_md && m.materi_peserta_md.trim().length > 0;
+              const hasInstruktur = !!m.content_md && m.content_md.trim().length > 0;
+              const hasTable = (m.content_md?.includes('|---|') || m.materi_peserta_md?.includes('|---|')) ?? false;
 
-              <ul className="space-y-2.5">
-                {g.items.map((m) => {
-                  const auto = resolveKategori({ ...m, kategori: null });
-                  const differs = m.kategori != null && m.kategori !== auto;
-                  const hasPeserta = !!m.materi_peserta_md && m.materi_peserta_md.trim().length > 0;
-                  const hasInstruktur = !!m.content_md && m.content_md.trim().length > 0;
-                  const hasTable = (m.content_md?.includes('|---|') || m.materi_peserta_md?.includes('|---|')) ?? false;
-
-                  return (
-                    <li key={m.id}>
-                      <Card className="!p-4 sm:!p-5 hover:border-border-3 transition-colors">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                          <div className="min-w-0 flex-1 space-y-1.5">
-                            <div className="flex flex-wrap items-center gap-2.5">
-                              <span className="font-mono text-base font-bold text-primary-text">
-                                {m.kode}
-                              </span>
-                              <h3 className="min-w-0 font-semibold text-fg text-sm sm:text-base">
-                                {m.judul}
-                              </h3>
-                              {differs && (
-                                <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px]">
-                                  kategori manual
-                                </Badge>
-                              )}
-                            </div>
-
-                            {/* Badges and metadata */}
-                            <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
-                              <span className="font-mono text-fg-subtle">
-                                #{m.urutan_sesi} · {m.durasi_menit} menit
-                              </span>
-
-                              {hasPeserta ? (
-                                <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono text-[11px]">
-                                  Peserta: Ada
-                                </Badge>
-                              ) : (
-                                <Badge className="border-border bg-surface text-fg-subtle font-mono text-[11px]">
-                                  Peserta: Belum
-                                </Badge>
-                              )}
-
-                              {hasInstruktur ? (
-                                <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-400 font-mono text-[11px]">
-                                  Instruktur: Ada
-                                </Badge>
-                              ) : (
-                                <Badge className="border-border bg-surface text-fg-subtle font-mono text-[11px]">
-                                  Instruktur: Kosong
-                                </Badge>
-                              )}
-
-                              {hasTable && (
-                                <Badge className="border-purple-500/30 bg-purple-500/10 text-purple-400 font-mono text-[11px] flex items-center gap-1">
-                                  <TableIcon className="h-3 w-3" />
-                                  Ada Tabel
-                                </Badge>
-                              )}
-
-                              {m.slide_url && (
-                                <span className="font-mono text-xs text-primary-text underline flex items-center gap-1">
-                                  <ExternalLink className="h-3 w-3" />
-                                  Slide
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex shrink-0 items-center gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => handleOpenView(m)}>
-                              <Eye className="h-3.5 w-3.5" />
-                              Lihat Modul
-                            </Button>
-                            <Button size="sm" variant="secondary" onClick={() => startEdit(m)}>
-                              <Edit3 className="h-3.5 w-3.5" />
-                              Edit
-                            </Button>
-                          </div>
+              return (
+                <li key={m.id}>
+                  <Card className="!p-4 sm:!p-5 hover:border-border-3 transition-colors">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="rounded-md bg-primary/10 border border-primary/30 px-2 py-0.5 font-mono text-sm font-bold text-primary-text">
+                            {m.kode}
+                          </span>
+                          <h3 className="min-w-0 font-semibold text-fg text-sm sm:text-base">
+                            {m.judul}
+                          </h3>
                         </div>
-                      </Card>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+
+                        {/* Badges and metadata */}
+                        <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
+                          <span className="font-mono text-fg-subtle">
+                            Sesi #{m.urutan_sesi} · {m.durasi_menit} menit
+                          </span>
+
+                          {hasPeserta ? (
+                            <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono text-[11px]">
+                              Materi Peserta: Ada
+                            </Badge>
+                          ) : (
+                            <Badge className="border-border bg-surface text-fg-subtle font-mono text-[11px]">
+                              Materi Peserta: Belum
+                            </Badge>
+                          )}
+
+                          {hasInstruktur ? (
+                            <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-400 font-mono text-[11px]">
+                              Materi Instruktur: Ada
+                            </Badge>
+                          ) : (
+                            <Badge className="border-border bg-surface text-fg-subtle font-mono text-[11px]">
+                              Materi Instruktur: Kosong
+                            </Badge>
+                          )}
+
+                          {hasTable && (
+                            <Badge className="border-purple-500/30 bg-purple-500/10 text-purple-400 font-mono text-[11px] flex items-center gap-1">
+                              <TableIcon className="h-3 w-3" />
+                              Ada Tabel
+                            </Badge>
+                          )}
+
+                          {m.slide_url && (
+                            <span className="font-mono text-xs text-primary-text underline flex items-center gap-1">
+                              <ExternalLink className="h-3 w-3" />
+                              Slide
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleOpenView(m)}>
+                          <Eye className="h-3.5 w-3.5" />
+                          Lihat Modul
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => startEdit(m)}>
+                          <Edit3 className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
         </div>
       )}
 
@@ -922,6 +844,126 @@ export default function KelolaModulPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sisipkan Gambar Online (Tanpa Upload Server) */}
+      {showImageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-border-2 bg-surface shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border-2 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary-text">
+                  <ImageIcon className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-fg">Sisipkan Gambar Online</h3>
+                  <p className="text-xs text-fg-subtle">Gunakan tautan .jpg/.png publik tanpa upload ke server</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowImageModal(false)}
+                className="rounded-lg p-1 text-fg-subtle hover:bg-surface-2 hover:text-fg transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm">
+              <Field label="URL Gambar (HTTP / HTTPS .jpg / .png)">
+                <TextInput
+                  value={imgModalUrl}
+                  onChange={(e) => setImgModalUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-...?auto=format&fit=crop&w=1000&q=80"
+                  className="font-mono text-xs"
+                />
+              </Field>
+
+              <Field label="Keterangan / Caption Gambar (Alt Text)">
+                <TextInput
+                  value={imgModalCaption}
+                  onChange={(e) => setImgModalCaption(e.target.value)}
+                  placeholder="Contoh: Ilustrasi Arsitektur Model AI"
+                />
+              </Field>
+
+              {/* Quick Presets */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-semibold text-fg-subtle">Pilihan Cepat (Bebas Royalti):</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: '🤖 Robot / AI', url: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1000&q=80', caption: 'Konsep Dasar Artificial Intelligence' },
+                    { label: '🧠 Neural Network', url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1000&q=80', caption: 'Arsitektur Jaringan Saraf Tiruan' },
+                    { label: '💻 Workspace / Laptop', url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1000&q=80', caption: 'Alat Kerja dan Produktivitas Digital' },
+                    { label: '✍️ Prompting', url: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1000&q=80', caption: 'Prinsip Menyusun Prompt Presisi' },
+                    { label: '📊 Data & Analitik', url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1000&q=80', caption: 'Analisis Data dan Evaluasi Performa' },
+                    { label: '🛡️ Keamanan & Etika', url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1000&q=80', caption: 'Etika, Keamanan, dan Privasi Sistem' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        setImgModalUrl(preset.url);
+                        setImgModalCaption(preset.caption);
+                      }}
+                      className="rounded-md border border-border-2 bg-surface px-2 py-1 text-xs text-fg-muted hover:border-primary hover:text-primary-text transition"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live Preview */}
+              {imgModalUrl.trim() && (
+                <div className="space-y-1.5 rounded-xl border border-border-2 bg-bg p-3">
+                  <span className="text-xs font-semibold text-fg-subtle">Pratinjau Gambar:</span>
+                  <div className="flex flex-col items-center justify-center overflow-hidden rounded-lg border border-border-2 bg-surface p-2">
+                    <img
+                      src={imgModalUrl.trim()}
+                      alt={imgModalCaption.trim() || 'Pratinjau Gambar'}
+                      className="max-h-44 w-auto rounded object-cover shadow-sm"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/600x300?text=Gambar+Gagal+Dimuat+(Cek+URL)';
+                      }}
+                    />
+                    {imgModalCaption.trim() && (
+                      <p className="mt-2 text-xs italic text-fg-subtle text-center">
+                        {imgModalCaption.trim()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 border-t border-border-2 px-6 py-3">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowImageModal(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!imgModalUrl.trim()}
+                onClick={() => {
+                  const caption = imgModalCaption.trim() || 'Ilustrasi Modul';
+                  insertMarkdownSnippet(`![${caption}](${imgModalUrl.trim()})`);
+                  setShowImageModal(false);
+                }}
+              >
+                Sisipkan ke Materi
+              </Button>
             </div>
           </div>
         </div>

@@ -173,6 +173,18 @@ customRenderer.heading = ({ text, depth }: { text: string; depth: number }) => {
 };
 
 /**
+ * Render elemen gambar online (HTTP/HTTPS .jpg/.png) ke dalam figure berbingkai rapi,
+ * responsif, terpusat, dengan lazy-loading dan keterangan gambar (caption).
+ */
+customRenderer.image = ({ href, title, text }: { href: string; title?: string | null; text: string }) => {
+  const caption = text || title || '';
+  return `<figure class="modul-image-figure my-6 text-center">
+    <img src="${href}" alt="${caption}" title="${title || caption}" loading="lazy" class="modul-img rounded-xl border border-border-2 shadow-md max-w-full h-auto mx-auto object-cover max-h-[480px]" />
+    ${caption ? `<figcaption class="mt-2 text-xs text-fg-subtle italic text-center font-normal">${caption}</figcaption>` : ''}
+  </figure>`;
+};
+
+/**
  * Bungkus seluruh elemen <table> ke dalam container scrollable dan berbingkai rapi
  * agar tabel Markdown tidak terpotong dan nyaman dibaca di desktop maupun mobile.
  */
@@ -184,7 +196,7 @@ function wrapTables(html: string): string {
 }
 
 /**
- * Render Markdown dengan typography premium, callout modern, dan sanitasi keamanan.
+ * Render Markdown dengan typography premium, callout modern, gambar online yang aman, dan sanitasi keamanan.
  */
 export function renderMarkdown(md: string | null | undefined): string {
   if (!md) return '';
@@ -199,8 +211,8 @@ export function renderMarkdown(md: string | null | undefined): string {
   const withTables = wrapTables(rawHtml);
 
   return DOMPurify.sanitize(withTables, {
-    ADD_ATTR: ['target', 'rel', 'id', 'class'],
-    ADD_TAGS: ['div', 'span', 'strong', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+    ADD_ATTR: ['target', 'rel', 'id', 'class', 'src', 'alt', 'title', 'loading'],
+    ADD_TAGS: ['div', 'span', 'strong', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'figure', 'figcaption', 'img'],
     FORBID_TAGS: ['script', 'iframe', 'form', 'object', 'embed'],
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
     ALLOW_DATA_ATTR: false,
