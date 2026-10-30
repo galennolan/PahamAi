@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, Tabs } from '../components/ui';
 import { useToast } from '../hooks/useToast';
-import type { Modul, ModulKategori } from '../types';
-import { KATEGORI_MODUL, resolveKategori } from '../types';
+import type { Modul } from '../types';
+import { KATEGORI_MODUL } from '../types';
 import { listModulByProgram, listProgramTerpakai } from '../services/modul';
 import { PROGRAM, programLabel, type ProgramKode } from '../constants/program';
 import { renderMarkdown, estimateReadingTime, extractTOC } from '../lib/markdown';
 import {
-  ChevronDown,
   Plus,
   Eye,
   X,
@@ -196,8 +195,6 @@ export default function KelolaModulPage() {
   const viewingReadTime = useMemo(() => estimateReadingTime(activeViewingContent), [activeViewingContent]);
 
   const activeFormContent = form[formFieldTab];
-
-  const kategoriTanpaIsi = KATEGORI_MODUL.filter((k) => (kategoriCounts.get(k.kode) ?? 0) === 0);
 
   if (loading) return <Loading text="Memuat katalog modul..." />;
 
@@ -671,19 +668,6 @@ export default function KelolaModulPage() {
           </ul>
         </div>
       )}
-        </div>
-      )}
-
-      {kategoriTanpaIsi.length > 0 && filterKategori === 'SEMUA' && (
-        <p className="border-t border-border pt-4 font-mono text-xs text-fg-subtle">
-          Kategori silabus yang belum memiliki modul: {kategoriTanpaIsi.map((k) => k.label).join(', ')}
-        </p>
-      )}
-
-      <p className="flex items-center gap-1.5 text-xs text-fg-subtle">
-        <ChevronDown className="h-3 w-3" aria-hidden />
-        Urutan sesi mengikuti urutan_sesi di dalam masing-masing kategori modul.
-      </p>
 
       {/* Enhanced Viewing Modal */}
       {viewing && (
