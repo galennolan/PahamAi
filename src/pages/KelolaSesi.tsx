@@ -14,7 +14,6 @@ import { Badge, Button, Card, EmptyState, Field, Loading, SelectInput, TextInput
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../lib/supabaseClient';
 import { formatJakarta } from '../lib/time';
-import { programDariKodeModul } from '../constants/program';
 import type { Kelas, JadwalSesi, Modul, Peserta } from '../types';
 
 interface PesertaProgress {
@@ -187,19 +186,13 @@ export default function KelolaSesiPage() {
     const kelasObj = kelasList.find((k) => k.id === selectedKelas);
     if (!kelasObj) return;
 
-    const kodeKelas = kelasObj.kode || '';
-    const program = programDariKodeModul(kodeKelas);
-    if (!program) {
-      toast(`Tidak bisa menentukan program dari kode kelas "${kodeKelas}"`, 'error');
-      return;
-    }
-
-    const semuaModul = moduls.filter((m) => programDariKodeModul(m.kode) === program);
+    // Tugaskan seluruh 14 pertemuan perkuliahan
+    const semuaModul = [...moduls].sort((a, b) => a.urutan_sesi - b.urutan_sesi);
     const kodeSudahAda = new Set(jadwals.map((j) => j.kode_sesi_friendly));
     const modulKurang = semuaModul.filter((m) => !kodeSudahAda.has(m.kode));
 
     if (modulKurang.length === 0) {
-      toast('Semua modul sudah dijadwalkan', 'success');
+      toast('Semua modul perkuliahan sudah dijadwalkan untuk kelas ini', 'success');
       return;
     }
 

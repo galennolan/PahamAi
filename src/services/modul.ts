@@ -20,10 +20,11 @@ export async function listModul(): Promise<Modul[]> {
   return result;
 }
 
-/** Modul untuk satu program, ditentukan dari prefiks kode modul (`B201` -> `B2`). */
+/** Modul untuk satu program. Jika modul menggunakan format perkuliahan (P01-P14), kembalikan seluruh silabus. */
 export async function listModulByProgram(program: string): Promise<Modul[]> {
   const semua = await listModul();
-  return semua.filter((m) => programDariKodeModul(m.kode) === program);
+  const filtered = semua.filter((m) => programDariKodeModul(m.kode) === program);
+  return filtered.length > 0 ? filtered : semua;
 }
 
 /** Modul satu kategori, tetap diurutkan `urutan_sesi` lalu `kode`. */

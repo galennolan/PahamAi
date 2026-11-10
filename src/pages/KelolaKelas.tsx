@@ -152,9 +152,9 @@ export default function KelolaKelasPage() {
           .select('*')
           .order('urutan_sesi', { ascending: true });
         if (error) throw new Error(error.message);
-        const list = ((data as Modul[]) ?? []).filter(
-          (m) => programDariKodeModul(m.kode) === form.program,
-        );
+        const raw = (data as Modul[]) ?? [];
+        const byProg = raw.filter((m) => programDariKodeModul(m.kode) === form.program);
+        const list = byProg.length > 0 ? byProg : raw;
         setModuls(list);
         setSesiDraft(
           list.map((m, i) => {

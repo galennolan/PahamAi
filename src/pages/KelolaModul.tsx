@@ -1,18 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, Tabs } from '../components/ui';
+import { Card, Loading, EmptyState, Button, Field, TextInput, Badge } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import type { Modul } from '../types';
-import { KATEGORI_MODUL } from '../types';
-import { listModulByProgram, listProgramTerpakai } from '../services/modul';
-import { PROGRAM, programLabel, type ProgramKode } from '../constants/program';
+import { listModul } from '../services/modul';
 import { renderMarkdown, estimateReadingTime, extractTOC } from '../lib/markdown';
 import {
   Plus,
   Eye,
   X,
-  GraduationCap,
-  User,
   Table as TableIcon,
   ExternalLink,
   Edit3,
@@ -22,66 +19,60 @@ import {
   Sparkles,
   BookOpen,
   Image as ImageIcon,
+  GraduationCap,
 } from 'lucide-react';
 
-const EMPTY_FORM = {
+interface ModulForm {
+  id: string;
+  pertemuan: number;
+  kode: string;
+  nama_modul: string;
+  isi_modul: string;
+}
+
+const EMPTY_FORM: ModulForm = {
   id: '',
-  kode: '',
-  judul: '',
-  kategori: '' as string,
-  urutan_sesi: 1,
-  durasi_menit: 60,
-  content_md: '',
-  materi_peserta_md: '',
-  slide_url: '',
+  pertemuan: 1,
+  kode: 'P01',
+  nama_modul: '',
+  isi_modul: '',
 };
+
+const DEFAULT_MATKUL = 'Kecerdasan Buatan & AI Engineering';
 
 export default function KelolaModulPage() {
   const { push: toast } = useToast();
-  const [program, setProgram] = useState<ProgramKode>('B1');
-  const [programOptions, setProgramOptions] = useState<ProgramKode[]>([]);
+  const [matkulNama, setMatkulNama] = useState<string>(() => {
+    return localStorage.getItem('paham_ai_matkul_nama') || DEFAULT_MATKUL;
+  });
+  const [isEditingMatkul, setIsEditingMatkul] = useState(false);
+  const [tempMatkul, setTempMatkul] = useState(matkulNama);
+
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Form states
+  // Form states (Simpel: Nama Modul & Isi Modul)
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Modul | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formFieldTab, setFormFieldTab] = useState<'materi_peserta_md' | 'content_md'>('materi_peserta_md');
+  const [form, setForm] = useState<ModulForm>(EMPTY_FORM);
   const [formViewMode, setFormViewMode] = useState<'split' | 'edit' | 'preview'>('split');
 
   // Preview Modal states
   const [viewing, setViewing] = useState<Modul | null>(null);
-  const [viewingTab, setViewingTab] = useState<'peserta' | 'instruktur'>('peserta');
 
   // Online Image Insertion Modal
   const [showImageModal, setShowImageModal] = useState(false);
   const [imgModalUrl, setImgModalUrl] = useState('');
   const [imgModalCaption, setImgModalCaption] = useState('');
 
-  const loadProgram = useCallback(async () => {
-    const progs = await listProgramTerpakai();
-    const list = (progs.length > 0 ? progs : PROGRAM.map((p) => p.kode)) as ProgramKode[];
-    setProgramOptions(list);
-    setProgram((prev) => (list.includes(prev) ? prev : list[0]));
-  }, []);
-
   const load = useCallback(async () => {
-    setModuls(await listModulByProgram(program));
-  }, [program]);
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        await loadProgram();
-      } catch (e: unknown) {
-        toast((e as Error).message, 'error');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [loadProgram, toast]);
+    try {
+      const data = await listModul();
+      setModuls(data);
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    }
+  }, [toast]);
 
   useEffect(() => {
     let mounted = true;
@@ -89,8 +80,6 @@ export default function KelolaModulPage() {
       setLoading(true);
       try {
         await load();
-      } catch (e: unknown) {
-        if (mounted) toast((e as Error).message, 'error');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -107,27 +96,61 @@ export default function KelolaModulPage() {
       mounted = false;
       supabase.removeChannel(channel);
     };
-  }, [load, toast]);
+  }, [load]);
 
   const sortedModuls = useMemo(() => {
-    return [...moduls].sort((a, b) => a.urutan_sesi - b.urutan_sesi || a.kode.localeCompare(b.kode));
+    return [...moduls].sort((a, b) => a.urutan_sesi - b.urutan_sesi);
   }, [moduls]);
+
+  const handleSaveMatkul = () => {
+    const val = tempMatkul.trim() || DEFAULT_MATKUL;
+    setMatkulNama(val);
+    localStorage.setItem('paham_ai_matkul_nama', val);
+    setIsEditingMatkul(false);
+    toast('Nama mata kuliah berhasil disimpan', 'success');
+  };
+
+  const handleOpenAdd = () => {
+    const nextPertemuan = (sortedModuls[sortedModuls.length - 1]?.urutan_sesi ?? 0) + 1;
+    const kode = `P${String(nextPertemuan).padStart(2, '0')}`;
+    setEditing(null);
+    setForm({
+      id: '',
+      pertemuan: nextPertemuan,
+      kode,
+      nama_modul: `Pertemuan ${nextPertemuan}: `,
+      isi_modul: `# Pertemuan ${nextPertemuan}: \n\n## 1. Capaian Pembelajaran\n\n## 2. Materi Inti\n\n## 3. Rangkuman & Latihan\n`,
+    });
+    setShowForm(true);
+  };
+
+  const handleStartEdit = (m: Modul) => {
+    setEditing(m);
+    setForm({
+      id: m.id,
+      pertemuan: m.urutan_sesi,
+      kode: m.kode,
+      nama_modul: m.judul,
+      isi_modul: m.materi_peserta_md || m.content_md || '',
+    });
+    setShowForm(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.kode || !form.judul) {
-      toast('Kode dan judul wajib diisi', 'error');
+    if (!form.nama_modul.trim()) {
+      toast('Nama modul wajib diisi', 'error');
       return;
     }
 
-    const payload: Record<string, unknown> = {
-      judul: form.judul,
-      kategori: form.kategori === '' ? null : form.kategori,
-      urutan_sesi: form.urutan_sesi,
-      durasi_menit: form.durasi_menit,
-      content_md: form.content_md === '' ? null : form.content_md,
-      materi_peserta_md: form.materi_peserta_md === '' ? null : form.materi_peserta_md,
-      slide_url: form.slide_url === '' ? null : form.slide_url,
+    const payload = {
+      kode: form.kode || `P${String(form.pertemuan).padStart(2, '0')}`,
+      judul: form.nama_modul.trim(),
+      urutan_sesi: Number(form.pertemuan) || 1,
+      durasi_menit: 100, // Standar 2 SKS perkuliahan
+      content_md: form.isi_modul,
+      materi_peserta_md: form.isi_modul,
+      kategori: null,
     };
 
     let error: { message: string } | null = null;
@@ -135,7 +158,7 @@ export default function KelolaModulPage() {
       const res = await supabase.from('modul').update(payload).eq('id', editing.id);
       error = res.error;
     } else {
-      const res = await supabase.from('modul').insert({ ...payload, kode: form.kode });
+      const res = await supabase.from('modul').insert(payload);
       error = res.error;
     }
 
@@ -144,108 +167,103 @@ export default function KelolaModulPage() {
       return;
     }
 
-    toast(editing ? 'Modul berhasil diperbarui' : 'Modul berhasil dibuat', 'success');
+    toast(editing ? 'Modul pertemuan berhasil diperbarui' : 'Pertemuan baru berhasil ditambahkan', 'success');
     setShowForm(false);
     setEditing(null);
     setForm(EMPTY_FORM);
     await load();
   };
 
-  const startEdit = (m: Modul) => {
-    setEditing(m);
-    setForm({
-      id: m.id,
-      kode: m.kode,
-      judul: m.judul,
-      kategori: m.kategori ?? '',
-      urutan_sesi: m.urutan_sesi,
-      durasi_menit: m.durasi_menit,
-      content_md: m.content_md ?? '',
-      materi_peserta_md: m.materi_peserta_md ?? '',
-      slide_url: m.slide_url ?? '',
-    });
-    // Default edit tab to whichever has content
-    setFormFieldTab(m.materi_peserta_md ? 'materi_peserta_md' : 'content_md');
-    setShowForm(true);
-  };
-
-  const handleOpenView = (m: Modul) => {
-    setViewing(m);
-    // Prioritize showing student material if present, otherwise instructor content
-    setViewingTab(m.materi_peserta_md ? 'peserta' : 'instruktur');
-  };
-
   // Helper insertion for Markdown Toolbar
   const insertMarkdownSnippet = (snippet: string) => {
-    const currentVal = form[formFieldTab];
+    const currentVal = form.isi_modul;
     const updated = currentVal ? `${currentVal.trimEnd()}\n\n${snippet}\n` : `${snippet}\n`;
-    setForm({ ...form, [formFieldTab]: updated });
+    setForm({ ...form, isi_modul: updated });
   };
 
-  // Active viewing content
-  const activeViewingContent = useMemo(() => {
-    if (!viewing) return '';
-    if (viewingTab === 'peserta') {
-      return viewing.materi_peserta_md || viewing.content_md || '';
-    }
-    return viewing.content_md || viewing.materi_peserta_md || '';
-  }, [viewing, viewingTab]);
+  const handleInsertImage = () => {
+    if (!imgModalUrl.trim()) return;
+    const caption = imgModalCaption.trim() || 'Gambar Pembelajaran';
+    const snippet = `![${caption}](${imgModalUrl.trim()})\n*${caption}*`;
+    insertMarkdownSnippet(snippet);
+    setShowImageModal(false);
+    setImgModalUrl('');
+    setImgModalCaption('');
+  };
 
-  const viewingTOC = useMemo(() => extractTOC(activeViewingContent), [activeViewingContent]);
-  const viewingReadTime = useMemo(() => estimateReadingTime(activeViewingContent), [activeViewingContent]);
+  const viewingContent = viewing?.materi_peserta_md || viewing?.content_md || '';
+  const viewingTOC = useMemo(() => extractTOC(viewingContent), [viewingContent]);
+  const viewingReadTime = useMemo(() => estimateReadingTime(viewingContent), [viewingContent]);
 
-  const activeFormContent = form[formFieldTab];
-
-  if (loading) return <Loading text="Memuat katalog modul..." />;
+  if (loading) return <Loading text="Memuat silabus perkuliahan..." />;
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-headline font-bold text-fg">Kelola Modul</h1>
-            <Badge className="border-primary/30 bg-primary/10 text-primary-text font-mono text-xs">
-              {moduls.length} Modul
-            </Badge>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Page Header: Gaya Perkuliahan */}
+      <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-surface to-surface-2 p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-primary/10 border border-primary/30 px-2.5 py-0.5 font-mono text-xs font-semibold text-primary-text flex items-center gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5" />
+                Mata Kuliah
+              </span>
+              <Badge className="border-border bg-surface font-mono text-xs">
+                {moduls.length} Pertemuan
+              </Badge>
+            </div>
+
+            {isEditingMatkul ? (
+              <div className="flex items-center gap-2 pt-1">
+                <TextInput
+                  value={tempMatkul}
+                  onChange={(e) => setTempMatkul(e.target.value)}
+                  placeholder="Nama Mata Kuliah..."
+                  className="max-w-md font-bold text-lg"
+                />
+                <Button size="sm" onClick={handleSaveMatkul}>Simpan</Button>
+                <Button size="sm" variant="ghost" onClick={() => setIsEditingMatkul(false)}>Batal</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pt-1">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-fg tracking-tight">
+                  {matkulNama}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => { setTempMatkul(matkulNama); setIsEditingMatkul(true); }}
+                  className="text-fg-subtle hover:text-primary-text transition p-1"
+                  title="Ubah nama mata kuliah"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            <p className="text-sm text-fg-muted">
+              Silabus Terstruktur 14 Pertemuan Perkuliahan · Standar Akademik & Pedagogi AI Modern
+            </p>
           </div>
-          <p className="mt-1 text-sm text-fg-muted">
-            Program {programLabel(program)} · Kurikulum Pembelajaran Terstruktur
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setForm({ ...EMPTY_FORM });
-              setFormFieldTab('materi_peserta_md');
-              setShowForm(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Modul
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button onClick={handleOpenAdd}>
+              <Plus className="h-4 w-4" />
+              Tambah Pertemuan
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Program Selector */}
-      <Tabs
-        label="Pilih program kursus"
-        value={program}
-        onChange={(v) => setProgram(v as ProgramKode)}
-        options={programOptions.map((kode) => ({ key: kode, label: programLabel(kode) }))}
-      />
-
-      {/* Form Create / Edit Modul */}
+      {/* Form Tambah / Edit Modul (HANYA Nama Modul & Isi Modul) */}
       {showForm && (
-        <Card className="border-border-2 bg-surface shadow-lg">
+        <Card className="border-border-2 bg-surface shadow-xl">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border-2 pb-4">
             <div>
               <span className="font-mono text-xs text-primary-text font-semibold uppercase tracking-wider">
-                {editing ? 'Editor Modul' : 'Modul Baru'}
+                {editing ? 'Editor Modul Perkuliahan' : 'Pertemuan Perkuliahan Baru'}
               </span>
-              <h2 className="text-subhead font-bold text-fg">
-                {editing ? `Edit ${editing.kode} — ${editing.judul}` : 'Buat Modul Kursus Baru'}
+              <h2 className="text-lg font-bold text-fg">
+                {editing ? `Edit ${editing.judul}` : `Buat Pertemuan #${form.pertemuan}`}
               </h2>
             </div>
             <Button
@@ -263,104 +281,47 @@ export default function KelolaModulPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Kode Modul" hint="Contoh: B101, A01, B204">
-                <TextInput
-                  placeholder="B101"
-                  value={form.kode}
-                  onChange={(e) => setForm({ ...form, kode: e.target.value })}
-                  required
-                  disabled={!!editing}
-                />
-              </Field>
-              <Field label="Judul Modul">
-                <TextInput
-                  placeholder="Dasar Pemahaman Artificial Intelligence..."
-                  value={form.judul}
-                  onChange={(e) => setForm({ ...form, judul: e.target.value })}
-                  required
-                />
-              </Field>
+            {/* Pertemuan & Nama Modul */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+              <div className="sm:col-span-1">
+                <Field label="Pertemuan Ke-" hint="Urutan 1 s/d 14">
+                  <TextInput
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={form.pertemuan}
+                    onChange={(e) => {
+                      const num = parseInt(e.target.value) || 1;
+                      const kode = `P${String(num).padStart(2, '0')}`;
+                      setForm({ ...form, pertemuan: num, kode });
+                    }}
+                    required
+                  />
+                </Field>
+              </div>
+              <div className="sm:col-span-3">
+                <Field label="Nama Modul / Topik Pertemuan" hint="Contoh: Pertemuan 1: Pengantar AI">
+                  <TextInput
+                    placeholder="Pertemuan X: Judul Materi Perkuliahan..."
+                    value={form.nama_modul}
+                    onChange={(e) => setForm({ ...form, nama_modul: e.target.value })}
+                    required
+                  />
+                </Field>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Kategori Silabus" hint="Kosong = otomatis dari prefix kode">
-                <SelectInput
-                  value={form.kategori}
-                  onChange={(e) => setForm({ ...form, kategori: e.target.value })}
-                >
-                  <option value="" className="bg-surface">
-                    — Otomatis dari kode modul —
-                  </option>
-                  {KATEGORI_MODUL.map((k) => (
-                    <option key={k.kode} value={k.kode} className="bg-surface">
-                      {k.label} ({k.kode})
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-              <Field label="Urutan Sesi">
-                <TextInput
-                  type="number"
-                  min={1}
-                  value={form.urutan_sesi}
-                  onChange={(e) => setForm({ ...form, urutan_sesi: parseInt(e.target.value) || 1 })}
-                />
-              </Field>
-              <Field label="Durasi (Menit)">
-                <TextInput
-                  type="number"
-                  min={1}
-                  value={form.durasi_menit}
-                  onChange={(e) => setForm({ ...form, durasi_menit: parseInt(e.target.value) || 60 })}
-                />
-              </Field>
-            </div>
-
-            <Field label="Tautan Slide Presentasi (Opsional)">
-              <TextInput
-                placeholder="https://docs.google.com/presentation/d/..."
-                value={form.slide_url}
-                onChange={(e) => setForm({ ...form, slide_url: e.target.value })}
-              />
-            </Field>
-
-            {/* Markdown Editor Section */}
-            <div className="rounded-xl border border-border-2 bg-surface-2/40 p-4 space-y-4">
-              {/* Field Tab & View Mode Controls */}
+            {/* Markdown Editor Section untuk Isi Modul */}
+            <div className="rounded-xl border border-border-2 bg-surface-2/40 p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-2/80 pb-3">
-                {/* Switch between Materi Peserta vs Materi Instruktur */}
-                <div className="flex items-center gap-1.5 rounded-lg border border-border-2 bg-surface p-1">
-                  <button
-                    type="button"
-                    onClick={() => setFormFieldTab('materi_peserta_md')}
-                    className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-xs font-semibold transition ${
-                      formFieldTab === 'materi_peserta_md'
-                        ? 'bg-primary text-black shadow-sm'
-                        : 'text-fg-muted hover:text-fg'
-                    }`}
-                  >
-                    <GraduationCap className="h-3.5 w-3.5" />
-                    Materi Peserta
-                    <span className="font-mono text-[11px] opacity-80">
-                      {form.materi_peserta_md ? `(${form.materi_peserta_md.length} kar)` : '(kosong)'}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormFieldTab('content_md')}
-                    className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-xs font-semibold transition ${
-                      formFieldTab === 'content_md'
-                        ? 'bg-primary text-black shadow-sm'
-                        : 'text-fg-muted hover:text-fg'
-                    }`}
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    Materi Instruktur
-                    <span className="font-mono text-[11px] opacity-80">
-                      {form.content_md ? `(${form.content_md.length} kar)` : '(kosong)'}
-                    </span>
-                  </button>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-fg flex items-center gap-1.5">
+                    <BookOpen className="h-4 w-4 text-primary-text" />
+                    Isi Modul (Materi Perkuliahan)
+                  </span>
+                  <span className="font-mono text-xs text-fg-subtle">
+                    ({form.isi_modul.length} karakter)
+                  </span>
                 </div>
 
                 {/* View Mode: Split / Edit / Preview */}
@@ -369,7 +330,7 @@ export default function KelolaModulPage() {
                     type="button"
                     onClick={() => setFormViewMode('split')}
                     className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${
-                      formViewMode === 'split' ? 'bg-surface-2 text-fg font-semibold' : 'text-fg-muted hover:text-fg'
+                      formViewMode === 'split' ? 'bg-primary text-black font-semibold' : 'text-fg-muted hover:text-fg'
                     }`}
                   >
                     <Columns className="h-3.5 w-3.5" />
@@ -379,7 +340,7 @@ export default function KelolaModulPage() {
                     type="button"
                     onClick={() => setFormViewMode('edit')}
                     className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${
-                      formViewMode === 'edit' ? 'bg-surface-2 text-fg font-semibold' : 'text-fg-muted hover:text-fg'
+                      formViewMode === 'edit' ? 'bg-primary text-black font-semibold' : 'text-fg-muted hover:text-fg'
                     }`}
                   >
                     <EyeOff className="h-3.5 w-3.5" />
@@ -389,7 +350,7 @@ export default function KelolaModulPage() {
                     type="button"
                     onClick={() => setFormViewMode('preview')}
                     className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${
-                      formViewMode === 'preview' ? 'bg-surface-2 text-fg font-semibold' : 'text-fg-muted hover:text-fg'
+                      formViewMode === 'preview' ? 'bg-primary text-black font-semibold' : 'text-fg-muted hover:text-fg'
                     }`}
                   >
                     <Eye className="h-3.5 w-3.5" />
@@ -398,7 +359,7 @@ export default function KelolaModulPage() {
                 </div>
               </div>
 
-              {/* Quick Markdown Toolbar Helpers */}
+              {/* Quick Markdown Toolbar */}
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="text-fg-subtle mr-1 font-mono text-[11px]">Sisipkan Cepat:</span>
                 <button
@@ -408,7 +369,7 @@ export default function KelolaModulPage() {
                       '| Kolom 1 | Kolom 2 | Kolom 3 |\n|---|---|---|\n| Data 1 | Data 2 | Data 3 |\n| Data 4 | Data 5 | Data 6 |'
                     )
                   }
-                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2.5 py-1 text-fg hover:border-primary hover:text-primary-text"
+                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2 py-1 text-fg hover:border-primary"
                 >
                   <TableIcon className="h-3 w-3" />
                   + Tabel
@@ -417,10 +378,21 @@ export default function KelolaModulPage() {
                   type="button"
                   onClick={() =>
                     insertMarkdownSnippet(
-                      '> [!TIP]\n> **Tips Praktik:** Gunakan teknik ini untuk mempercepat riset Anda.'
+                      '> [!NOTE]\n> **Capaian Pembelajaran (Sub-CPMK):** Mahasiswa mampu menguasai...'
                     )
                   }
-                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2.5 py-1 text-emerald-400 hover:border-emerald-500"
+                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2 py-1 text-sky-400 hover:border-sky-500"
+                >
+                  ℹ️ + Capaian
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    insertMarkdownSnippet(
+                      '> [!TIP]\n> **Tips Praktik:** Gunakan instruksi ini untuk performa optimal.'
+                    )
+                  }
+                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2 py-1 text-emerald-400 hover:border-emerald-500"
                 >
                   💡 + Tips
                 </button>
@@ -428,104 +400,74 @@ export default function KelolaModulPage() {
                   type="button"
                   onClick={() =>
                     insertMarkdownSnippet(
-                      '> [!NOTE]\n> **Catatan:** Pastikan Anda sudah terhubung ke jaringan sebelum mulai.'
+                      '> [!IMPORTANT]\n> **Poin Kunci:** Konsep penting yang harus dipahami.'
                     )
                   }
-                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2.5 py-1 text-sky-400 hover:border-sky-500"
-                >
-                  ℹ️ + Catatan
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    insertMarkdownSnippet(
-                      '> [!IMPORTANT]\n> **Poin Kunci:** Jangan membagikan data sensitif kepada model umum.'
-                    )
-                  }
-                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2.5 py-1 text-amber-400 hover:border-amber-500"
+                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2 py-1 text-amber-400 hover:border-amber-500"
                 >
                   ⭐ + Poin Kunci
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertMarkdownSnippet('## Judul Bagian Baru\n\nPenjelasan materi di sini...')}
-                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2.5 py-1 text-fg hover:border-primary hover:text-primary-text font-mono"
+                  onClick={() =>
+                    insertMarkdownSnippet(
+                      '```python\n# Contoh Kode Implementasi\nimport os\n\ndef run():\n    print("Hello AI")\n```'
+                    )
+                  }
+                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2 py-1 text-cyan-400 hover:border-cyan-500"
                 >
-                  ## H2
+                  🐍 + Kode Python
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertMarkdownSnippet('### Sub-Topik\n\nDetail langkah...')}
-                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2.5 py-1 text-fg hover:border-primary hover:text-primary-text font-mono"
+                  onClick={() => setShowImageModal(true)}
+                  className="inline-flex items-center gap-1 rounded border border-border-2 bg-surface px-2 py-1 text-purple-400 hover:border-purple-500"
                 >
-                  ### H3
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImgModalUrl('');
-                    setImgModalCaption('');
-                    setShowImageModal(true);
-                  }}
-                  className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-2.5 py-1 text-primary-text font-semibold hover:bg-primary/20 transition"
-                  title="Sisipkan gambar online via URL http/https .jpg"
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  + Gambar Online (.jpg)
+                  <ImageIcon className="h-3 w-3" />
+                  + Sisipkan Gambar
                 </button>
               </div>
 
-              {/* Editor Workspace */}
+              {/* Editor Workspace: Split or Single */}
               <div
                 className={`grid gap-4 ${
-                  formViewMode === 'split'
-                    ? 'grid-cols-1 lg:grid-cols-2'
-                    : 'grid-cols-1'
+                  formViewMode === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
                 }`}
               >
-                {/* Markdown Input Area */}
                 {(formViewMode === 'split' || formViewMode === 'edit') && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-fg-subtle">
-                      <span className="font-mono">
-                        Editor Markdown ({formFieldTab === 'materi_peserta_md' ? 'Materi Peserta' : 'Materi Instruktur'})
-                      </span>
-                      <span className="font-mono">{activeFormContent.length} karakter</span>
-                    </div>
                     <textarea
-                      value={activeFormContent}
-                      onChange={(e) => setForm({ ...form, [formFieldTab]: e.target.value })}
-                      className="h-[460px] w-full rounded-lg border border-border-2 bg-bg px-4 py-3 font-mono text-[13.5px] leading-relaxed text-fg outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-inner"
-                      placeholder={'# Judul Modul\n\nTuliskan uraian materi Markdown di sini...\n\n| Kolom 1 | Kolom 2 |\n|---|---|\n| Data 1 | Data 2 |'}
+                      value={form.isi_modul}
+                      onChange={(e) => setForm({ ...form, isi_modul: e.target.value })}
+                      placeholder="# Pertemuan X: ...&#10;&#10;Tulis materi perkuliahan lengkap menggunakan Markdown..."
+                      rows={18}
+                      className="w-full rounded-lg border border-border-2 bg-surface p-4 font-mono text-xs sm:text-sm text-fg leading-relaxed placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                 )}
 
-                {/* Real-Time Visual Preview Area */}
                 {(formViewMode === 'split' || formViewMode === 'preview') && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-fg-subtle">
                       <span className="font-mono text-primary-text font-medium flex items-center gap-1">
                         <Sparkles className="h-3 w-3" />
-                        Pratinjau Visual (Rendered)
+                        Pratinjau Hasil Render
                       </span>
                       <span className="font-mono">
-                        {estimateReadingTime(activeFormContent)} menit estimasi baca
+                        ~{estimateReadingTime(form.isi_modul)} mnt baca
                       </span>
                     </div>
-                    <div className="h-[460px] w-full overflow-y-auto rounded-lg border border-border-2 bg-surface p-5 shadow-inner">
-                      {activeFormContent.trim() ? (
+                    <div className="h-[420px] w-full overflow-y-auto rounded-lg border border-border-2 bg-surface p-5 shadow-inner">
+                      {form.isi_modul.trim() ? (
                         <div
                           className="prose-md text-fg"
-                          dangerouslySetInnerHTML={{ __html: renderMarkdown(activeFormContent) }}
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(form.isi_modul) }}
                         />
                       ) : (
                         <div className="flex h-full flex-col items-center justify-center text-center text-fg-subtle">
-                          <BookOpen className="h-8 w-8 stroke-[1.5] mb-2 opacity-50" />
-                          <p className="text-sm">Belum ada konten untuk ditampilkan di pratinjau.</p>
-                          <p className="text-xs text-fg-muted mt-1">
-                            Ketik materi Markdown di panel editor atau klik tombol toolbar di atas.
-                          </p>
+                          <BookOpen className="h-8 w-8 stroke-[1.5] mb-2 opacity-40" />
+                          <p className="text-sm">Belum ada isi modul.</p>
+                          <p className="text-xs text-fg-muted mt-1">Ketik materi di editor untuk melihat pratinjau.</p>
                         </div>
                       )}
                     </div>
@@ -548,7 +490,7 @@ export default function KelolaModulPage() {
                 Batal
               </Button>
               <Button type="submit">
-                {editing ? 'Simpan Perubahan Modul' : 'Buat Modul Sekarang'}
+                {editing ? 'Simpan Perubahan Modul' : 'Simpan Pertemuan Baru'}
               </Button>
             </div>
           </form>
@@ -556,398 +498,207 @@ export default function KelolaModulPage() {
       )}
 
       {/* Empty States */}
-      {!showForm && moduls.length === 0 && (
+      {!showForm && sortedModuls.length === 0 && (
         <EmptyState
-          title="Belum ada modul"
-          desc="Jalankan import-modul atau buat modul baru untuk memulai program ini."
+          title="Belum ada modul perkuliahan"
+          desc="Silabus mata kuliah ini belum diisi. Buat pertemuan baru sekarang."
           action={
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setForm({ ...EMPTY_FORM });
-                setFormFieldTab('materi_peserta_md');
-                setShowForm(true);
-              }}
-            >
-              Tambah Modul
+            <Button onClick={handleOpenAdd}>
+              <Plus className="h-4 w-4" />
+              Tambah Pertemuan 1
             </Button>
           }
         />
       )}
 
-      {/* Modul List Cards (Clean Sequential View) */}
+      {/* Daftar 14 Pertemuan Perkuliahan (Sederhana & Bersih) */}
       {!showForm && sortedModuls.length > 0 && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-2/70 pb-2.5">
             <span className="font-mono text-xs font-semibold text-fg-subtle uppercase tracking-wider">
-              Daftar Sesi Pembelajaran ({sortedModuls.length} Modul)
+              Daftar Pertemuan ({sortedModuls.length} Pertemuan)
             </span>
             <span className="font-mono text-xs text-fg-muted">
-              Total Waktu: {sortedModuls.reduce((a, m) => a + m.durasi_menit, 0)} menit
+              Standar 14 Pertemuan Semester Perkuliahan
             </span>
           </div>
 
-          <ul className="space-y-3">
+          <div className="grid grid-cols-1 gap-3">
             {sortedModuls.map((m) => {
-              const hasPeserta = !!m.materi_peserta_md && m.materi_peserta_md.trim().length > 0;
-              const hasInstruktur = !!m.content_md && m.content_md.trim().length > 0;
-              const hasTable = (m.content_md?.includes('|---|') || m.materi_peserta_md?.includes('|---|')) ?? false;
+              const content = m.materi_peserta_md || m.content_md || '';
+              const estMins = estimateReadingTime(content);
 
               return (
-                <li key={m.id}>
-                  <Card className="!p-4 sm:!p-5 hover:border-border-3 transition-colors">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="min-w-0 flex-1 space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <span className="rounded-md bg-primary/10 border border-primary/30 px-2 py-0.5 font-mono text-sm font-bold text-primary-text">
-                            {m.kode}
-                          </span>
-                          <h3 className="min-w-0 font-semibold text-fg text-sm sm:text-base">
-                            {m.judul}
-                          </h3>
-                        </div>
-
-                        {/* Badges and metadata */}
-                        <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
-                          <span className="font-mono text-fg-subtle">
-                            Sesi #{m.urutan_sesi} · {m.durasi_menit} menit
-                          </span>
-
-                          {hasPeserta ? (
-                            <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono text-[11px]">
-                              Materi Peserta: Ada
-                            </Badge>
-                          ) : (
-                            <Badge className="border-border bg-surface text-fg-subtle font-mono text-[11px]">
-                              Materi Peserta: Belum
-                            </Badge>
-                          )}
-
-                          {hasInstruktur ? (
-                            <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-400 font-mono text-[11px]">
-                              Materi Instruktur: Ada
-                            </Badge>
-                          ) : (
-                            <Badge className="border-border bg-surface text-fg-subtle font-mono text-[11px]">
-                              Materi Instruktur: Kosong
-                            </Badge>
-                          )}
-
-                          {hasTable && (
-                            <Badge className="border-purple-500/30 bg-purple-500/10 text-purple-400 font-mono text-[11px] flex items-center gap-1">
-                              <TableIcon className="h-3 w-3" />
-                              Ada Tabel
-                            </Badge>
-                          )}
-
-                          {m.slide_url && (
-                            <span className="font-mono text-xs text-primary-text underline flex items-center gap-1">
-                              <ExternalLink className="h-3 w-3" />
-                              Slide
-                            </span>
-                          )}
-                        </div>
+                <Card
+                  key={m.id}
+                  className="!p-4 sm:!p-5 hover:border-primary/40 transition-all border border-border-2 bg-surface"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="rounded-md bg-primary/10 border border-primary/30 px-2.5 py-0.5 font-mono text-xs font-bold text-primary-text">
+                          Pertemuan {m.urutan_sesi}
+                        </span>
+                        <span className="font-mono text-xs text-fg-subtle">
+                          ({m.kode})
+                        </span>
+                        <h3 className="font-bold text-fg text-sm sm:text-base">
+                          {m.judul}
+                        </h3>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => handleOpenView(m)}>
-                          <Eye className="h-3.5 w-3.5" />
-                          Lihat Modul
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => startEdit(m)}>
-                          <Edit3 className="h-3.5 w-3.5" />
-                          Edit
-                        </Button>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-fg-muted">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Clock className="h-3 w-3 text-fg-subtle" /> ~{estMins} mnt baca
+                        </span>
+                        <span className="font-mono">
+                          · {content.length.toLocaleString('id-ID')} karakter materi
+                        </span>
                       </div>
                     </div>
-                  </Card>
-                </li>
+
+                    {/* Actions: Lihat, Edit, Buka */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setViewing(m)}
+                        title="Lihat isi materi perkuliahan"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Lihat Isi Modul
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleStartEdit(m)}
+                        title="Edit nama dan isi modul"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        Edit Modul
+                      </Button>
+                      <Link to={`/modul/${m.kode}`}>
+                        <Button size="sm" variant="ghost" title="Buka tampilan belajar">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </Card>
               );
             })}
-          </ul>
+          </div>
         </div>
       )}
 
-      {/* Enhanced Viewing Modal */}
+      {/* Modal Preview Isi Modul */}
       {viewing && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-6"
           onClick={() => setViewing(null)}
         >
           <div
-            className="flex max-h-[92vh] w-full max-w-5xl flex-col rounded-2xl border border-border-2 bg-surface shadow-2xl overflow-hidden"
+            className="flex max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl border border-border-2 bg-surface shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 z-10 border-b border-border-2 bg-surface/95 px-6 py-4 backdrop-blur-md space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-base font-bold text-primary-text">{viewing.kode}</span>
-                    <Badge className="font-mono">{viewing.kategori ?? 'Umum'}</Badge>
-                    <Badge className="border-border bg-surface-2 font-mono text-xs">
-                      #{viewing.urutan_sesi} · {viewing.durasi_menit} menit
-                    </Badge>
-                    <Badge className="border-primary/20 bg-primary/10 text-primary-text font-mono text-xs flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {viewingReadTime} mnt baca
-                    </Badge>
+            <div className="sticky top-0 z-10 border-b border-border-2 bg-surface/95 px-6 py-4 backdrop-blur-md">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold rounded bg-primary/10 text-primary-text border border-primary/30 px-2 py-0.5">
+                      Pertemuan {viewing.urutan_sesi} · {viewing.kode}
+                    </span>
+                    <span className="text-xs text-fg-muted font-mono flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> ~{viewingReadTime} mnt baca
+                    </span>
                   </div>
-                  <h2 className="mt-1 text-xl font-bold text-fg">{viewing.judul}</h2>
+                  <h2 className="text-xl font-bold text-fg">{viewing.judul}</h2>
                 </div>
-
                 <div className="flex items-center gap-2">
-                  {viewing.slide_url && (
-                    <a
-                      href={viewing.slide_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border-2 bg-surface px-3 py-1.5 text-xs font-semibold text-primary-text hover:border-primary transition"
-                    >
+                  <Link to={`/modul/${viewing.kode}`}>
+                    <Button size="sm" variant="secondary">
                       <ExternalLink className="h-3.5 w-3.5" />
-                      Buka Slide
-                    </a>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      const v = viewing;
-                      setViewing(null);
-                      startEdit(v);
-                    }}
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    Edit Modul
-                  </Button>
+                      Buka di Halaman Belajar
+                    </Button>
+                  </Link>
                   <Button size="sm" variant="ghost" onClick={() => setViewing(null)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-
-              {/* Material Toggle Tabs */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <div className="flex items-center gap-1.5 rounded-lg border border-border-2 bg-surface-2/60 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setViewingTab('peserta')}
-                    className={`inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-                      viewingTab === 'peserta'
-                        ? 'bg-primary text-black shadow-sm'
-                        : 'text-fg-muted hover:text-fg'
-                    }`}
-                  >
-                    <GraduationCap className="h-3.5 w-3.5" />
-                    Materi Peserta (Untuk Siswa)
-                    {viewing.materi_peserta_md ? (
-                      <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 font-mono text-[10px] text-emerald-400">
-                        Ada
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-white/10 px-1.5 py-0.2 font-mono text-[10px]">
-                        Kosong
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewingTab('instruktur')}
-                    className={`inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-                      viewingTab === 'instruktur'
-                        ? 'bg-primary text-black shadow-sm'
-                        : 'text-fg-muted hover:text-fg'
-                    }`}
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    Materi Instruktur (Pengajar)
-                    {viewing.content_md ? (
-                      <span className="rounded-full bg-sky-500/20 px-1.5 py-0.2 font-mono text-[10px] text-sky-400">
-                        Ada
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-white/10 px-1.5 py-0.2 font-mono text-[10px]">
-                        Kosong
-                      </span>
-                    )}
-                  </button>
-                </div>
-
-                <span className="text-xs text-fg-subtle">
-                  Format tabel dan callout diproses otomatis dengan rapi.
-                </span>
-              </div>
-
-              {/* Quick TOC Anchor Bar */}
-              {viewingTOC.length > 0 && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-border-2/50 text-xs">
-                  <span className="shrink-0 text-fg-subtle font-mono text-[11px]">Daftar Isi:</span>
-                  {viewingTOC.map((t) => (
-                    <a
-                      key={t.id}
-                      href={`#${t.id}`}
-                      className="shrink-0 rounded-md border border-border-2 bg-surface px-2.5 py-1 text-fg-muted hover:border-primary hover:text-primary-text transition"
-                    >
-                      # {t.title}
-                    </a>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* Modal Body: Rich Rendered Markdown */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
-              {activeViewingContent.trim() ? (
-                <div
-                  className="prose-md text-fg max-w-none"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(activeViewingContent) }}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center text-fg-subtle">
-                  <BookOpen className="h-12 w-12 stroke-[1.5] mb-3 opacity-40 text-primary-text" />
-                  <h3 className="text-base font-semibold text-fg">Konten Belum Tersedia</h3>
-                  <p className="mt-1 text-sm max-w-md">
-                    Modul ini belum memiliki teks untuk bagian{' '}
-                    <strong className="text-primary-text">
-                      {viewingTab === 'peserta' ? 'Materi Peserta' : 'Materi Instruktur'}
-                    </strong>
-                    . Anda dapat menambahkannya melalui editor.
-                  </p>
-                  <Button
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => {
-                      const v = viewing;
-                      setViewing(null);
-                      startEdit(v);
-                    }}
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    Isi Materi Sekarang
-                  </Button>
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+              {/* Table of Contents */}
+              {viewingTOC.length > 0 && (
+                <div className="mb-6 rounded-xl border border-border-2 bg-surface-2/50 p-4">
+                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted block mb-2">
+                    Daftar Bahasan Pertemuan
+                  </span>
+                  <ul className="space-y-1 text-xs">
+                    {viewingTOC.map((t, idx) => (
+                      <li key={idx} style={{ paddingLeft: `${(t.level - 2) * 12}px` }}>
+                        <span className="text-primary-text font-mono mr-1.5">§</span>
+                        <span className="text-fg-muted hover:text-fg">{t.title}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
+
+              {/* Rendered Content */}
+              <div
+                className="prose-md text-fg"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(viewingContent) }}
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Sisipkan Gambar Online (Tanpa Upload Server) */}
+      {/* Online Image Insertion Modal */}
       {showImageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-border-2 bg-surface shadow-2xl">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border-2 px-6 py-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary-text">
-                  <ImageIcon className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-fg">Sisipkan Gambar Online</h3>
-                  <p className="text-xs text-fg-subtle">Gunakan tautan .jpg/.png publik tanpa upload ke server</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowImageModal(false)}
-                className="rounded-lg p-1 text-fg-subtle hover:bg-surface-2 hover:text-fg transition"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border-2 bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-fg mb-4 flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-primary-text" />
+              Sisipkan Gambar Online ke Modul
+            </h3>
 
-            {/* Body */}
-            <div className="space-y-4 overflow-y-auto px-6 py-5 text-sm">
-              <Field label="URL Gambar (HTTP / HTTPS .jpg / .png)">
+            <div className="space-y-4">
+              <Field label="URL Gambar Online" hint="Contoh: https://images.unsplash.com/photo-...">
                 <TextInput
+                  placeholder="https://images.unsplash.com/..."
                   value={imgModalUrl}
                   onChange={(e) => setImgModalUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/photo-...?auto=format&fit=crop&w=1000&q=80"
-                  className="font-mono text-xs"
+                  autoFocus
                 />
               </Field>
 
-              <Field label="Keterangan / Caption Gambar (Alt Text)">
+              <Field label="Keterangan / Caption Gambar" hint="Penjelasan singkat gambar">
                 <TextInput
+                  placeholder="Contoh: Diagram Arsitektur Neural Network"
                   value={imgModalCaption}
                   onChange={(e) => setImgModalCaption(e.target.value)}
-                  placeholder="Contoh: Ilustrasi Arsitektur Model AI"
                 />
               </Field>
 
-              {/* Quick Presets */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-fg-subtle">Pilihan Cepat (Bebas Royalti):</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: '🤖 Robot / AI', url: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1000&q=80', caption: 'Konsep Dasar Artificial Intelligence' },
-                    { label: '🧠 Neural Network', url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1000&q=80', caption: 'Arsitektur Jaringan Saraf Tiruan' },
-                    { label: '💻 Workspace / Laptop', url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1000&q=80', caption: 'Alat Kerja dan Produktivitas Digital' },
-                    { label: '✍️ Prompting', url: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1000&q=80', caption: 'Prinsip Menyusun Prompt Presisi' },
-                    { label: '📊 Data & Analitik', url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1000&q=80', caption: 'Analisis Data dan Evaluasi Performa' },
-                    { label: '🛡️ Keamanan & Etika', url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1000&q=80', caption: 'Etika, Keamanan, dan Privasi Sistem' },
-                  ].map((preset) => (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => {
-                        setImgModalUrl(preset.url);
-                        setImgModalCaption(preset.caption);
-                      }}
-                      className="rounded-md border border-border-2 bg-surface px-2 py-1 text-xs text-fg-muted hover:border-primary hover:text-primary-text transition"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button size="sm" variant="ghost" onClick={() => setShowImageModal(false)}>
+                  Batal
+                </Button>
+                <Button size="sm" onClick={handleInsertImage} disabled={!imgModalUrl.trim()}>
+                  Sisipkan ke Materi
+                </Button>
               </div>
-
-              {/* Live Preview */}
-              {imgModalUrl.trim() && (
-                <div className="space-y-1.5 rounded-xl border border-border-2 bg-bg p-3">
-                  <span className="text-xs font-semibold text-fg-subtle">Pratinjau Gambar:</span>
-                  <div className="flex flex-col items-center justify-center overflow-hidden rounded-lg border border-border-2 bg-surface p-2">
-                    <img
-                      src={imgModalUrl.trim()}
-                      alt={imgModalCaption.trim() || 'Pratinjau Gambar'}
-                      className="max-h-44 w-auto rounded object-cover shadow-sm"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/600x300?text=Gambar+Gagal+Dimuat+(Cek+URL)';
-                      }}
-                    />
-                    {imgModalCaption.trim() && (
-                      <p className="mt-2 text-xs italic text-fg-subtle text-center">
-                        {imgModalCaption.trim()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-2 border-t border-border-2 px-6 py-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowImageModal(false)}
-              >
-                Batal
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!imgModalUrl.trim()}
-                onClick={() => {
-                  const caption = imgModalCaption.trim() || 'Ilustrasi Modul';
-                  insertMarkdownSnippet(`![${caption}](${imgModalUrl.trim()})`);
-                  setShowImageModal(false);
-                }}
-              >
-                Sisipkan ke Materi
-              </Button>
             </div>
           </div>
         </div>

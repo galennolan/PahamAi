@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Lock, Calendar, Clock,
-  CheckCircle2, ArrowRight, Video, Filter, Compass
+  CheckCircle2, ArrowRight, Video, GraduationCap, BookOpen
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { Card, EmptyState, Badge, ProgressBar, Tabs, Skeleton } from '../components/ui';
@@ -10,7 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { formatJakarta, todayJakartaISO } from '../lib/time';
 import { listModul } from '../services/modul';
 import { getProgresSesi, listSesiAssigned, urutModulDariSesi, type ProgresSesi, type SesiAssigned } from '../services/penugasan';
-import { resolveKategori, KATEGORI_LABELS, type Modul, type Peserta, type ModulKategori } from '../types';
+import { estimateReadingTime } from '../lib/markdown';
+import type { Modul, Peserta } from '../types';
 
 type Tab = 'modul' | 'jadwal';
 
@@ -21,29 +22,21 @@ const SESI_STATUS: Record<string, string> = {
   dibatalkan: 'Dibatalkan',
 };
 
-const KATEGORI_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  FND:  { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
-  TOOL: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
-  PRMP: { bg: 'bg-pink-500/10', text: 'text-pink-400', border: 'border-pink-500/30' },
-  PROD: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-  ETHC: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
-  CODE: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30' },
-  AUTO: { bg: 'bg-lime-500/10', text: 'text-lime-400', border: 'border-lime-500/30' },
-  ARCH: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
-  PROJ: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' },
-  PRES: { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/30' },
-};
+const DEFAULT_MATKUL = 'Kecerdasan Buatan & AI Engineering';
 
 export default function BelajarPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('modul');
-  const [selectedKategori, setSelectedKategori] = useState<string>('SEMUA');
   const [peserta, setPeserta] = useState<Peserta | null>(null);
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [jadwal, setJadwal] = useState<SesiAssigned[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgresSesi>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const matkulNama = useMemo(() => {
+    return localStorage.getItem('paham_ai_matkul_nama') || DEFAULT_MATKUL;
+  }, []);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -56,18 +49,30 @@ export default function BelajarPage() {
         .maybeSingle();
 
       if (!profil) {
+        // Fallback untuk staff/admin yang membuka halaman belajar
+        const semua = await listModul();
+        setModuls(semua);
         setLoading(false);
         return;
       }
+
       const p = profil as Peserta;
       setPeserta(p);
 
-      void listModul().catch(() => []);
-
       const sesiList = await listSesiAssigned(p.id);
       setJadwal(sesiList);
-      setModuls(urutModulDariSesi(sesiList));
-      setProgress(await getProgresSesi(sesiList.map((s) => s.sesi_peserta_id)));
+
+      const dariSesi = urutModulDariSesi(sesiList);
+      if (dariSesi.length > 0) {
+        setModuls(dariSesi);
+      } else {
+        const semua = await listModul();
+        setModuls(semua);
+      }
+
+      if (sesiList.length > 0) {
+        setProgress(await getProgresSesi(sesiList.map((s) => s.sesi_peserta_id)));
+      }
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -82,24 +87,17 @@ export default function BelajarPage() {
 
   const sesiByModul = useMemo(() => new Map(jadwal.map((s) => [s.modul_id, s])), [jadwal]);
 
-  const doneCount = moduls.filter((m) => progress[sesiByModul.get(m.id)?.sesi_peserta_id ?? '']?.selesai === true).length;
+  const doneCount = moduls.filter((m) => {
+    const sesi = sesiByModul.get(m.id);
+    return sesi ? progress[sesi.sesi_peserta_id]?.selesai === true : false;
+  }).length;
+
   const pct = moduls.length > 0 ? Math.round((doneCount / moduls.length) * 100) : 0;
   const today = todayJakartaISO();
 
-  // Kategori unik yang ada di modul peserta
-  const availableKategori = useMemo(() => {
-    const set = new Set<string>();
-    for (const m of moduls) {
-      set.add(resolveKategori(m));
-    }
-    return Array.from(set);
+  const sortedModuls = useMemo(() => {
+    return [...moduls].sort((a, b) => a.urutan_sesi - b.urutan_sesi);
   }, [moduls]);
-
-  // Filter modul berdasarkan kategori
-  const filteredModuls = useMemo(() => {
-    if (selectedKategori === 'SEMUA') return moduls;
-    return moduls.filter((m) => resolveKategori(m) === selectedKategori);
-  }, [moduls, selectedKategori]);
 
   if (loading) {
     return (
@@ -115,31 +113,28 @@ export default function BelajarPage() {
     );
   }
 
-  if (!peserta) {
-    return (
-      <div className="pt-6 max-w-xl mx-auto text-center">
-        <EmptyState title="Profil Belajar Belum Siap" desc="Hubungi Admin untuk mendaftarkan akun Anda ke dalam kelas kursus." />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pt-2 pb-16 max-w-5xl mx-auto animate-fade-in">
-      {/* 1. HERO LEARNING BANNER */}
+      {/* 1. HERO LEARNING BANNER (Perkuliahan) */}
       <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-surface to-surface-2 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 border border-primary/30 px-3 py-1 font-mono text-xs font-bold text-primary-text flex items-center gap-1.5">
-                <Compass className="h-3.5 w-3.5" /> {peserta.kelas?.nama ?? 'Kelas Paham AI'}
+                <GraduationCap className="h-3.5 w-3.5" /> {matkulNama}
               </span>
-              <span className="text-xs text-fg-subtle">
-                {peserta.kelas?.status ? `Status: ${peserta.kelas.status}` : ''}
-              </span>
+              {peserta?.kelas && (
+                <span className="text-xs text-fg-subtle">
+                  Kelas: {peserta.kelas.nama}
+                </span>
+              )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-fg tracking-tight">Katalog Modul Pembelajaran</h1>
-            <p className="mt-1 text-sm text-fg-muted max-w-xl">
-              Pelajari kurikulum AI aplikatif selangkah demi selangkah. Setiap sesi mencakup materi interaktif, latihan praktik, dan evaluasi pemahaman.
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-fg tracking-tight">
+              Silabus Perkuliahan (14 Pertemuan)
+            </h1>
+            <p className="text-sm text-fg-muted max-w-xl">
+              Kurikulum terstruktur dari pengantar hingga proyek capstone akhir. Pelajari materi pertemuan, catat poin pemahaman, dan kerjakan evaluasi mandiri.
             </p>
           </div>
 
@@ -151,7 +146,7 @@ export default function BelajarPage() {
             </div>
             <ProgressBar value={pct} className="h-2.5" />
             <p className="mt-2 text-xs font-mono text-fg-subtle text-right">
-              {doneCount} dari {moduls.length} modul selesai
+              {doneCount} dari {moduls.length} pertemuan selesai
             </p>
           </div>
         </div>
@@ -164,8 +159,8 @@ export default function BelajarPage() {
           value={tab}
           onChange={setTab}
           options={[
-            { key: 'modul', label: `Modul Belajar (${moduls.length})` },
-            { key: 'jadwal', label: `Jadwal & Sesi Tatap Muka (${jadwal.length})` },
+            { key: 'modul', label: `Pertemuan Perkuliahan (${moduls.length})` },
+            { key: 'jadwal', label: `Jadwal Tatap Muka (${jadwal.length})` },
           ]}
         />
       </div>
@@ -176,70 +171,33 @@ export default function BelajarPage() {
         </Card>
       )}
 
-      {/* 3. TAB 1: MODUL KURIKULUM */}
+      {/* 3. TAB 1: MODUL PERTEMUAN 1 SAMPAI 14 (Simpel & Elegan) */}
       {tab === 'modul' && (
-        <div className="space-y-5">
-          {/* Category Filter Badges */}
-          {availableKategori.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-              <span className="text-xs font-semibold text-fg-subtle flex items-center gap-1 shrink-0">
-                <Filter className="h-3 w-3" /> Filter:
-              </span>
-              <button
-                onClick={() => setSelectedKategori('SEMUA')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
-                  selectedKategori === 'SEMUA'
-                    ? 'bg-primary text-[rgb(var(--on-primary))] font-bold shadow-sm'
-                    : 'bg-surface border border-border-2 text-fg-muted hover:text-fg'
-                }`}
-              >
-                Semua Kategori
-              </button>
-              {availableKategori.map((kat) => {
-                const label = KATEGORI_LABELS[kat as ModulKategori] ?? kat;
-                const active = selectedKategori === kat;
-                const colors = KATEGORI_COLORS[kat] ?? { bg: 'bg-surface', text: 'text-fg', border: 'border-border-2' };
-                return (
-                  <button
-                    key={kat}
-                    onClick={() => setSelectedKategori(kat)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap border transition ${
-                      active
-                        ? 'border-primary bg-primary text-black font-bold shadow-sm'
-                        : `${colors.border} ${colors.bg} ${colors.text} hover:opacity-90`
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {filteredModuls.length === 0 ? (
+        <div className="space-y-4">
+          {sortedModuls.length === 0 ? (
             <EmptyState
-              title="Belum ada modul ditugaskan"
-              desc="Modul pembelajaran akan tampil di sini setelah tutor menugaskan jadwal untuk kelas Anda."
+              title="Belum ada modul perkuliahan"
+              desc="Modul pembelajaran sedang dipersiapkan oleh dosen/instruktur."
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredModuls.map((m) => {
+              {sortedModuls.map((m) => {
                 const j = sesiByModul.get(m.id);
                 const prog = j ? progress[j.sesi_peserta_id] : undefined;
                 const isDone = prog?.selesai === true;
 
-                // Aturan berurutan: modul terbuka jika modul sebelumnya sudah selesai
-                const originalIndex = moduls.findIndex((x) => x.id === m.id);
+                // Urutan buka: Pertemuan 1 selalu terbuka, pertemuan berikutnya terbuka jika sebelumnya selesai atau jika user adalah staf
+                const originalIndex = sortedModuls.findIndex((x) => x.id === m.id);
                 const unlocked =
+                  !peserta || // staf selalu terbuka
                   originalIndex === 0 ||
-                  moduls.slice(0, originalIndex).every((prev) => {
+                  sortedModuls.slice(0, originalIndex).every((prev) => {
                     const pj = sesiByModul.get(prev.id);
                     return pj ? progress[pj.sesi_peserta_id]?.selesai === true : false;
                   });
 
-                const kat = resolveKategori(m);
-                const katDef = KATEGORI_COLORS[kat] ?? { bg: 'bg-surface', text: 'text-fg', border: 'border-border-2' };
-                const katLabel = KATEGORI_LABELS[kat as ModulKategori] ?? kat;
+                const content = m.materi_peserta_md || m.content_md || '';
+                const estMins = estimateReadingTime(content);
 
                 return (
                   <div key={m.id} className="relative group">
@@ -251,25 +209,24 @@ export default function BelajarPage() {
                           }`}
                         >
                           <div>
-                            {/* Card Header: Kategori & Status */}
+                            {/* Card Header: Pertemuan & Status */}
                             <div className="flex items-center justify-between gap-2 mb-3">
-                              <span
-                                className={`rounded-md border px-2.5 py-0.5 text-[11px] font-bold font-mono ${katDef.border} ${katDef.bg} ${katDef.text}`}
-                              >
-                                {m.kode} · {katLabel}
+                              <span className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-bold font-mono text-primary-text">
+                                Pertemuan {m.urutan_sesi} · {m.kode}
                               </span>
+
                               {isDone ? (
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
                                   <CheckCircle2 className="h-4 w-4" /> Selesai
                                 </span>
                               ) : (
                                 <span className="text-xs font-mono text-fg-subtle flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> {m.durasi_menit} mnt
+                                  <Clock className="h-3 w-3" /> ~{estMins} mnt baca
                                 </span>
                               )}
                             </div>
 
-                            {/* Title */}
+                            {/* Judul Modul */}
                             <h3 className={`text-base font-bold leading-snug ${isDone ? 'text-fg/80' : 'text-fg'}`}>
                               {m.judul}
                             </h3>
@@ -281,7 +238,7 @@ export default function BelajarPage() {
                               )}
                               {prog?.adaCatatan && (
                                 <Badge className="text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                                  Catatan ✓
+                                  Catatan Perkuliahan ✓
                                 </Badge>
                               )}
                             </div>
@@ -289,8 +246,9 @@ export default function BelajarPage() {
 
                           {/* Footer Action */}
                           <div className="mt-5 pt-3 border-t border-border-2/60 flex items-center justify-between text-xs font-semibold">
-                            <span className={isDone ? 'text-fg-subtle' : 'text-primary-text'}>
-                              {isDone ? 'Tinjau Materi' : 'Mulai Belajar'}
+                            <span className={isDone ? 'text-fg-subtle' : 'text-primary-text flex items-center gap-1'}>
+                              <BookOpen className="h-3.5 w-3.5" />
+                              {isDone ? 'Tinjau Materi' : 'Mulai Kuliah / Baca Modul'}
                             </span>
                             <span className="text-fg-subtle group-hover:translate-x-1 group-hover:text-primary-text transition">
                               <ArrowRight className="h-4 w-4" />
@@ -302,8 +260,8 @@ export default function BelajarPage() {
                       /* Card Terkunci */
                       <Card className="h-full p-5 border-border-2 bg-surface/40 opacity-60 cursor-not-allowed">
                         <div className="flex items-center justify-between gap-2 mb-3">
-                          <span className="rounded-md border border-border-2 px-2.5 py-0.5 text-[11px] font-mono text-fg-subtle">
-                            {m.kode}
+                          <span className="rounded-md border border-border-2 px-2.5 py-0.5 text-xs font-mono text-fg-subtle">
+                            Pertemuan {m.urutan_sesi} · {m.kode}
                           </span>
                           <span className="inline-flex items-center gap-1 text-xs text-fg-subtle font-mono">
                             <Lock className="h-3.5 w-3.5" /> Terkunci
@@ -311,7 +269,7 @@ export default function BelajarPage() {
                         </div>
                         <h3 className="text-base font-semibold text-fg-subtle">{m.judul}</h3>
                         <p className="mt-3 text-xs text-fg-subtle italic">
-                          Selesaikan modul sebelumnya untuk membuka materi ini.
+                          Selesaikan pertemuan sebelumnya untuk membuka modul ini.
                         </p>
                       </Card>
                     )}
@@ -329,7 +287,7 @@ export default function BelajarPage() {
           {jadwal.length === 0 ? (
             <EmptyState
               title="Belum ada jadwal tatap muka"
-              desc="Tutor belum menjadwalkan sesi langsung untuk kelas Anda."
+              desc="Dosen/tutor belum menjadwalkan sesi perkuliahan langsung untuk kelas Anda."
             />
           ) : (
             <div className="space-y-3">
@@ -400,7 +358,7 @@ export default function BelajarPage() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2 text-xs font-bold text-accent hover:bg-accent/20 transition"
                           >
-                            <Video className="h-4 w-4" /> Masuk Rapat
+                            <Video className="h-4 w-4" /> Masuk Perkuliahan Online
                           </a>
                         )}
                         <Link

@@ -1,31 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Check, ArrowRight } from 'lucide-react';
-import { listModulByProgram, listProgramTerpakai } from '../services/modul';
+import { Lock, Check, ArrowRight, GraduationCap, Clock, BookOpen } from 'lucide-react';
+import { listModul } from '../services/modul';
 import { Card, Loading, EmptyState } from '../components/ui';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import type { Modul } from '../types';
-import { PROGRAM, programLabel, type ProgramKode } from '../constants/program';
+import { estimateReadingTime } from '../lib/markdown';
+
+const DEFAULT_MATKUL = 'Kecerdasan Buatan & AI Engineering';
 
 export default function ModulPage() {
   const { user, role } = useAuth();
   const isStaff = role === 'admin' || role === 'instruktur';
-  const [program, setProgram] = useState<ProgramKode>('B1');
-  const [allProgram, setAllProgram] = useState<ProgramKode[]>([]);
   const [moduls, setModuls] = useState<Modul[]>([]);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const progs = await listProgramTerpakai();
-      if (progs.length === 0) return;
-      setAllProgram(progs as ProgramKode[]);
-      setProgram((prev) => (progs.includes(prev) ? prev : (progs[0] as ProgramKode)));
-    })();
-  }, []);
+  const matkulNama = localStorage.getItem('paham_ai_matkul_nama') || DEFAULT_MATKUL;
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +26,7 @@ export default function ModulPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await listModulByProgram(program);
+        const data = await listModul();
         if (cancelled) return;
         setModuls(data);
 
@@ -102,70 +95,61 @@ export default function ModulPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [program, user, isStaff]);
+  }, [user, isStaff]);
 
-  const doneCount = moduls.filter((m) => done.has(m.kode)).length;
-  const pct = moduls.length > 0 ? Math.round((doneCount / moduls.length) * 100) : 0;
-  const programDef = PROGRAM.find((p) => p.kode === program);
+  const sortedModuls = [...moduls].sort((a, b) => a.urutan_sesi - b.urutan_sesi);
+  const doneCount = sortedModuls.filter((m) => done.has(m.kode)).length;
+  const pct = sortedModuls.length > 0 ? Math.round((doneCount / sortedModuls.length) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header Silabus */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-2 pb-4">
         <div>
-          <h1 className="text-headline font-bold text-fg">Modul Paham AI</h1>
-          <p className="mt-1 font-mono text-sm text-fg-muted">{programDef?.deskripsi ?? program}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="rounded-md bg-primary/10 border border-primary/30 px-2.5 py-0.5 font-mono text-xs font-semibold text-primary-text flex items-center gap-1.5">
+              <GraduationCap className="h-3.5 w-3.5" />
+              Mata Kuliah
+            </span>
+            <span className="font-mono text-xs text-fg-subtle">
+              14 Pertemuan Semester
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold text-fg">{matkulNama}</h1>
+          <p className="mt-1 text-sm text-fg-muted">
+            Silabus materi perkuliahan lengkap: Pertemuan 1 sampai 14
+          </p>
         </div>
-        <div className="flex items-center gap-2" role="tablist" aria-label="Pilih program">
-          {allProgram.map((j) => (
-            <button
-              key={j}
-              role="tab"
-              aria-selected={program === j}
-              onClick={() => setProgram(j)}
-              className={`rounded-[4px] border px-3 py-2 font-mono text-sm transition ${
-                program === j
-                  ? 'border-primary bg-primary/10 text-primary-text'
-                  : 'border-border-2 bg-surface text-fg-muted hover:border-border-3 hover:text-fg'
-              }`}
-            >
-              {j}
-            </button>
-          ))}
+
+        {/* Progres Belajar */}
+        <div className="text-right">
+          <span className="font-mono text-xs text-fg-muted block">Progres Silabus</span>
+          <span className="font-mono text-sm font-bold text-primary-text">
+            {doneCount}/{sortedModuls.length} Pertemuan ({pct}%)
+          </span>
         </div>
       </div>
 
-      {/* Progress bar */}
-      {!loading && moduls.length > 0 && (
-        <Card>
-          <div className="flex items-center justify-between font-mono text-xs text-fg-muted">
-            <span>{programLabel(program)}</span>
-            <span>{doneCount}/{moduls.length} sesi ({pct}%)</span>
-          </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </Card>
-      )}
-
-      {loading && <Loading text="Memuat modul..." />}
+      {loading && <Loading text="Memuat silabus perkuliahan..." />}
       {error && (
         <Card>
           <p className="text-sm text-destructive">Gagal memuat: {error}</p>
         </Card>
       )}
-      {!loading && !error && moduls.length === 0 && (
-        <EmptyState title="Modul belum tersedia" desc="Modul akan muncul saat sesi dimulai." />
+      {!loading && !error && sortedModuls.length === 0 && (
+        <EmptyState title="Modul belum tersedia" desc="Silabus perkuliahan belum dibuat di Kelola Modul." />
       )}
 
-      {!loading && !error && moduls.length > 0 && (
+      {/* Daftar Pertemuan Berurutan */}
+      {!loading && !error && sortedModuls.length > 0 && (
         <ol className="relative space-y-0 border-l-2 border-border-2 pl-0">
-          {moduls.map((m, i) => {
+          {sortedModuls.map((m, i) => {
             const isDone = done.has(m.kode);
-            const isNext = !isDone && (i === 0 || done.has(moduls[i - 1].kode));
+            const isNext = !isDone && (i === 0 || done.has(sortedModuls[i - 1].kode));
             const isLocked = !isDone && !isNext;
+            const content = m.materi_peserta_md || m.content_md || '';
+            const estMins = estimateReadingTime(content);
+
             return (
               <li key={m.id} className="relative pb-4 pl-8 last:pb-0">
                 <span
@@ -178,15 +162,15 @@ export default function ModulPage() {
                   <Card className="opacity-50 cursor-not-allowed">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="shrink-0 font-mono text-xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
+                        <span className="shrink-0 font-mono text-xs text-fg-subtle">
+                          P{String(m.urutan_sesi).padStart(2, '0')}
+                        </span>
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-fg-subtle">{m.judul}</p>
-                            <p className="mt-0.5 font-mono text-xs text-fg-subtle">
-                            {m.kode} · {m.durasi_menit} mnt
-                            <span className="ml-2 text-fg-subtle inline-flex items-center gap-1">
-                              <Lock className="h-3 w-3" />
-                              terkunci
-                            </span>
+                          <p className="mt-0.5 font-mono text-xs text-fg-subtle flex items-center gap-2">
+                            <span>{m.kode}</span>
+                            <span>·</span>
+                            <span><Lock className="inline h-3 w-3 mr-0.5" />terkunci</span>
                           </p>
                         </div>
                       </div>
@@ -196,21 +180,37 @@ export default function ModulPage() {
                     </div>
                   </Card>
                 ) : (
-                  <Link to={`/modul/${m.kode}`} className="block">
-                    <Card className={`transition hover:border-border-3 hover:shadow-subtle ${isNext ? 'border-primary/30' : ''}`}>
+                  <Link to={`/modul/${m.kode}`} className="block group">
+                    <Card className={`transition hover:border-primary/50 hover:shadow-subtle ${isNext ? 'border-primary/40 bg-surface' : 'bg-surface'}`}>
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="shrink-0 font-mono text-xs text-fg-subtle">{String(i + 1).padStart(2, '0')}</span>
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-fg">{m.judul}</p>
-                            <p className="mt-0.5 font-mono text-xs text-fg-muted">
-                              {m.kode} · {m.durasi_menit} mnt
-                              {isDone && <span className="ml-2 inline-flex items-center gap-1 text-primary-text"><Check className="h-3 w-3" /> selesai</span>}
-                              {isNext && !isDone && <span className="ml-2 inline-flex items-center gap-1 text-accent"><ArrowRight className="h-3 w-3" /> lanjutkan</span>}
+                          <span className="shrink-0 font-mono text-xs font-bold text-primary-text bg-primary/10 border border-primary/20 px-2 py-0.5 rounded">
+                            P{String(m.urutan_sesi).padStart(2, '0')}
+                          </span>
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="font-semibold text-fg group-hover:text-primary-text transition">
+                              {m.judul}
+                            </p>
+                            <p className="font-mono text-xs text-fg-muted flex items-center gap-2">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> ~{estMins} mnt baca
+                              </span>
+                              {isDone && (
+                                <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold">
+                                  <Check className="h-3 w-3" /> selesai
+                                </span>
+                              )}
+                              {isNext && !isDone && (
+                                <span className="inline-flex items-center gap-1 text-accent font-semibold">
+                                  <ArrowRight className="h-3 w-3" /> lanjutkan
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
-                        <span className="shrink-0 font-mono text-sm text-fg-subtle">›</span>
+                        <span className="shrink-0 font-mono text-sm text-fg-subtle group-hover:text-primary-text group-hover:translate-x-0.5 transition">
+                          <BookOpen className="h-4 w-4" />
+                        </span>
                       </div>
                     </Card>
                   </Link>

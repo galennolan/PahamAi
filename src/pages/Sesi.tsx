@@ -362,7 +362,7 @@ export default function SesiPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2.5 mb-2">
                 <span className="rounded-md border border-primary/40 bg-primary/10 px-2.5 py-0.5 font-mono text-xs font-bold text-primary-text">
-                  {modul.kode}
+                  Pertemuan {modul.urutan_sesi} · {modul.kode}
                 </span>
                 <span className="text-xs text-fg-muted font-medium flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" /> {modul.durasi_menit} menit
@@ -614,8 +614,8 @@ export default function SesiPage() {
               <h4 className="text-xs font-bold uppercase tracking-wider text-fg-muted">Info Pembelajaran</h4>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between py-1 border-b border-border-2/50">
-                  <span className="text-fg-subtle">Kategori:</span>
-                  <span className="font-semibold text-primary-text">{modul.kategori ?? 'Umum'}</span>
+                  <span className="text-fg-subtle">Pertemuan:</span>
+                  <span className="font-semibold text-primary-text">Pertemuan #{modul.urutan_sesi}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border-2/50">
                   <span className="text-fg-subtle">Durasi:</span>
