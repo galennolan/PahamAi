@@ -22,8 +22,6 @@ const SESI_STATUS: Record<string, string> = {
   dibatalkan: 'Dibatalkan',
 };
 
-const DEFAULT_MATKUL = 'Kecerdasan Buatan & AI Engineering';
-
 export default function BelajarPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('modul');
@@ -34,9 +32,9 @@ export default function BelajarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const matkulNama = useMemo(() => {
-    return localStorage.getItem('paham_ai_matkul_nama') || DEFAULT_MATKUL;
-  }, []);
+  const modulNama = useMemo(() => {
+    return moduls[0]?.slide_url || 'Dasar Kecerdasan Buatan & Prompt Engineering';
+  }, [moduls]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -121,7 +119,7 @@ export default function BelajarPage() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 border border-primary/30 px-3 py-1 font-mono text-xs font-bold text-primary-text flex items-center gap-1.5">
-                <GraduationCap className="h-3.5 w-3.5" /> {matkulNama}
+                <GraduationCap className="h-3.5 w-3.5" /> Modul: {modulNama}
               </span>
               {peserta?.kelas && (
                 <span className="text-xs text-fg-subtle">

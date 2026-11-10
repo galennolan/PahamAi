@@ -37,6 +37,14 @@ export interface Peserta {
   updated_at: string;
 }
 
+export interface ModulInduk {
+  id: string;
+  kode: string;
+  nama: string;
+  deskripsi: string;
+  total_pertemuan: number;
+}
+
 export interface Modul {
   id: string;
   kode: string;
@@ -64,6 +72,9 @@ export interface Kelas {
   kapasitas_maks: number | null;
   instruktur_utama_fk: string | null;
   asisten_fk: string | null;
+  /** ID modul yang dipelajari kelas ini */
+  modul_id?: string | null;
+  modul_nama?: string | null;
   /** Hasil hitung dari `peserta`; tidak disimpan di database. */
   terdaftar?: number;
   created_at: string;
