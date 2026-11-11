@@ -5,12 +5,15 @@ import { submitKuis } from '../components/KuisPanel';
 import { QuizizzPlayer } from '../components/quiz/QuizizzPlayer';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
-import type { SoalPaket, SoalButir } from '../types';
-import { Play, Clock, Search } from 'lucide-react';
+import type { SoalPaket, SoalButir, ModulInduk } from '../types';
+import { getModulForKelas } from '../services/modul';
+import { Play, Clock, Search, GraduationCap } from 'lucide-react';
 
 export default function KuisPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { push: toast } = useToast();
+  const isPeserta = role === 'peserta';
+
   const [paketList, setPaketList] = useState<SoalPaket[]>([]);
   const [selectedKode, setSelectedKode] = useState<string>('');
   const [soal, setSoal] = useState<SoalButir[]>([]);
@@ -20,36 +23,86 @@ export default function KuisPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Ambil profil peserta
+  // Informasi Kelas & Modul Peserta
   const [pesertaId, setPesertaId] = useState<string | null>(null);
+  const [kelasInfo, setKelasInfo] = useState<{ id: string; nama: string } | null>(null);
+  const [modulKelas, setModulKelas] = useState<ModulInduk | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [{ data: pList, error: pErr }, { data: profil }] = await Promise.all([
-          supabase.from('soal_paket').select('*').order('kode_paket', { ascending: true }),
-          user
-            ? supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle()
-            : Promise.resolve({ data: null }),
-        ]);
+        setLoading(true);
 
+        // 1. Ambil profil peserta & kelas yang diikuti jika role adalah peserta
+        let activeProgram: string | null = null;
+
+        if (user) {
+          const { data: profil, error: profErr } = await supabase
+            .from('peserta')
+            .select('id, kelas_id, kelas:kelas_id(id, nama)')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (profErr) throw profErr;
+
+          if (profil) {
+            setPesertaId(profil.id);
+            if (profil.kelas) {
+              const k = profil.kelas as unknown as { id: string; nama: string };
+              setKelasInfo({ id: k.id, nama: k.nama });
+
+              // Deteksi modul apa yang dipelajari oleh kelas murid tersebut
+              const mInduk = await getModulForKelas(k.id);
+              if (mInduk) {
+                setModulKelas(mInduk);
+                activeProgram = mInduk.id;
+              }
+            }
+          }
+        }
+
+        // 2. Query soal_paket:
+        // Jika PESERTA: HANYA AKSES paket kuis yang dipelajari kelasnya (diisolasi per modul kelas)
+        // Jika INSTRUKTUR/ADMIN: Akses seluruh paket kuis untuk keperluan review & preview
+        let query = supabase.from('soal_paket').select('*').order('kode_paket', { ascending: true });
+
+        if (isPeserta && activeProgram) {
+          query = query.eq('program', activeProgram);
+        }
+
+        const { data: pList, error: pErr } = await query;
         if (pErr) throw pErr;
+
         setPaketList((pList as SoalPaket[]) ?? []);
-        if (profil) setPesertaId(profil.id);
       } catch (e: unknown) {
         toast((e as Error).message, 'error');
       } finally {
         setLoading(false);
       }
     })();
-  }, [user, toast]);
+  }, [user, role, isPeserta, toast]);
 
   // Load butir soal saat paket dipilih
   const loadSoalPaket = async (kode: string) => {
     setSelectedKode(kode);
     setLoadingSoal(true);
     try {
-      // 1. Coba baca dari soal_butir (jika punya akses)
+      // KEAMANAN AKSES SOAL:
+      // Peserta MURNI HANYA AKSES SOAL DOANG (via soal_butir_view tanpa kunci jawaban)
+      if (isPeserta) {
+        const { data: viewData, error: viewErr } = await supabase
+          .from('soal_butir_view')
+          .select('*')
+          .eq('kode_paket', kode)
+          .order('no_soal', { ascending: true });
+
+        if (viewErr) throw viewErr;
+        setSoal((viewData as SoalButir[]) ?? []);
+        setIsPlaying(true);
+        return;
+      }
+
+      // Jika role staf (Admin/Instruktur): dapat membaca soal_butir langsung untuk preview kunci & pembahasan
       const { data: directData, error: directErr } = await supabase
         .from('soal_butir')
         .select('*')
@@ -58,19 +111,15 @@ export default function KuisPage() {
 
       if (!directErr && directData && directData.length > 0) {
         setSoal(directData as SoalButir[]);
-        setIsPlaying(true);
-        return;
+      } else {
+        const { data: viewData, error: viewErr } = await supabase
+          .from('soal_butir_view')
+          .select('*')
+          .eq('kode_paket', kode)
+          .order('no_soal', { ascending: true });
+        if (viewErr) throw viewErr;
+        setSoal((viewData as SoalButir[]) ?? []);
       }
-
-      // 2. Fallback aman ke soal_butir_view
-      const { data: viewData, error: viewErr } = await supabase
-        .from('soal_butir_view')
-        .select('*')
-        .eq('kode_paket', kode)
-        .order('no_soal', { ascending: true });
-
-      if (viewErr) throw viewErr;
-      setSoal((viewData as SoalButir[]) ?? []);
       setIsPlaying(true);
     } catch (e: unknown) {
       toast((e as Error).message, 'error');
@@ -79,9 +128,29 @@ export default function KuisPage() {
     }
   };
 
-  // Filter paket berdasarkan modul & pencarian
+  // Filter paket berdasarkan kategori & pencarian
   const filteredPaket = useMemo(() => {
     return paketList.filter((p) => {
+      // Jika peserta: filter kategori "Semua", "Kuis Pertemuan", atau "Evaluasi Modul"
+      if (isPeserta) {
+        const matchKategori =
+          filterModul === 'all'
+            ? true
+            : filterModul === 'pertemuan'
+            ? p.kode_paket.includes('-P')
+            : filterModul === 'evaluasi'
+            ? !p.kode_paket.includes('-P')
+            : true;
+
+        const matchSearch =
+          searchQuery === '' ||
+          p.kode_paket.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.sesi_target && p.sesi_target.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        return matchKategori && matchSearch;
+      }
+
+      // Jika staf: filter per modul kurikulum
       const matchModul =
         filterModul === 'all'
           ? true
@@ -100,7 +169,7 @@ export default function KuisPage() {
 
       return matchModul && matchSearch;
     });
-  }, [paketList, filterModul, searchQuery]);
+  }, [paketList, filterModul, searchQuery, isPeserta]);
 
   // Submit hasil ke backend
   const handleSubmitQuizResult = async (hasil: {
@@ -114,10 +183,10 @@ export default function KuisPage() {
     try {
       const res = await submitKuis(pesertaId, selectedKode, soal, hasil.jawaban);
       if (res.skor !== null) {
-        toast(`Skor ${res.skor}/100 tersimpan ke riwayat Anda!`, 'success');
+        toast(`Skor ${res.skor}/100 berhasil tersimpan di riwayat belajar Anda!`, 'success');
       }
     } catch {
-      // Abaikan jika RPC belum terkonfigurasi, pengerjaan kuis tetap tampil sukses di client
+      // Fallback jika RPC tidak terkonfigurasi, hasil kuis tetap tampil sukses di client
     }
   };
 
@@ -149,69 +218,123 @@ export default function KuisPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header Halaman khas Paham AI */}
+      {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <Badge className="font-mono text-primary-text">
               QUIZIZZ MODE
             </Badge>
-            <span className="text-caption text-fg-subtle font-mono">2 Soal per Modul & Pertemuan</span>
+
+            {isPeserta && kelasInfo && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-primary/10 text-primary-text border border-primary/20">
+                <GraduationCap className="w-3.5 h-3.5" /> Kelas: {kelasInfo.nama}
+              </span>
+            )}
+
+            {isPeserta && modulKelas && (
+              <span className="text-caption text-fg-muted font-mono">
+                Kurikulum: <span className="text-fg font-bold">{modulKelas.nama}</span>
+              </span>
+            )}
           </div>
+
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-fg">
             Kuis & Evaluasi Belajar
           </h1>
+
           <p className="text-sm text-fg-muted font-body">
-            Latihan mandiri interaktif dengan batas waktu per modul untuk memperkuat pemahaman kurikulum AI.
+            {isPeserta
+              ? `Daftar soal dan kuis interaktif yang ditugaskan khusus untuk kelas Anda.`
+              : `Kelola dan tinjau seluruh paket soal kuis kurikulum AI.`}
           </p>
         </div>
       </div>
 
-      {/* Filter Modul & Search Bar */}
+      {/* Filter & Search Bar */}
       <Card>
         <div className="flex flex-col md:flex-row items-center gap-3">
-          {/* Tabs Filter Modul */}
+          {/* Tabs Filter */}
           <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-            <button
-              onClick={() => setFilterModul('all')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
-                filterModul === 'all'
-                  ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
-                  : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
-              }`}
-            >
-              Semua ({paketList.length})
-            </button>
-            <button
-              onClick={() => setFilterModul('MOD-AI-01')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
-                filterModul === 'MOD-AI-01'
-                  ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
-                  : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
-              }`}
-            >
-              Modul 1: Dasar AI
-            </button>
-            <button
-              onClick={() => setFilterModul('MOD-AI-02')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
-                filterModul === 'MOD-AI-02'
-                  ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
-                  : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
-              }`}
-            >
-              Modul 2: Machine Learning
-            </button>
-            <button
-              onClick={() => setFilterModul('MOD-AI-03')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
-                filterModul === 'MOD-AI-03'
-                  ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
-                  : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
-              }`}
-            >
-              Modul 3: AI Engineering
-            </button>
+            {isPeserta ? (
+              // Filter Khusus Murid: Terisolasi ke kelasnya
+              <>
+                <button
+                  onClick={() => setFilterModul('all')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'all'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Semua Kuis Kelas ({paketList.length})
+                </button>
+                <button
+                  onClick={() => setFilterModul('pertemuan')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'pertemuan'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Kuis Pertemuan (P01–P14)
+                </button>
+                <button
+                  onClick={() => setFilterModul('evaluasi')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'evaluasi'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Evaluasi Akhir Modul
+                </button>
+              </>
+            ) : (
+              // Filter Staf: Melihat per modul
+              <>
+                <button
+                  onClick={() => setFilterModul('all')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'all'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Semua ({paketList.length})
+                </button>
+                <button
+                  onClick={() => setFilterModul('MOD-AI-01')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'MOD-AI-01'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Modul 1: Dasar AI
+                </button>
+                <button
+                  onClick={() => setFilterModul('MOD-AI-02')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'MOD-AI-02'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Modul 2: Machine Learning
+                </button>
+                <button
+                  onClick={() => setFilterModul('MOD-AI-03')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium font-body transition whitespace-nowrap border ${
+                    filterModul === 'MOD-AI-03'
+                      ? 'border-primary bg-primary text-[rgb(var(--on-primary))] font-semibold'
+                      : 'border-border-2 bg-surface text-fg-muted hover:text-fg hover:bg-surface-2'
+                  }`}
+                >
+                  Modul 3: AI Engineering
+                </button>
+              </>
+            )}
           </div>
 
           {/* Search Box */}
@@ -219,7 +342,7 @@ export default function KuisPage() {
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-fg-subtle" />
             <input
               type="text"
-              placeholder="Cari kode (misal: AI01)..."
+              placeholder="Cari kode kuis..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-xs bg-bg border border-border-2 rounded-lg text-fg placeholder-fg-subtle outline-none focus:border-primary font-body"
@@ -232,7 +355,11 @@ export default function KuisPage() {
       {filteredPaket.length === 0 ? (
         <EmptyState
           title="Tidak Ada Paket Kuis"
-          desc="Tidak ada paket soal yang sesuai dengan filter atau kata kunci pencarian Anda."
+          desc={
+            isPeserta && !kelasInfo
+              ? 'Anda belum terdaftar di kelas mana pun. Silakan hubungi admin/instruktur Anda.'
+              : 'Tidak ada paket kuis yang sesuai dengan pencarian atau kurikulum kelas Anda.'
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
