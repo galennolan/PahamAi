@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, Loading, EmptyState, Button, Field, TextInput, SelectInput, Badge, TextArea, Tabs, SectionHeader, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import type { Modul, SoalButir, SoalPaket } from '../types';
-import { PROGRAM, programDariKodeModul, programLabel, type ProgramKode } from '../constants/program';
+import { programDariKodeModul, programLabel, programDariKodePaket } from '../constants/program';
+import { QuizizzPlayer } from '../components/quiz/QuizizzPlayer';
 import {
   parseSoalBulk,
   soalKeTeks,
@@ -19,7 +20,19 @@ const TIPE_LABELS: Record<string, string> = {
   post_test: 'Post-Test',
 };
 
-const PROGRAM_URUT: ProgramKode[] = PROGRAM.map((p) => p.kode);
+const PROGRAM_LABEL_CUSTOM: Record<string, string> = {
+  'MOD-AI-01': 'Modul 1: Dasar AI & Prompting',
+  'MOD-AI-02': 'Modul 2: Machine Learning & DL',
+  'MOD-AI-03': 'Modul 3: AI Engineering & Agents',
+};
+
+function getProgramDisplayLabel(kode: string | null | undefined): string {
+  if (!kode) return 'Tanpa Program';
+  if (PROGRAM_LABEL_CUSTOM[kode]) return PROGRAM_LABEL_CUSTOM[kode];
+  return programLabel(kode);
+}
+
+const PROGRAM_URUT = ['MOD-AI-01', 'MOD-AI-02', 'MOD-AI-03'];
 
 interface ButirForm {
   no_soal: number;
@@ -131,6 +144,7 @@ export default function KelolaSoalPage() {
   const [tabProgram, setTabProgram] = useState<string>('SEMUA');
   const [tabTipe, setTabTipe] = useState<string>('SEMUA');
   const [lihatKode, setLihatKode] = useState<string | null>(null);
+  const [previewQuizizz, setPreviewQuizizz] = useState(false);
   /** Pencarian bebas: cocokkan kode paket, kode modul target, atau judul modul. */
   const [cariPaket, setCariPaket] = useState('');
   /** Form buat-paket + bulk dilipat secara default supaya daftar langsung terlihat. */
@@ -144,10 +158,10 @@ export default function KelolaSoalPage() {
 
   const [form, setForm] = useState({
     kode_paket: '',
-    program: 'B1',
-    tipe: 'pre_test',
+    program: 'MOD-AI-01',
+    tipe: 'kuis',
     sesi_target: '',
-    durasi_menit: 15,
+    durasi_menit: 5,
   });
   /** Kode paket yang sedang diedit info-nya; null = mode buat baru. */
   const [editingKode, setEditingKode] = useState<string | null>(null);
@@ -323,7 +337,7 @@ export default function KelolaSoalPage() {
 
   const cancelEditPaket = () => {
     setEditingKode(null);
-    setForm({ kode_paket: '', program: 'B1', tipe: 'pre_test', sesi_target: '', durasi_menit: 15 });
+    setForm({ kode_paket: '', program: 'MOD-AI-01', tipe: 'kuis', sesi_target: '', durasi_menit: 5 });
   };
 
   /** Simpan info paket saja (tanpa butir) — untuk mode edit maupun buat paket kosong. */
@@ -449,11 +463,11 @@ export default function KelolaSoalPage() {
   // Kelompokkan per program agar rapi (+ paket tanpa program).
   const kelompokProgram = PROGRAM_URUT.map((j) => ({
     key: j as string,
-    label: programLabel(j),
+    label: getProgramDisplayLabel(j),
     paket: paketTersaring.filter((p) => p.program === j),
   })).filter((g) => g.paket.length > 0);
 
-  const paketTanpaProgram = paketTersaring.filter((p) => !p.program || !PROGRAM_URUT.includes(p.program as ProgramKode));
+  const paketTanpaProgram = paketTersaring.filter((p) => !p.program || !PROGRAM_URUT.includes(p.program as string));
   if (paketTanpaProgram.length > 0) {
     kelompokProgram.push({ key: 'lainnya', label: 'Tanpa Program', paket: paketTanpaProgram });
   }
@@ -462,7 +476,7 @@ export default function KelolaSoalPage() {
     { key: 'SEMUA', label: `Semua (${paketList.length})` },
     ...PROGRAM_URUT.filter((j) => paketList.some((p) => p.program === j)).map((j) => ({
       key: j as string,
-      label: `${programLabel(j)} (${paketList.filter((p) => p.program === j).length})`,
+      label: `${getProgramDisplayLabel(j)} (${paketList.filter((p) => p.program === j).length})`,
     })),
   ];
 
@@ -477,6 +491,20 @@ export default function KelolaSoalPage() {
 
   // ============ MODE LIHAT: detail satu paket ============
   if (paketDipilih) {
+    if (previewQuizizz) {
+      return (
+        <div className="py-2">
+          <QuizizzPlayer
+            soalList={butirDipilih}
+            kodePaket={paketDipilih.kode_paket}
+            judulPaket={`Preview: ${paketDipilih.kode_paket}`}
+            durasiMenit={paketDipilih.durasi_menit || 5}
+            onExit={() => setPreviewQuizizz(false)}
+          />
+        </div>
+      );
+    }
+
     const modulTarget = paketDipilih.sesi_target ? modulByKode.get(paketDipilih.sesi_target) : undefined;
     return (
       <div className="space-y-5">
@@ -484,7 +512,7 @@ export default function KelolaSoalPage() {
           <div>
             <h1 className="text-headline font-bold text-fg">{paketDipilih.kode_paket}</h1>
             <p className="mt-0.5 text-sm text-fg-muted">
-              {paketDipilih.program ? programLabel(paketDipilih.program) : 'Tanpa program'} ·{' '}
+              {paketDipilih.program ? getProgramDisplayLabel(paketDipilih.program) : 'Tanpa program'} ·{' '}
               {TIPE_LABELS[paketDipilih.tipe] ?? paketDipilih.tipe} · {paketDipilih.durasi_menit} menit ·{' '}
               {butirDipilih.length} soal
             </p>
@@ -502,8 +530,15 @@ export default function KelolaSoalPage() {
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
+            <Button
+              variant="primary"
+              onClick={() => setPreviewQuizizz(true)}
+              disabled={butirDipilih.length === 0}
+            >
+              🎮 Preview Quizizz
+            </Button>
             <Button variant="secondary" onClick={() => startEditPaket(paketDipilih.kode_paket)}>Edit Info</Button>
-            <Button variant="ghost" onClick={() => { setLihatKode(null); setEditingButirId(null); setShowTambah(false); }}>Kembali</Button>
+            <Button variant="ghost" onClick={() => { setLihatKode(null); setEditingButirId(null); setShowTambah(false); setPreviewQuizizz(false); }}>Kembali</Button>
           </div>
         </div>
 
@@ -646,17 +681,15 @@ export default function KelolaSoalPage() {
           {editingKode ? `Edit Paket ${editingKode}` : 'Paket Soal'}
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Kode Paket" hint={editingKode ? 'Kode tidak bisa diubah.' : 'Contoh: PRE-A01, POST-A01'}>
+          <Field label="Kode Paket" hint={editingKode ? 'Kode tidak bisa diubah.' : 'Contoh: KUIS-AI01-P01'}>
             <TextInput
               value={form.kode_paket}
               onChange={(e) => {
                 const kode_paket = e.target.value;
-                // Tebak program dari kode paket (PRE-B201 -> B2); bisa diubah manual.
-                const inti = kode_paket.replace(/^(PRE|POST|KUIS)-/i, '');
-                const tebakan = programDariKodeModul(inti) ?? programDariKodeModul(form.sesi_target);
+                const tebakan = programDariKodePaket(kode_paket) ?? programDariKodeModul(form.sesi_target);
                 setForm((f) => ({ ...f, kode_paket, ...(tebakan ? { program: tebakan } : {}) }));
               }}
-              placeholder="PRE-A01"
+              placeholder="KUIS-AI01-P01"
               disabled={!!editingKode}
             />
           </Field>
@@ -669,7 +702,7 @@ export default function KelolaSoalPage() {
           </Field>
           <Field label="Program">
             <SelectInput value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })}>
-              {PROGRAM.map((p) => <option key={p.kode} value={p.kode}>{programLabel(p.kode)}</option>)}
+              {PROGRAM_URUT.map((kode) => <option key={kode} value={kode}>{getProgramDisplayLabel(kode)}</option>)}
             </SelectInput>
           </Field>
           <Field label="Modul" hint="Pre/post-test dikerjakan sebelum/sesudah modul ini dibaca">

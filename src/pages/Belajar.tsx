@@ -184,15 +184,8 @@ export default function BelajarPage() {
                 const prog = j ? progress[j.sesi_peserta_id] : undefined;
                 const isDone = prog?.selesai === true;
 
-                // Urutan buka: Pertemuan 1 selalu terbuka, pertemuan berikutnya terbuka jika sebelumnya selesai atau jika user adalah staf
-                const originalIndex = sortedModuls.findIndex((x) => x.id === m.id);
-                const unlocked =
-                  !peserta || // staf selalu terbuka
-                  originalIndex === 0 ||
-                  sortedModuls.slice(0, originalIndex).every((prev) => {
-                    const pj = sesiByModul.get(prev.id);
-                    return pj ? progress[pj.sesi_peserta_id]?.selesai === true : false;
-                  });
+                // Seluruh pertemuan 1 s.d. 14 terbuka untuk dipelajari mahasiswa
+                const unlocked = true;
 
                 const content = m.materi_peserta_md || m.content_md || '';
                 const estMins = estimateReadingTime(content);

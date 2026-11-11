@@ -570,7 +570,7 @@ export default function KelolaSesiPage() {
                           </Field>
                           <Field label="Kode Sesi">
                             <TextInput
-                              placeholder="A01, B101"
+                              placeholder="AI01-P01, AI02-P01"
                               value={form.kode_sesi_friendly}
                               onChange={(e) => setForm({ ...form, kode_sesi_friendly: e.target.value })}
                               required

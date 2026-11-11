@@ -214,8 +214,8 @@ export default function ModulPage() {
             <ol className="relative space-y-0 border-l-2 border-border-2 pl-0">
               {pertemuanList.map((m, i) => {
                 const isDone = done.has(m.kode);
-                const isNext = !isDone && (i === 0 || done.has(pertemuanList[i - 1].kode));
-                const isLocked = !isDone && !isNext && !isStaff;
+                const isNext = i === 0 || done.has(pertemuanList[i - 1]?.kode);
+                const isLocked = false; // Seluruh 14 pertemuan terbuka untuk dibaca
                 const content = m.materi_peserta_md || m.content_md || '';
                 const estMins = estimateReadingTime(content);
 

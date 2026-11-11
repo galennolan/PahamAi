@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, BookOpen, PenTool,
-  HelpCircle, Send, Lock, ExternalLink, Sparkles, ListFilter,
+  HelpCircle, Send, ExternalLink, Sparkles, ListFilter,
   FileText, CheckSquare
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { getModulByKode, getModulFromCache } from '../services/modul';
 import { saveCatatan, getCatatanBySesi } from '../services/catatan';
 import { markAttendance } from '../services/absensi';
-import { getProgresSesi, listSesiAssigned, type SesiAssigned } from '../services/penugasan';
+import { listSesiAssigned, type SesiAssigned } from '../services/penugasan';
 import { Card, EmptyState, Badge, Field, TextArea, TextInput, SelectInput, Button, ConfirmDialog, Skeleton } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -51,8 +51,6 @@ export default function SesiPage() {
   const [pendingStatus, setPendingStatus] = useState<Kehadiran | null>(null);
   const [myStatus, setMyStatus] = useState<Kehadiran | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lockedMsg, setLockedMsg] = useState<string | null>(null);
-  const [belumDiassign, setBelumDiassign] = useState<string | null>(null);
 
   // Pre-test / Post-test
   const [testPhase, setTestPhase] = useState<'pre' | 'post' | null>(null);
@@ -70,9 +68,27 @@ export default function SesiPage() {
   const load = useCallback(async () => {
     if (!kode) return;
     try {
-      setLockedMsg(null);
-      setBelumDiassign(null);
 
+      // 1. Selalu muat data modul materi perkuliahan terlebih dahulu
+      let activeModul = await getModulFromCache(kode);
+      if (!activeModul) {
+        activeModul = await getModulByKode(kode);
+      }
+      if (!activeModul) {
+        const { data: dbModul } = await supabase
+          .from('modul')
+          .select('*')
+          .eq('kode', kode)
+          .maybeSingle();
+        if (dbModul) activeModul = dbModul as Modul;
+      }
+      if (activeModul) {
+        setModul(activeModul);
+        const rawMd = activeModul.materi_peserta_md?.trim() || activeModul.content_md || '';
+        setToc(extractTOC(rawMd));
+      }
+
+      // 2. Ambil data profil peserta (jika login)
       const { data: profil, error: pErr } = user
         ? await supabase
             .from('peserta')
@@ -86,72 +102,49 @@ export default function SesiPage() {
 
       const isPeserta = role === 'peserta';
 
+      // 3. Muat jadwal sesi jika tersedia (opsional, tidak memblokir akses modul)
       let sesiList: SesiAssigned[] = [];
       if (isPeserta && peserta) {
-        sesiList = await listSesiAssigned(peserta.id);
-        const mine = sesiList.find((s) => s.modul?.kode === kode);
-        if (!mine) {
-          setBelumDiassign('Modul ini belum ditugaskan oleh tutor untuk kelas Anda.');
-          setLoading(false);
-          return;
+        try {
+          sesiList = await listSesiAssigned(peserta.id);
+          const mine = sesiList.find((s) => s.modul?.kode === kode);
+          if (mine) {
+            setJadwal(mine);
+            const sp = { id: mine.sesi_peserta_id, sesi_id: mine.id, peserta_id: peserta.id } as SesiPeserta;
+            setSesiPeserta(sp);
+            const [{ data: myAbs }, c] = await Promise.all([
+              supabase.from('absensi').select('status_kehadiran').eq('sesi_peserta_id', sp.id).maybeSingle(),
+              getCatatanBySesi(sp.id),
+            ]);
+            setMyStatus((myAbs as { status_kehadiran: Kehadiran } | null)?.status_kehadiran ?? null);
+            if (c) {
+              setCatatan(c.catatan_text ?? '');
+              setTldrawUrl(c.tldraw_url ?? '');
+            }
+          }
+        } catch {
+          // Penugasan sesi opsional
         }
-        setJadwal(mine);
       } else {
-        const { data: js, error: jErr } = await supabase
+        const { data: js } = await supabase
           .from('jadwal_sesi')
           .select('*, modul!inner(*)')
           .eq('modul.kode', kode)
           .order('tanggal_kelas', { ascending: true })
           .limit(1);
-        if (jErr) throw jErr;
         if (js && js.length > 0) setJadwal(js[0] as JadwalSesi);
       }
 
-      const cached = await getModulFromCache(kode);
-      let activeModul = cached;
-      if (!activeModul) {
-        const fresh = await getModulByKode(kode);
-        if (fresh) activeModul = fresh;
-      }
-      if (activeModul) {
-        setModul(activeModul);
-        const rawMd = activeModul.materi_peserta_md?.trim() || activeModul.content_md || '';
-        setToc(extractTOC(rawMd));
-      }
-
-      if (isPeserta && peserta && sesiList.length > 0) {
-        const j = sesiList.find((s) => s.modul?.kode === kode);
-        if (j) {
-          const sp = { id: j.sesi_peserta_id, sesi_id: j.id, peserta_id: peserta.id } as SesiPeserta;
-          setSesiPeserta(sp);
-          const [{ data: myAbs }, c, { data: preAtt }, { data: postAtt }, { data: portList }] = await Promise.all([
-            supabase.from('absensi').select('status_kehadiran').eq('sesi_peserta_id', sp.id).maybeSingle(),
-            getCatatanBySesi(sp.id),
-            supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).eq('kode_paket', `PRE-${kode}`).limit(1),
-            supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).eq('kode_paket', `POST-${kode}`).limit(1),
-            supabase.from('portfolio_item').select('id').eq('id_peserta_fk', peserta.id).eq('kode_sesi', kode).limit(1),
-          ]);
-          setMyStatus((myAbs as { status_kehadiran: Kehadiran } | null)?.status_kehadiran ?? null);
-          if (c) {
-            setCatatan(c.catatan_text ?? '');
-            setTldrawUrl(c.tldraw_url ?? '');
-          }
-          const hasPre = (preAtt?.length ?? 0) > 0;
-          const hasPost = (postAtt?.length ?? 0) > 0;
-          setPreDone(hasPre);
-          setPostDone(hasPost);
-          setPortSubmitted((portList?.length ?? 0) > 0);
-
-          // Cek kunci urutan modul
-          const urutanIni = j.modul?.urutan_sesi ?? 0;
-          const prev = sesiList.filter((s) => (s.modul?.urutan_sesi ?? 0) < urutanIni);
-          if (prev.length > 0) {
-            const progres = await getProgresSesi(prev.map((s) => s.sesi_peserta_id));
-            if (prev.some((s) => progres[s.sesi_peserta_id]?.selesai !== true)) {
-              setLockedMsg('Modul ini terkunci. Selesaikan modul sebelumnya untuk membukanya.');
-            }
-          }
-        }
+      // 4. Periksa riwayat kuis & portofolio jika peserta login
+      if (peserta) {
+        const [{ data: preAtt }, { data: postAtt }, { data: portList }] = await Promise.all([
+          supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).eq('kode_paket', `PRE-${kode}`).limit(1),
+          supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).or(`kode_paket.eq.POST-${kode},kode_paket.eq.KUIS-${kode}`).limit(1),
+          supabase.from('portfolio_item').select('id').eq('id_peserta_fk', peserta.id).eq('kode_sesi', kode).limit(1),
+        ]);
+        setPreDone((preAtt?.length ?? 0) > 0);
+        setPostDone((postAtt?.length ?? 0) > 0);
+        setPortSubmitted((portList?.length ?? 0) > 0);
       }
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -282,7 +275,6 @@ export default function SesiPage() {
     setSaving(false);
   };
 
-  const isPeserta = role === 'peserta';
   const materiText = modul?.materi_peserta_md?.trim() || modul?.content_md?.trim() || '';
   const estMins = estimateReadingTime(materiText);
 
@@ -298,26 +290,6 @@ export default function SesiPage() {
 
   if (error) return <EmptyState title="Gagal memuat modul" desc={error} />;
   if (!modul) return <EmptyState title="Modul tidak ditemukan" desc={`Kode modul "${kode}" tidak valid.`} />;
-
-  if (isPeserta && (lockedMsg || belumDiassign)) {
-    return (
-      <div className="space-y-5 pt-4 pb-12 max-w-xl mx-auto text-center">
-        <button onClick={() => navigate('/belajar')} className="inline-flex items-center gap-1 font-mono text-sm text-fg-muted hover:text-primary-text mb-2">
-          <ArrowLeft className="h-4 w-4" /> Kembali ke Katalog Belajar
-        </button>
-        <Card className="p-8 border-border-2">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive mb-4">
-            <Lock className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-bold text-fg">{belumDiassign ? 'Modul Belum Ditugaskan' : 'Modul Masih Terkunci'}</h2>
-          <p className="mt-2 text-sm text-fg-muted leading-relaxed">{belumDiassign ?? lockedMsg}</p>
-          <div className="mt-6 flex justify-center">
-            <Button variant="secondary" onClick={() => navigate('/belajar')}>Buka Modul yang Tersedia</Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   // Stepper Items
   const steps: Array<{ key: LearningStep; label: string; icon: typeof BookOpen; badge?: string; done: boolean }> = [
@@ -567,14 +539,21 @@ export default function SesiPage() {
             </div>
 
             {/* Action Bar Selesai Baca */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-primary/20 bg-surface p-5">
               <div>
-                <h3 className="font-bold text-fg">Selesai membaca materi ini?</h3>
-                <p className="text-xs text-fg-muted mt-0.5">Tulis catatan pemahaman atau langsung uji kemampuan praktik Anda.</p>
+                <h3 className="font-bold text-fg">Selesai membaca materi pertemuan ini?</h3>
+                <p className="text-xs text-fg-muted mt-0.5">Uji pemahaman Anda dengan kuis interaktif atau tulis catatan belajar.</p>
               </div>
-              <Button onClick={() => setActiveStep('praktik')} className="shrink-0 flex items-center gap-2">
-                Lanjut ke Praktik & Kanvas <ArrowRight className="h-4 w-4" />
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link to="/kuis" className="inline-flex">
+                  <Button variant="secondary" size="sm" className="flex items-center gap-1.5 font-mono">
+                    <Sparkles className="h-3.5 w-3.5 text-primary-text" /> Kuis Quizizz
+                  </Button>
+                </Link>
+                <Button size="sm" onClick={() => setActiveStep('praktik')} className="flex items-center gap-1.5">
+                  Praktik & Catatan <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
 

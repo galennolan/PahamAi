@@ -1,150 +1,109 @@
 /**
- * Daftar program Paham AI.
- *
- * Sebelumnya ini hidup di dua tempat sekaligus: tabel `jalur` (yang tidak
- * pernah ada di database, lihat migration 0011) dan konstanta `JALUR_*` di
- * `types/index.ts`. Sekarang `jalur` dihapus dari database, jadi daftar
- * program ini adalah satu-satunya sumber kebenaran di sisi frontend.
- *
- * Kode program TIDAK disimpan di tabel `modul` lagi. Modul dikelompokkan lewat
- * `modul.kategori`, dan penugasan peserta lewat `sesi_peserta`. Kode program
- * hanya dipakai untuk:
- *   - labelarketing / pendaftaran / pendaftar
- *   - `soal_paket.program` dan `rubrik.program` (diturunkan dari `kode_paket`)
+ * Daftar Program Kurikulum Paham AI (Standar Pendidikan Tinggi / Perkuliahan)
+ * Menggantikan sistem program lama (Anak/Pemula/Menengah/Expert).
  */
 
-export type ProgramKode = 'A' | 'B1' | 'B2' | 'B3' | 'G';
+export type ProgramKode = 'MOD-AI-01' | 'MOD-AI-02' | 'MOD-AI-03' | string;
 
 export interface ProgramDef {
-  kode: ProgramKode;
+  kode: string;
   /** Nama singkat untuk badge/kartu. */
   label: string;
   /** Nama lengkap untuk judul dan dropdown. */
   nama: string;
-  /** Target usia, dipakai di halaman orang tua. */
+  /** Target pembelajaran. */
   targetUsia: string;
-  /** Ringkasan durasi, dipakai di kartu katalog. */
+  /** Ringkasan durasi per pertemuan. */
   ringkas: string;
-  /** Keterangan panjang, dipakai di header katalog modul. */
+  /** Keterangan kurikulum. */
   deskripsi: string;
-  /** Harga publik di halaman marketing; tidak selalu sama dengan `pembayaran`. */
+  /** Biaya / SKS. */
   harga: string;
   urutan: number;
-  /** Kode-kode modul yang jadi program ini (dipakai filter katalog). */
+  /** Kode-kode modul yang jadi program ini. */
   prefiksModul: string[];
 }
 
 export const PROGRAM: ProgramDef[] = [
   {
-    kode: 'A',
-    label: 'Anak',
-    nama: 'Anak 8–14 th',
-    targetUsia: 'Anak (8–14 th)',
-    ringkas: '9 sesi · 60 menit',
-    deskripsi: 'Anak 8–14 th · 9 sesi · 60 mnt',
-    harga: 'Rp 450.000',
+    kode: 'MOD-AI-01',
+    label: 'Dasar AI',
+    nama: 'Dasar AI & Prompting',
+    targetUsia: 'Mahasiswa / Profesional',
+    ringkas: '14 Pertemuan · 100 Menit (2 SKS)',
+    deskripsi: 'Dasar Kecerdasan Buatan & Prompt Engineering Komprehensif (Pertemuan 1 - 14)',
+    harga: 'Rp 650.000',
     urutan: 1,
-    prefiksModul: ['A'],
+    prefiksModul: ['AI01', 'MOD-AI-01'],
   },
   {
-    kode: 'B1',
-    label: 'Pemula',
-    nama: 'Pemula',
-    targetUsia: 'Pemula',
-    ringkas: '7 sesi · 90 menit',
-    deskripsi: 'Pemula · 7 sesi · 90 mnt',
-    harga: 'Rp 450.000',
+    kode: 'MOD-AI-02',
+    label: 'Machine Learning',
+    nama: 'Machine Learning & Deep Learning',
+    targetUsia: 'Mahasiswa / Profesional',
+    ringkas: '14 Pertemuan · 100 Menit (2 SKS)',
+    deskripsi: 'Machine Learning & Deep Learning Terapan (Pertemuan 1 - 14)',
+    harga: 'Rp 950.000',
     urutan: 2,
-    prefiksModul: ['B1'],
+    prefiksModul: ['AI02', 'MOD-AI-02'],
   },
   {
-    kode: 'B2',
-    label: 'Menengah',
-    nama: 'Menengah',
-    targetUsia: 'Menengah',
-    ringkas: '11 sesi · 120 menit',
-    deskripsi: 'Menengah · 11 sesi · 120 mnt',
-    harga: 'Rp 750.000',
+    kode: 'MOD-AI-03',
+    label: 'AI Engineering',
+    nama: 'AI Engineering, RAG & Agents',
+    targetUsia: 'Mahasiswa / Profesional',
+    ringkas: '14 Pertemuan · 100 Menit (2 SKS)',
+    deskripsi: 'AI Engineering, RAG & Autonomous Agents Tingkat Lanjut (Pertemuan 1 - 14)',
+    harga: 'Rp 1.450.000',
     urutan: 3,
-    prefiksModul: ['B2'],
-  },
-  {
-    kode: 'B3',
-    label: 'Expert',
-    nama: 'Expert',
-    targetUsia: 'Expert',
-    ringkas: '11 sesi · 150 menit',
-    deskripsi: 'Expert · 11 sesi · 120–150 mnt',
-    harga: 'Rp 2.250.000',
-    urutan: 4,
-    prefiksModul: ['B3'],
-  },
-  {
-    kode: 'G',
-    label: 'GAFB',
-    nama: 'GAFB',
-    targetUsia: 'GAFB',
-    ringkas: '10 sesi · 90 menit',
-    deskripsi: 'Generative AI for Beginners · 10 sesi · 90 mnt',
-    harga: 'Rp 450.000',
-    urutan: 5,
-    prefiksModul: ['G'],
+    prefiksModul: ['AI03', 'MOD-AI-03'],
   },
 ];
 
 export const PROGRAM_LABELS: Record<string, string> = Object.fromEntries(
-  PROGRAM.map((p) => [p.kode, `${p.kode} — ${p.label}`]),
+  PROGRAM.map((p) => [p.kode, `${p.kode} — ${p.nama}`]),
 );
 
 export function programLabel(kode: string | null | undefined): string {
   if (!kode) return '—';
-  return PROGRAM_LABELS[kode] ?? kode;
+  if (PROGRAM_LABELS[kode]) return PROGRAM_LABELS[kode];
+  const found = PROGRAM.find((p) => p.kode === kode || p.prefiksModul.includes(kode));
+  if (found) return `${found.kode} — ${found.nama}`;
+  return kode;
 }
 
-/** Judul program dari prefiks kode modul: `B201` -> `B2`, `A01` -> `A`. */
-export function programDariKodeModul(kodeModul: string): ProgramKode | null {
+/** Judul program dari prefiks kode modul: `AI01-P01` -> `MOD-AI-01`. */
+export function programDariKodeModul(kodeModul: string): string | null {
   const kode = kodeModul.trim().toUpperCase();
   if (!kode) return null;
-  // Cocokkan prefiks terpanjang dulu supaya `B104` -> `B1`, bukan `B`.
+
+  if (kode.includes('AI01') || kode.includes('MOD-AI-01')) return 'MOD-AI-01';
+  if (kode.includes('AI02') || kode.includes('MOD-AI-02')) return 'MOD-AI-02';
+  if (kode.includes('AI03') || kode.includes('MOD-AI-03')) return 'MOD-AI-03';
+
+  // Fallback prefix matching
   const sorted = [...PROGRAM].sort((a, b) => b.kode.length - a.kode.length);
-  return sorted.find((p) => kode.startsWith(p.kode))?.kode ?? null;
+  return sorted.find((p) => p.prefiksModul.some((pref) => kode.startsWith(pref)))?.kode ?? null;
 }
 
 /** Daftar kode program yang dipesan peserta, urut. */
 export function programTerpilih(kodeModul: string[]): ProgramDef[] {
-  const set = new Set(kodeModul.map(programDariKodeModul).filter(Boolean) as ProgramKode[]);
+  const set = new Set(kodeModul.map(programDariKodeModul).filter(Boolean));
   return PROGRAM.filter((p) => set.has(p.kode));
 }
 
-/**
- * Nama paket uji untuk program tertentu.
- *
- * Empat paket generik ini dipertahankan dari skema lama karena `soal_paket`
- * masih memakai `kode_paket` untuk menautkan ke modul. Prefix program
- * ditambahkan di migration 0028 supaya tidak lagi bertabrakan antar program.
- */
 export function kodePaketUji(program: string, sesiTarget: string): string {
-  return `PRE/POST-TEST-JALUR-${program}${sesiTarget ? `-${sesiTarget}` : ''}`;
+  return `KUIS-${program}${sesiTarget ? `-${sesiTarget}` : ''}`;
 }
 
-/**
- * Program dari kode paket uji.
- *
- * Dua bentuk yang ada di database:
- *   - paket lama per sesi: `PRE-B201` / `POST-B201`
- *   - paket generik per program: `PRE/POST-TEST-JALUR-B1`
- */
-export function programDariKodePaket(kodePaket: string): ProgramKode | null {
+export function programDariKodePaket(kodePaket: string): string | null {
   const k = kodePaket.trim().toUpperCase();
-  const generic = /JALUR-([A-Z]+\d?)/.exec(k);
-  if (generic) return PROGRAM.find((p) => p.kode === generic[1])?.kode ?? null;
-
-  const sesi = /(?:PRE|POST|KUIS)[/_-]?([A-Z]+\d{2,3})\b/.exec(k);
-  if (sesi) return programDariKodeModul(sesi[1]);
+  if (k.includes('AI01') || k.includes('MOD-AI-01')) return 'MOD-AI-01';
+  if (k.includes('AI02') || k.includes('MOD-AI-02')) return 'MOD-AI-02';
+  if (k.includes('AI03') || k.includes('MOD-AI-03')) return 'MOD-AI-03';
   return null;
 }
 
-/** Paket uji ini milik satu modul sesi tertentu? */
 export function paketUntukSesi(kodePaket: string, kodeModul: string): boolean {
   return kodePaket.trim().toUpperCase().endsWith(kodeModul.trim().toUpperCase());
 }
@@ -153,5 +112,5 @@ export function tipeDariKodePaket(kodePaket: string): 'pre_test' | 'post_test' |
   if (/^PRE/i.test(kodePaket)) return 'pre_test';
   if (/^POST/i.test(kodePaket)) return 'post_test';
   if (/^KUIS/i.test(kodePaket)) return 'kuis';
-  return null;
+  return 'kuis';
 }

@@ -19,25 +19,24 @@ import {
 } from 'lucide-react';
 
 const JALUR_CARDS = [
-  { key: 'A', label: 'Anak 8–14 th', desc: '9 sesi · 60 menit', price: 'Rp 450.000', color: 'bg-emerald-500/20', icon: GraduationCap, features: ['Cerita & Gambar AI', 'Etika Digital', 'Presentasi Proyek'] },
-  { key: 'B1', label: 'Pemula', desc: '7 sesi · 90 menit', price: 'Rp 450.000', color: 'bg-blue-500/20', icon: Lightbulb, features: ['Prompt Dasar', 'AI Produktivitas', 'Proyek Mini'] },
-  { key: 'B2', label: 'Menengah', desc: '11 sesi · 120 menit', price: 'Rp 750.000', color: 'bg-cyan-500/20', icon: Code, features: ['Python & API', 'Automasi', 'Integrasi AI'] },
-  { key: 'B3', label: 'Expert', desc: '11 sesi · 150 menit', price: 'Rp 2.250.000', color: 'bg-amber-500/20', icon: Bot, features: ['RAG & Agent', 'Fine-tuning', 'Capstone'] },
+  { key: 'MOD-AI-01', label: 'Dasar AI & Prompting', desc: '14 sesi · 100 menit (2 SKS)', price: 'Rp 650.000', color: 'bg-emerald-500/20', icon: Lightbulb, features: ['Konsep LLM & Tokenisasi', 'Advanced Prompt Engineering', 'No-Code AI & Productivity'] },
+  { key: 'MOD-AI-02', label: 'Machine Learning & DL', desc: '14 sesi · 100 menit (2 SKS)', price: 'Rp 950.000', color: 'bg-blue-500/20', icon: Code, features: ['Supervised & Unsupervised', 'Neural Networks & CNN/RNN', 'Transformer Architecture'] },
+  { key: 'MOD-AI-03', label: 'AI Engineering & Agents', desc: '14 sesi · 100 menit (2 SKS)', price: 'Rp 1.450.000', color: 'bg-amber-500/20', icon: Bot, features: ['Vector DB & RAG Pipeline', 'ReAct Autonomous Agents', 'Production Deployment'] },
 ];
 
 const FEATURES = [
-  { icon: Shield, title: 'Aman & Privasi', desc: 'Akun terpisah orang tua/murid, RLS Supabase, UU PDP compliant' },
-  { icon: Smartphone, title: 'Offline-First PWA', desc: 'Modul & catatan tersimpan lokal, sync otomatis saat online' },
-  { icon: Target, title: 'Skill-Based Placement', desc: 'Bukan umur, tapi kemampuan: test penempatan otomatis' },
-  { icon: Award, title: 'Sertifikat Resmi', desc: 'Nomor seri PAHAI/[TAHUN]/[JALUR]/[NOMOR], valid nasional' },
-  { icon: Lightbulb, title: 'Project-Based', desc: 'Setiap sesi produce output nyata: gambar, script, agent' },
-  { icon: Users, title: 'Komunitas Lokal', desc: 'Kelas tatap muka Solo-Sukoharjo-Wonogiri + online hybrid' },
+  { icon: Shield, title: 'Aman & Privasi', desc: 'Sistem terstruktur, RLS Supabase, UU PDP compliant' },
+  { icon: Smartphone, title: 'Offline-First PWA', desc: 'Modul perkuliahan & catatan tersimpan lokal, sync otomatis' },
+  { icon: Target, title: 'Standar Kurikulum 14 Pertemuan', desc: 'Setiap modul memuat 14 pertemuan terstruktur lengkap dengan kuis' },
+  { icon: Award, title: 'Sertifikat Kompetensi', desc: 'Nomor seri PAHAI/[TAHUN]/[MODUL]/[NOMOR], valid nasional' },
+  { icon: Lightbulb, title: 'Project-Based Learning', desc: 'Setiap pertemuan menghasilkan pemahaman dan latihan nyata' },
+  { icon: Users, title: 'Hybrid & Kampus', desc: 'Dukungan kelas luring maupun daring berbasis teknologi modern' },
 ];
 
 const TESTIMONIALS = [
-  { name: 'Ibu Siti (Wonogiri)', role: 'Orang Tua Jalur A', text: '"Anak saya sekarang bisa bikin cerita & gambar sendiri. Bukan main HP doang."' },
-  { name: 'Budi S. (Solo)', role: 'Pegawai Jalur B1', text: '"Prompt engineering langsung praktek. Otomatisasi laporan mingguan jadi 5 menit."' },
-  { name: 'Andi W. (Sukoharjo)', role: 'Mahasiswa Jalur B2', text: '"Python + API AI bikin skripsi cepat. Mentor sabar jelasin error."' },
+  { name: 'Rian Pratama', role: 'Mahasiswa Teknik Informatika', text: '"Materi 14 pertemuannya sangat runut. Dari dasar prompt sampai arsitektur Transformer."' },
+  { name: 'Budi Santoso', role: 'Data Analyst', text: '"Praktek Machine Learning langsung terarah. Kuis interaktif Quizizz bikin cepat paham konsep."' },
+  { name: 'Dina Kusuma', role: 'Software Engineer', text: '"Modul AI Engineering sangat aplikatif. RAG dan autonomous agent bisa langsung diterapkan di kerjaan."' },
 ];
 
 export default function LandingPage() {
@@ -129,7 +128,7 @@ export default function LandingPage() {
       <section id="jalur" className="py-20 px-4">
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-fg">Pilih Jalur Anda</h2>
+            <h2 className="text-3xl font-bold text-fg">Pilih Modul Kurikulum Anda</h2>
             <p className="mt-2 text-fg-muted">Penempatan berdasarkan skill, bukan umur. Test placement gratis saat daftar.</p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
