@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, BookOpen, PenTool,
   HelpCircle, Send, ExternalLink, Sparkles, ListFilter,
@@ -17,6 +17,7 @@ import { formatJakarta } from '../lib/time';
 import { renderMarkdown, extractTOC, estimateReadingTime, type TOCItem } from '../lib/markdown';
 import { HasilKuisPanel, OpsiSoal, submitKuis } from '../components/KuisPanel';
 import type { HasilKuis } from '../components/KuisPanel';
+import { QuizizzPlayer } from '../components/quiz/QuizizzPlayer';
 import type { Modul, JadwalSesi, SesiPeserta, Kehadiran, SoalButir } from '../types';
 
 type LearningStep = 'persiapan' | 'materi' | 'praktik' | 'evaluasi' | 'tugas';
@@ -59,6 +60,8 @@ export default function SesiPage() {
   const [testResult, setTestResult] = useState<HasilKuis | null>(null);
   const [preDone, setPreDone] = useState(false);
   const [postDone, setPostDone] = useState(false);
+  const [isQuizizzOpen, setIsQuizizzOpen] = useState(false);
+  const [loadingQuizizz, setLoadingQuizizz] = useState(false);
 
   // Portfolio form
   const [showPortForm, setShowPortForm] = useState(false);
@@ -239,35 +242,68 @@ export default function SesiPage() {
     setShowPortForm(false);
   };
 
-  const startTest = async (phase: 'pre' | 'post') => {
-    const paketKode = phase === 'pre' ? `PRE-${kode}` : `POST-${kode}`;
-    const { data: soal } = await supabase.from('soal_butir_view').select('*').eq('kode_paket', paketKode).order('no_soal');
-    if (!soal || soal.length === 0) {
-      toast(`Soal ${phase === 'pre' ? 'Pre-Test' : 'Post-Test'} belum tersedia untuk modul ini`, 'error');
-      return;
+  const bukaKuisQuizizz = async () => {
+    if (!kode) return;
+    setLoadingQuizizz(true);
+    try {
+      const paketKode = `KUIS-${kode}`;
+      let { data: butir } = await supabase
+        .from('soal_butir_view')
+        .select('*')
+        .eq('kode_paket', paketKode)
+        .order('no_soal');
+
+      if (!butir || butir.length === 0) {
+        const { data: direct } = await supabase
+          .from('soal_butir')
+          .select('*')
+          .eq('kode_paket', paketKode)
+          .order('no_soal');
+        if (direct && direct.length > 0) butir = direct;
+      }
+
+      if (!butir || butir.length === 0) {
+        const { data: alt } = await supabase
+          .from('soal_butir_view')
+          .select('*')
+          .or(`kode_paket.eq.POST-${kode},kode_paket.eq.PRE-${kode}`)
+          .order('no_soal');
+        if (alt && alt.length > 0) butir = alt;
+      }
+
+      if (!butir || butir.length === 0) {
+        toast(`Soal kuis untuk pertemuan ${kode} belum tersedia`, 'error');
+        return;
+      }
+
+      setSoalList(butir as SoalButir[]);
+      setIsQuizizzOpen(true);
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setLoadingQuizizz(false);
     }
-    setSoalList(soal as SoalButir[]);
-    setJawaban({});
-    setTestResult(null);
+  };
+
+  const startTest = async (phase: 'pre' | 'post') => {
     setTestPhase(phase);
+    await bukaKuisQuizizz();
   };
 
   const submitTest = async () => {
-    if (!user || !testPhase || soalList.length === 0) return;
+    if (!user || soalList.length === 0) return;
     const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
     if (!profil) {
       toast('Profil peserta tidak ditemukan', 'error');
       return;
     }
 
-    const paketKode = testPhase === 'pre' ? `PRE-${kode}` : `POST-${kode}`;
+    const paketKode = `KUIS-${kode}`;
     setSaving(true);
     try {
       const hasil = await submitKuis(profil.id, paketKode, soalList, jawaban);
       setTestResult(hasil);
-      if (testPhase === 'pre') setPreDone(true);
-      else setPostDone(true);
-
+      setPostDone(true);
       toast(`Kuis selesai! Skor: ${hasil.skor}/100 (${hasil.lulus ? 'Lulus KKM' : 'Belum Lulus'})`, hasil.lulus ? 'success' : 'error');
     } catch (e: unknown) {
       toast((e as Error).message, 'error');
@@ -290,6 +326,31 @@ export default function SesiPage() {
 
   if (error) return <EmptyState title="Gagal memuat modul" desc={error} />;
   if (!modul) return <EmptyState title="Modul tidak ditemukan" desc={`Kode modul "${kode}" tidak valid.`} />;
+
+  // Render Kuis Interaktif Quizizz Player saat mode kuis aktif
+  if (isQuizizzOpen && soalList.length > 0) {
+    return (
+      <div className="py-4">
+        <QuizizzPlayer
+          soalList={soalList}
+          kodePaket={`KUIS-${kode}`}
+          judulPaket={`Kuis ${modul?.judul || kode}`}
+          durasiMenit={5}
+          onExit={() => setIsQuizizzOpen(false)}
+          onSubmitResult={async (hasil) => {
+            if (user) {
+              const { data: profil } = await supabase.from('peserta').select('id').eq('user_id', user.id).maybeSingle();
+              if (profil) {
+                await submitKuis(profil.id, `KUIS-${kode}`, soalList, hasil.jawaban).catch(() => {});
+                setPostDone(true);
+                toast(`Skor kuis ${hasil.skor}/100 tersimpan ke riwayat Anda!`, 'success');
+              }
+            }
+          }}
+        />
+      </div>
+    );
+  }
 
   // Stepper Items
   const steps: Array<{ key: LearningStep; label: string; icon: typeof BookOpen; badge?: string; done: boolean }> = [
@@ -545,12 +606,16 @@ export default function SesiPage() {
                 <p className="text-xs text-fg-muted mt-0.5">Uji pemahaman Anda dengan kuis interaktif atau tulis catatan belajar.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Link to="/kuis" className="inline-flex">
-                  <Button variant="secondary" size="sm" className="flex items-center gap-1.5 font-mono">
-                    <Sparkles className="h-3.5 w-3.5 text-primary-text" /> Kuis Quizizz
-                  </Button>
-                </Link>
-                <Button size="sm" onClick={() => setActiveStep('praktik')} className="flex items-center gap-1.5">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={bukaKuisQuizizz}
+                  disabled={loadingQuizizz}
+                  className="flex items-center gap-1.5 font-mono shadow-sm"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> 🎮 Mulai Kuis Quizizz
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setActiveStep('praktik')} className="flex items-center gap-1.5">
                   Praktik & Catatan <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -675,48 +740,37 @@ export default function SesiPage() {
         </div>
       )}
 
-      {/* TAHAP 4: EVALUASI POST-TEST */}
+      {/* TAHAP 4: EVALUASI KUIS SESI (QUIZIZZ STYLE) */}
       {activeStep === 'evaluasi' && (
         <div className="space-y-6 max-w-3xl mx-auto animate-fade-in">
-          <Card className="border-border-2 p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-fg flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-accent" /> Evaluasi Akhir (Post-Test)
+          <Card className="border-border-2 p-6 sm:p-7 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge className="font-mono text-primary-text font-bold">QUIZIZZ MODE</Badge>
+                  <span className="text-caption text-fg-subtle font-mono">2 Soal Pilihan Ganda · 5 Menit</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-bold text-fg flex items-center gap-2 font-display">
+                  <HelpCircle className="h-5 w-5 text-accent" /> Evaluasi Pemahaman Sesi {kode}
                 </h2>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Uji pemahaman mendalam Anda setelah mempelajari modul materi dan latihan praktik.
+                <p className="text-sm text-fg-muted font-body">
+                  Uji pemahaman topik perkuliahan Anda secara interaktif dengan batasan waktu, umpan balik langsung, dan animasi bergaya Quizizz.
                 </p>
               </div>
-              {!testPhase && (
-                <Button onClick={() => startTest('post')} disabled={postDone} size="sm">
-                  {postDone ? '✓ Post-Test Selesai' : 'Mulai Post-Test'}
-                </Button>
-              )}
+
+              <Button
+                onClick={bukaKuisQuizizz}
+                disabled={loadingQuizizz}
+                className="flex items-center gap-2 self-start sm:self-center font-mono shrink-0 shadow-md"
+              >
+                <Sparkles className="w-4 h-4" /> {postDone ? 'Ulangi Kuis Quizizz' : 'Mulai Kuis Quizizz'}
+              </Button>
             </div>
 
-            {testPhase === 'post' && (
-              <div className="mt-6 space-y-5 pt-4 border-t border-border-2">
-                {soalList.map((s) => (
-                  <div key={s.id} className="rounded-xl border border-border-2 bg-surface/50 p-4">
-                    <p className="font-semibold text-fg">
-                      <span className="font-mono text-primary-text mr-1.5">{s.no_soal}.</span> {s.pertanyaan}
-                    </p>
-                    <div className="mt-3">
-                      <OpsiSoal soal={s} value={jawaban[s.no_soal]} onPick={(v) => setJawaban({ ...jawaban, [s.no_soal]: v })} />
-                    </div>
-                  </div>
-                ))}
-
-                {testResult ? (
-                  <HasilKuisPanel result={testResult} soalList={soalList} jawaban={jawaban} />
-                ) : (
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button onClick={submitTest} disabled={saving || Object.keys(jawaban).length === 0}>
-                      {saving ? 'Memproses Nilai...' : 'Kirim Jawaban Post-Test'}
-                    </Button>
-                  </div>
-                )}
+            {postDone && (
+              <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-semibold text-success flex items-center gap-2.5">
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                <span>Kuis untuk sesi pertemuan ini telah dikerjakan! Anda dapat mengulanginya kapan saja untuk latihan mandiri.</span>
               </div>
             )}
           </Card>

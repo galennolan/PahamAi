@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   Plus,
@@ -12,13 +13,15 @@ import {
   Layers,
   X,
   RotateCw,
+  Sparkles,
 } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Field, Loading, SelectInput, TextInput, ConfirmDialog } from '../components/ui';
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../lib/supabaseClient';
 import { formatJakarta } from '../lib/time';
 import { listModulInduk, assignModulKeKelas, renameKelas } from '../services/modul';
-import type { Kelas, JadwalSesi, ModulInduk, Peserta, KelasStatus } from '../types';
+import { QuizizzPlayer } from '../components/quiz/QuizizzPlayer';
+import type { Kelas, JadwalSesi, ModulInduk, Peserta, KelasStatus, SoalButir } from '../types';
 
 const STATUS_LABELS: Record<string, string> = {
   terbuka: 'Terbuka',
@@ -68,6 +71,14 @@ export default function KelolaKelasPage() {
   const [changingModulKelas, setChangingModulKelas] = useState<Kelas | null>(null);
   const [selectedNewModulId, setSelectedNewModulId] = useState('MOD-AI-01');
   const [changingModul, setChangingModul] = useState(false);
+
+  // Sesi Kuis Interaktif Quizizz untuk Pertemuan Kelas Terpilih
+  const [activeQuizSesi, setActiveQuizSesi] = useState<{
+    kodeSesi: string;
+    judulSesi: string;
+    soal: SoalButir[];
+  } | null>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
 
   // Modal Tambah Peserta & Hapus Kelas
   const [addPesertaModal, setAddPesertaModal] = useState(false);
@@ -299,6 +310,42 @@ export default function KelolaKelasPage() {
     }
   };
 
+  const handleMulaiKuisSesi = async (kodeSesi: string, judulSesi: string) => {
+    setLoadingQuiz(true);
+    try {
+      const kodePaket = `KUIS-${kodeSesi}`;
+      let { data: butir } = await supabase
+        .from('soal_butir')
+        .select('*')
+        .eq('kode_paket', kodePaket)
+        .order('no_soal');
+
+      if (!butir || butir.length === 0) {
+        const { data: viewData } = await supabase
+          .from('soal_butir_view')
+          .select('*')
+          .eq('kode_paket', kodePaket)
+          .order('no_soal');
+        if (viewData && viewData.length > 0) butir = viewData;
+      }
+
+      if (!butir || butir.length === 0) {
+        toast(`Soal kuis untuk pertemuan ${kodeSesi} belum tersedia`, 'error');
+        return;
+      }
+
+      setActiveQuizSesi({
+        kodeSesi,
+        judulSesi,
+        soal: butir as SoalButir[],
+      });
+    } catch (e: unknown) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setLoadingQuiz(false);
+    }
+  };
+
   const availablePesertaToAdd = useMemo(() => {
     const inKelas = new Set(kelasPeserta.map((p) => p.id));
     const q = searchAdd.trim().toLowerCase();
@@ -315,6 +362,32 @@ export default function KelolaKelasPage() {
   // VIEW: DETAIL KELAS & PESERTA
   // ====================================================================
   if (selectedKelas) {
+    if (activeQuizSesi) {
+      return (
+        <div className="space-y-4 max-w-4xl mx-auto py-2">
+          <div className="flex items-center justify-between border-b border-border-2 pb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveQuizSesi(null)}
+              className="text-fg-muted hover:text-fg"
+            >
+              ← Kembali ke Detail Kelas {selectedKelas.nama}
+            </Button>
+            <Badge className="font-mono text-primary-text font-bold">
+              SESI KUIS QUIZIZZ KELAS
+            </Badge>
+          </div>
+          <QuizizzPlayer
+            soalList={activeQuizSesi.soal}
+            kodePaket={`KUIS-${activeQuizSesi.kodeSesi}`}
+            judulPaket={`${selectedKelas.nama} — ${activeQuizSesi.judulSesi}`}
+            durasiMenit={5}
+            onExit={() => setActiveQuizSesi(null)}
+          />
+        </div>
+      );
+    }
     return (
       <div className="space-y-6 max-w-5xl mx-auto animate-fade-in">
         {/* Navigation & Status bar */}
@@ -455,7 +528,23 @@ export default function KelolaKelasPage() {
                     </div>
                     <p className="font-semibold text-fg text-sm">{s.judul_sesi}</p>
                   </div>
-                  <Badge className="font-mono text-[11px]">{s.status_sesi}</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="font-mono text-[11px] hidden sm:inline-flex">{s.status_sesi}</Badge>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={loadingQuiz}
+                      onClick={() => handleMulaiKuisSesi(s.kode_sesi_friendly, s.judul_sesi)}
+                      className="flex items-center gap-1.5 text-xs font-mono shadow-sm"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Mulai Kuis
+                    </Button>
+                    <Link to={`/modul/${s.kode_sesi_friendly}`}>
+                      <Button size="sm" variant="secondary" className="flex items-center gap-1 text-xs">
+                        Buka Sesi <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>
