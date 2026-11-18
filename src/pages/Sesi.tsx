@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getModulByKode, getModulFromCache, listPertemuanByModul } from '../services/modul';
 import { saveCatatan, getCatatanBySesi } from '../services/catatan';
 import { markAttendance } from '../services/absensi';
-import { listSesiAssigned, type SesiAssigned } from '../services/penugasan';
+import { listSesiAssigned } from '../services/penugasan';
 import { Card, EmptyState, Badge, Field, TextArea, TextInput, SelectInput, Button, ConfirmDialog, Skeleton } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -74,11 +74,15 @@ export default function SesiPage() {
   const load = useCallback(async () => {
     if (!kode) return;
     try {
-
-      // 1. Selalu muat data modul materi perkuliahan terlebih dahulu
-      let activeModul = await getModulFromCache(kode);
-      if (!activeModul) {
+      // 1. Prioritas Utama: Muat materi modul secepat mungkin
+      let activeModul: Modul | null = null;
+      try {
         activeModul = await getModulByKode(kode);
+      } catch {
+        // Fallback bila getModulByKode gagal
+      }
+      if (!activeModul) {
+        activeModul = await getModulFromCache(kode);
       }
       if (!activeModul) {
         const { data: dbModul } = await supabase
@@ -88,39 +92,47 @@ export default function SesiPage() {
           .maybeSingle();
         if (dbModul) activeModul = dbModul as Modul;
       }
+
       if (activeModul) {
         setModul(activeModul);
         const rawMd = activeModul.materi_peserta_md?.trim() || activeModul.content_md || '';
         setToc(extractTOC(rawMd));
+        // Langsung lepaskan loading agar materi modul tampil instan ke pembaca!
+        setLoading(false);
 
-        try {
-          const parentId = activeModul.offline_material_path || 'MOD-AI-01';
-          const siblings = await listPertemuanByModul(parentId);
-          setSiblingList(siblings);
-        } catch {
-          // Fallback bila listPertemuan gagal
-        }
+        // Muat silabus sehorisontal secara asinkron di latar
+        const parentId = activeModul.offline_material_path || 'MOD-AI-01';
+        listPertemuanByModul(parentId)
+          .then((siblings) => setSiblingList(siblings))
+          .catch(() => {});
+      } else {
+        setError(`Modul "${kode}" tidak ditemukan di database.`);
+        setLoading(false);
+        return;
       }
 
-      // 2. Ambil data profil peserta (jika login)
-      const { data: profil, error: pErr } = user
-        ? await supabase
+      // 2. Ambil data profil peserta (non-blocking)
+      let peserta: { id: string; kelas_id: string | null } | null = null;
+      if (user) {
+        try {
+          const { data: profil } = await supabase
             .from('peserta')
             .select('id, kelas_id')
             .eq('user_id', user.id)
             .order('created_at', { ascending: true })
-            .limit(1)
-        : { data: null, error: null };
-      if (pErr) throw pErr;
-      const peserta = (profil as { id: string; kelas_id: string | null }[] | null)?.[0] ?? null;
+            .limit(1);
+          peserta = (profil as { id: string; kelas_id: string | null }[] | null)?.[0] ?? null;
+        } catch {
+          // Profil opsional
+        }
+      }
 
       const isPeserta = role === 'peserta';
 
-      // 3. Muat jadwal sesi jika tersedia (opsional, tidak memblokir akses modul)
-      let sesiList: SesiAssigned[] = [];
+      // 3. Muat jadwal sesi jika tersedia (non-blocking)
       if (isPeserta && peserta) {
         try {
-          sesiList = await listSesiAssigned(peserta.id);
+          const sesiList = await listSesiAssigned(peserta.id);
           const mine = sesiList.find((s) => s.modul?.kode === kode);
           if (mine) {
             setJadwal(mine);
@@ -140,25 +152,33 @@ export default function SesiPage() {
           // Penugasan sesi opsional
         }
       } else {
-        const { data: js } = await supabase
-          .from('jadwal_sesi')
-          .select('*, modul!inner(*)')
-          .eq('modul.kode', kode)
-          .order('tanggal_kelas', { ascending: true })
-          .limit(1);
-        if (js && js.length > 0) setJadwal(js[0] as JadwalSesi);
+        try {
+          const { data: js } = await supabase
+            .from('jadwal_sesi')
+            .select('*, modul!inner(*)')
+            .eq('modul.kode', kode)
+            .order('tanggal_kelas', { ascending: true })
+            .limit(1);
+          if (js && js.length > 0) setJadwal(js[0] as JadwalSesi);
+        } catch {
+          // Jadwal sesi opsional
+        }
       }
 
-      // 4. Periksa riwayat kuis & portofolio jika peserta login
+      // 4. Periksa riwayat kuis & portofolio jika peserta login (non-blocking)
       if (peserta) {
-        const [{ data: preAtt }, { data: postAtt }, { data: portList }] = await Promise.all([
-          supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).eq('kode_paket', `PRE-${kode}`).limit(1),
-          supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).or(`kode_paket.eq.POST-${kode},kode_paket.eq.KUIS-${kode}`).limit(1),
-          supabase.from('portfolio_item').select('id').eq('id_peserta_fk', peserta.id).eq('kode_sesi', kode).limit(1),
-        ]);
-        setPreDone((preAtt?.length ?? 0) > 0);
-        setPostDone((postAtt?.length ?? 0) > 0);
-        setPortSubmitted((portList?.length ?? 0) > 0);
+        try {
+          const [{ data: preAtt }, { data: postAtt }, { data: portList }] = await Promise.all([
+            supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).eq('kode_paket', `PRE-${kode}`).limit(1),
+            supabase.from('quiz_attempt').select('id').eq('id_peserta_fk', peserta.id).or(`kode_paket.eq.POST-${kode},kode_paket.eq.KUIS-${kode}`).limit(1),
+            supabase.from('portfolio_item').select('id').eq('id_peserta_fk', peserta.id).eq('kode_sesi', kode).limit(1),
+          ]);
+          setPreDone((preAtt?.length ?? 0) > 0);
+          setPostDone((postAtt?.length ?? 0) > 0);
+          setPortSubmitted((portList?.length ?? 0) > 0);
+        } catch {
+          // Riwayat kuis opsional
+        }
       }
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -168,8 +188,24 @@ export default function SesiPage() {
   }, [kode, user, role]);
 
   useEffect(() => {
+    let alive = true;
     setLoading(true);
-    load();
+    // Safety net: loading tidak boleh menggantung lebih dari 3.5 detik
+    const safety = window.setTimeout(() => {
+      if (alive) setLoading(false);
+    }, 3500);
+
+    load().finally(() => {
+      if (alive) {
+        setLoading(false);
+        window.clearTimeout(safety);
+      }
+    });
+
+    return () => {
+      alive = false;
+      window.clearTimeout(safety);
+    };
   }, [load]);
 
   // Track Scroll Progress for Reader
