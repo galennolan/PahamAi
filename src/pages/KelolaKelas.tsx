@@ -100,9 +100,10 @@ export default function KelolaKelasPage() {
       for (const j of (jadwalRes.data ?? [])) {
         const mod = j.modul as unknown as { offline_material_path?: string; slide_url?: string } | null;
         if (j.kelas_id && mod?.offline_material_path && !kelasToModulMap.has(j.kelas_id)) {
+          const defaultParent = modulInduks.find((d) => d.id === mod.offline_material_path);
           kelasToModulMap.set(j.kelas_id, {
             id: mod.offline_material_path,
-            nama: mod.slide_url || 'Modul AI',
+            nama: defaultParent?.nama || mod.slide_url || 'Modul AI',
           });
         }
       }

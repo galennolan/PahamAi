@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Card, EmptyState, Badge, ProgressBar, Tabs, Skeleton } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { formatJakarta, todayJakartaISO } from '../lib/time';
-import { listModul } from '../services/modul';
+import { listModul, DEFAULT_MODUL_INDUK } from '../services/modul';
 import { getProgresSesi, listSesiAssigned, urutModulDariSesi, type ProgresSesi, type SesiAssigned } from '../services/penugasan';
 import { estimateReadingTime } from '../lib/markdown';
 import type { Modul, Peserta } from '../types';
@@ -33,7 +33,9 @@ export default function BelajarPage() {
   const [error, setError] = useState<string | null>(null);
 
   const modulNama = useMemo(() => {
-    return moduls[0]?.slide_url || 'Dasar Kecerdasan Buatan & Prompt Engineering';
+    const parentId = moduls[0]?.offline_material_path;
+    const def = DEFAULT_MODUL_INDUK.find((d) => d.id === parentId);
+    return def?.nama || moduls[0]?.slide_url || 'Dasar Kecerdasan Buatan & Prompt Engineering';
   }, [moduls]);
 
   const load = useCallback(async () => {

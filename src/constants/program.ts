@@ -58,6 +58,17 @@ export const PROGRAM: ProgramDef[] = [
     urutan: 3,
     prefiksModul: ['AI03', 'MOD-AI-03'],
   },
+  {
+    kode: 'MOD-DA-01',
+    label: 'Data Analyst',
+    nama: 'Fundamental Data Analyst',
+    targetUsia: 'Mahasiswa / Profesional',
+    ringkas: '9 Pertemuan · 100 Menit (CRISP-DM)',
+    deskripsi: 'Kurikulum Analisis Data Komprehensif: CRISP-DM, Preprocessing, Supervised & Unsupervised Learning, serta Evaluasi Model (Pertemuan 1 - 9)',
+    harga: 'Rp 550.000',
+    urutan: 4,
+    prefiksModul: ['FDA', 'MOD-DA-01', 'DA01'],
+  },
 ];
 
 export const PROGRAM_LABELS: Record<string, string> = Object.fromEntries(
@@ -80,6 +91,7 @@ export function programDariKodeModul(kodeModul: string): string | null {
   if (kode.includes('AI01') || kode.includes('MOD-AI-01')) return 'MOD-AI-01';
   if (kode.includes('AI02') || kode.includes('MOD-AI-02')) return 'MOD-AI-02';
   if (kode.includes('AI03') || kode.includes('MOD-AI-03')) return 'MOD-AI-03';
+  if (kode.includes('FDA') || kode.includes('DA01') || kode.includes('MOD-DA-01')) return 'MOD-DA-01';
 
   // Fallback prefix matching
   const sorted = [...PROGRAM].sort((a, b) => b.kode.length - a.kode.length);
@@ -101,6 +113,7 @@ export function programDariKodePaket(kodePaket: string): string | null {
   if (k.includes('AI01') || k.includes('MOD-AI-01')) return 'MOD-AI-01';
   if (k.includes('AI02') || k.includes('MOD-AI-02')) return 'MOD-AI-02';
   if (k.includes('AI03') || k.includes('MOD-AI-03')) return 'MOD-AI-03';
+  if (k.includes('FDA') || k.includes('DA01') || k.includes('MOD-DA-01')) return 'MOD-DA-01';
   return null;
 }
 

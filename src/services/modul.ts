@@ -28,6 +28,13 @@ export const DEFAULT_MODUL_INDUK: ModulInduk[] = [
     deskripsi: 'Arsitektur sistem cerdas tingkat lanjut: Integrasi API LLM, Vector Database, RAG, Tool-Use, Multi-Agent, dan Deployment Produksi.',
     total_pertemuan: 14,
   },
+  {
+    id: 'MOD-DA-01',
+    kode: 'MOD-DA-01',
+    nama: 'Fundamental Data Analyst',
+    deskripsi: 'Kurikulum analisis data komprehensif: CRISP-DM, Preprocessing, Supervised (Decision Tree & Linear Regression), Unsupervised (K-Means, Apriori, PCA), dan Evaluasi Model.',
+    total_pertemuan: 9,
+  },
 ];
 
 /** Ambil seluruh daftar modul induk (katalog modul). */
